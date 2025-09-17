@@ -9,7 +9,17 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 admin.initializeApp();
 
-const geminiApiKey = functions.config().gemini.key;
+// --- CONFIGURAÇÃO DA CHAVE DE API (MÉTODO INSEGURO PARA TESTE) ---
+// !!! RISCO DE SEGURANÇA: Cole sua chave de API aqui APENAS para teste. !!!
+// !!! NÃO ENVIE ESTE ARQUIVO COM A CHAVE PARA UM GITHUB PÚBLICO. !!!
+const geminiApiKey = "AIzaSyDe0XOGu2NFUvd3FJOpbi7RKQ85PDPmKgE"; // <--- SUBSTITUA ISTO PELA SUA CHAVE
+
+// const geminiApiKey = functions.config().gemini.key; // Jeito seguro (desativado)
+
+if (geminiApiKey === "AIzaSyDe0XOGu2NFUvd3FJOpbi7RKQ85PDPmKgE") {
+    throw new Error("API Key do Gemini não foi configurada. Insira a chave na linha 13 do functions/index.js");
+}
+
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
 /**
@@ -35,7 +45,6 @@ exports.generateMasterResponse = functions.firestore
         return { role, parts: [{ text }] };
     }).reverse();
 
-    // Define o "caráter" do Mestre de Jogo como parte do histórico
     const systemInstruction = {
         role: 'user',
         parts: [{ text: `INSTRUÇÃO: Você é um Mestre de um jogo de RPG de fantasia sombria. Responda de forma curta, descritiva e misteriosa. Incorpore os resultados das rolagens de dados (ex: "Rolagem d20: 18") nas suas respostas. Sempre narre em português do Brasil.` }]
@@ -47,7 +56,6 @@ exports.generateMasterResponse = functions.firestore
 
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
-    // Inicia o chat com a instrução de sistema no início do histórico
     const chat = model.startChat({
         history: [systemInstruction, modelResponseToSystem, ...history],
         generationConfig: {
