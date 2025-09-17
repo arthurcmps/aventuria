@@ -1,48 +1,164 @@
-:root{
-  --bg:#f6efe2; --panel:#fff; --accent:#b4772a; --text:#3b2a20;
+/* --- GERAL E LAYOUT --- */
+body {
+  background-color: #121212;
+  color: #e0e0e0;
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
-*{box-sizing:border-box}
-body{
-  margin:0; font-family: Inter, system-ui, sans-serif;
-  background: linear-gradient(180deg,var(--bg),#efe6d6);
-  color:var(--text);
-}
-.topbar{
-  display:flex; justify-content:space-between; align-items:center;
-  padding:12px 20px; border-bottom:1px solid rgba(0,0,0,0.05);
-  background: rgba(255,255,255,0.6); backdrop-filter: blur(4px);
-}
-.logo{display:flex;align-items:center;gap:10px}
-.logo img{width:44px;height:44px}
-.container{
-  max-width:1200px;margin:22px auto;display:grid;
-  grid-template-columns: 240px 1fr 240px; gap:18px; padding:0 16px;
-}
-.sidebar, .rightbar{
-  background: rgba(255,255,255,0.7); padding:16px;border-radius:14px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-}
-.game{
-  display:flex;flex-direction:column; gap:12px;
-}
-.game-header{display:flex;justify-content:space-between;align-items:center}
-.parchment{
-  min-height: 320px; padding:18px; border-radius:14px; overflow:auto;
-  background: linear-gradient(180deg,#fbf5ee,#f6ead8);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
-}
-.message{padding:12px;border-radius:10px;max-width:80%; margin-bottom:10px}
-.m-mestre{background:rgba(180,132,58,0.08);align-self:flex-start}
-.m-jogador{background:rgba(255,255,255,0.9);align-self:flex-end;margin-left:auto;text-align:right}
-.controls{display:flex;gap:8px;align-items:center;margin-top:8px}
-.controls input{flex:1;padding:10px;border-radius:999px;border:1px solid rgba(0,0,0,0.08)}
-.controls button{padding:10px 14px;border-radius:999px;background:var(--accent);border:none;color:white;cursor:pointer}
-.dice button{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:8px 10px;border-radius:8px;margin-right:6px;cursor:pointer}
-.footer{text-align:center;padding:18px;color:rgba(0,0,0,0.5)}
 
-/* small responsiveness */
-@media (max-width: 900px){
-  .container{grid-template-columns: 1fr; padding:0 12px}
-  .rightbar{order:3}
-  .sidebar{order:2}
+.container {
+  width: 90%;
+  max-width: 900px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #181818;
+  border-radius: 8px;
+  border: 1px solid #2c2c2c;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #1f1f1f;
+  border-bottom: 1px solid #2c2c2c;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #ffab40;
+}
+
+main {
+  flex-grow: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* --- PAINEL DE NARRATIVA --- */
+#narration-panel {
+  flex-grow: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#narration {
+  flex-grow: 1;
+}
+
+/* --- ESTILOS DAS MENSAGENS --- */
+.message {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  border-radius: 8px;
+  line-height: 1.5;
+  max-width: 85%;
+}
+
+.message .small {
+    font-size: 0.7rem;
+    color: #888;
+    margin-top: 0.5rem;
+}
+
+.m-jogador {
+  background-color: #2a2a2a;
+  align-self: flex-start;
+}
+
+.m-mestre {
+  background-color: transparent;
+  border: 1px solid #ffab40;
+  color: #ffab40;
+  align-self: flex-start;
+}
+
+.m-system {
+  font-style: italic;
+  color: #aaa;
+  text-align: center;
+  background: none;
+  align-self: center;
+  width: 100%;
+}
+
+/* --- PAINEL LATERAL (DADOS) --- */
+#side-panel {
+  width: 200px;
+  padding: 1rem;
+  border-left: 1px solid #2c2c2c;
+  background-color: #1f1f1f;
+  display: flex;
+  flex-direction: column;
+}
+
+.dice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* --- ESTILO PADRÃO DOS BOTÕES --- */
+.btn {
+    display: block;
+    width: 100%;
+    padding: 10px 15px;
+    border-radius: 4px;
+    border: 1px solid #ffab40;
+    background-color: transparent;
+    color: #ffab40;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+.btn:hover {
+    background-color: #ffab40;
+    color: #121212;
+}
+
+#btn-auth {
+    width: auto; /* Ajuste para o botão de sair */
+    padding: 8px 16px;
+}
+
+/* --- ÁREA DE INPUT --- */
+.input-area {
+  display: flex;
+  padding: 1rem;
+  border-top: 1px solid #2c2c2c;
+  background-color: #1f1f1f;
+}
+
+#input-text {
+  flex-grow: 1;
+  margin-right: 1rem;
+  padding: 10px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+}
+
+#input-text:focus {
+    outline: none;
+    border-color: #ffab40;
+}
+
+#btn-send {
+    min-width: 100px; /* Largura mínima para o botão de envio */
 }

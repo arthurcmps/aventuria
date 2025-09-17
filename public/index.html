@@ -3,70 +3,49 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AventurIA — Taverna</title>
+  <title>AventurIA - Seu Mestre de RPG com IA</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header class="topbar">
-    <div class="logo">
-      <img src="assets/img/logo.png" alt="AventurIA" />
-    </div>
-    <div class="actions">
-      <button id="btn-auth">Entrar (Anon)</button>
-      <button id="btn-theme">Modo Escuro</button>
-    </div>
-  </header>
 
-  <main class="container">
-    <aside class="sidebar">
-      <div class="profile">
-        <div id="avatar">A</div>
-        <div>
-          <strong id="username">Visitante</strong>
-          <div class="small">Nível — 0</div>
+  <div class="container">
+    <header>
+      <h1>AventurIA</h1>
+      <div class="user-info">
+        <span id="username">Carregando...</span>
+        <button id="btn-auth" class="btn">Sair</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="narration-panel">
+        <div id="narration">
+          <!-- Mensagens do mestre e do jogador aparecerão aqui -->
         </div>
       </div>
 
-      <nav class="menu">
-        <button id="btn-new">Nova Aventura</button>
-        <button id="btn-load">Carregar Partida</button>
-      </nav>
-    </aside>
-
-    <section class="game">
-      <div class="game-header">
-        <h2 id="adventure-title">O Portal de Yalara</h2>
-        <div class="meta">Partida pública · <span id="players-count">1</span>/5</div>
-      </div>
-
-      <div id="narration" class="parchment">
-        <!-- mensagens/narrativas aparecerão aqui -->
-      </div>
-
-      <div class="controls">
+      <aside id="side-panel">
+        <h3>Rolagem de Dados</h3>
         <div class="dice">
-          <button data-d="20">d20</button>
-          <button data-d="12">d12</button>
-          <button data-d="6">d6</button>
+          <button data-d="20" class="btn">d20</button>
+          <button data-d="12" class="btn">d12</button>
+          <button data-d="10" class="btn">d10</button>
+          <button data-d="8" class="btn">d8</button>
+          <button data-d="6" class="btn">d6</button>
+          <button data-d="4" class="btn">d4</button>
         </div>
-        <input id="input-text" placeholder="Diga algo ao mestre..." />
-        <button id="btn-send">Enviar</button>
-      </div>
-    </section>
+      </aside>
+    </main>
 
-    <aside class="rightbar">
-      <h3>Companheiros</h3>
-      <ul id="companions">
-        <li>Garrick — Guerreiro</li>
-        <li>Lyra — Barda</li>
-      </ul>
-      <div class="map-placeholder">Mapa (placeholder)</div>
-    </aside>
-  </main>
-
-  <footer class="footer">© <span id="year"></span> AventurIA</footer>
+    <div class="input-area">
+      <input id="input-text" placeholder="O que você faz?" />
+      <button id="btn-send" class="btn">Enviar</button>
+    </div>
+  </div>
 
   <script type="module" src="js/script.js"></script>
-  <script>document.getElementById('year').innerText = new Date().getFullYear();</script>
 </body>
 </html>
