@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AventurIA — Taverna</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">
+      <img src="assets/logo.svg" alt="AventurIA" />
+      <h1>AventurIA</h1>
+    </div>
+    <div class="actions">
+      <button id="btn-auth">Entrar (Anon)</button>
+      <button id="btn-theme">Modo Escuro</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <aside class="sidebar">
+      <div class="profile">
+        <div id="avatar">A</div>
+        <div>
+          <strong id="username">Visitante</strong>
+          <div class="small">Nível — 0</div>
+        </div>
+      </div>
+
+      <nav class="menu">
+        <button id="btn-new">Nova Aventura</button>
+        <button id="btn-load">Carregar Partida</button>
+      </nav>
+    </aside>
+
+    <section class="game">
+      <div class="game-header">
+        <h2 id="adventure-title">O Portal de Yalara</h2>
+        <div class="meta">Partida pública · <span id="players-count">1</span>/5</div>
+      </div>
+
+      <div id="narration" class="parchment">
+        <!-- mensagens/narrativas aparecerão aqui -->
+      </div>
+
+      <div class="controls">
+        <div class="dice">
+          <button data-d="20">d20</button>
+          <button data-d="12">d12</button>
+          <button data-d="6">d6</button>
+        </div>
+        <input id="input-text" placeholder="Diga algo ao mestre..." />
+        <button id="btn-send">Enviar</button>
+      </div>
+    </section>
+
+    <aside class="rightbar">
+      <h3>Companheiros</h3>
+      <ul id="companions">
+        <li>Garrick — Guerreiro</li>
+        <li>Lyra — Barda</li>
+      </ul>
+      <div class="map-placeholder">Mapa (placeholder)</div>
+    </aside>
+  </main>
+
+  <footer class="footer">© <span id="year"></span> AventurIA</footer>
+
+  <!-- Firebase (compat mode para uso simples em vanilla JS) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script src="app.js"></script>
+  <script>document.getElementById('year').innerText = new Date().getFullYear();</script>
+</body>
+</html>

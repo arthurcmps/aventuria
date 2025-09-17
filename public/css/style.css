@@ -1,0 +1,48 @@
+:root{
+  --bg:#f6efe2; --panel:#fff; --accent:#b4772a; --text:#3b2a20;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family: Inter, system-ui, sans-serif;
+  background: linear-gradient(180deg,var(--bg),#efe6d6);
+  color:var(--text);
+}
+.topbar{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 20px; border-bottom:1px solid rgba(0,0,0,0.05);
+  background: rgba(255,255,255,0.6); backdrop-filter: blur(4px);
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo img{width:44px;height:44px}
+.container{
+  max-width:1200px;margin:22px auto;display:grid;
+  grid-template-columns: 240px 1fr 240px; gap:18px; padding:0 16px;
+}
+.sidebar, .rightbar{
+  background: rgba(255,255,255,0.7); padding:16px;border-radius:14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+.game{
+  display:flex;flex-direction:column; gap:12px;
+}
+.game-header{display:flex;justify-content:space-between;align-items:center}
+.parchment{
+  min-height: 320px; padding:18px; border-radius:14px; overflow:auto;
+  background: linear-gradient(180deg,#fbf5ee,#f6ead8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+}
+.message{padding:12px;border-radius:10px;max-width:80%; margin-bottom:10px}
+.m-mestre{background:rgba(180,132,58,0.08);align-self:flex-start}
+.m-jogador{background:rgba(255,255,255,0.9);align-self:flex-end;margin-left:auto;text-align:right}
+.controls{display:flex;gap:8px;align-items:center;margin-top:8px}
+.controls input{flex:1;padding:10px;border-radius:999px;border:1px solid rgba(0,0,0,0.08)}
+.controls button{padding:10px 14px;border-radius:999px;background:var(--accent);border:none;color:white;cursor:pointer}
+.dice button{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:8px 10px;border-radius:8px;margin-right:6px;cursor:pointer}
+.footer{text-align:center;padding:18px;color:rgba(0,0,0,0.5)}
+
+/* small responsiveness */
+@media (max-width: 900px){
+  .container{grid-template-columns: 1fr; padding:0 12px}
+  .rightbar{order:3}
+  .sidebar{order:2}
+}
