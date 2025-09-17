@@ -1,32 +1,71 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
+/*
+ *  functions/index.js
+ *  O Cérebro do Mestre de Jogo (IA)
  */
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+// Inicializa o Firebase Admin para que a função possa interagir com o Firestore
+admin.initializeApp();
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+// Pega sua Chave de API da IA do Google do ambiente da função
+// Você precisa configurar isso no console do Firebase ou via terminal
+const geminiApiKey = functions.config().gemini.key;
+const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+/**
+ * Esta função é acionada sempre que uma nova mensagem é criada em QUALQUER sessão.
+ */
+exports.generateMasterResponse = functions.firestore
+  .document('sessions/{sessionId}/messages/{messageId}')
+  .onCreate(async (snapshot, context) => {
+    const newMessage = snapshot.data();
+
+    // --- Etapa 1: Filtrar --- 
+    // Ignora mensagens que não são de jogadores para evitar loops infinitos.
+    if (newMessage.from !== 'player') {
+      console.log("Mensagem ignorada (não é de um jogador).");
+      return null;
+    }
+
+    // --- Etapa 2: Preparar para a IA ---
+    const sessionId = context.params.sessionId;
+    const messagesRef = admin.firestore().collection('sessions', sessionId, 'messages');
+
+    // Monta um histórico simples para dar contexto à IA
+    const historySnapshot = await messagesRef.orderBy("createdAt", "desc").limit(10).get();
+    const history = historySnapshot.docs.map(doc => {
+        const role = doc.data().from === 'player' ? 'user' : 'model';
+        const text = doc.data().text;
+        return { role, parts: [{ text }] };
+    }).reverse(); // inverte para a ordem cronológica correta
+
+    const model = genAI.getGenerativeModel({ model: "gemini-pro"});
+    const chat = model.startChat({
+        history: history,
+        generationConfig: {
+            maxOutputTokens: 200, // Limita o tamanho da resposta
+        },
+        // Define o "caráter" do Mestre de Jogo
+        systemInstruction: `Você é um Mestre de um jogo de RPG de fantasia sombria. Responda de forma curta, descritiva e misteriosa. Incorpore os resultados das rolagens de dados (ex: "Rolagem d20: 18") nas suas respostas. Sempre narre em português do Brasil.`
+    });
+
+    // --- Etapa 3: Chamar a IA ---
+    console.log("Enviando para a IA:", newMessage.text);
+    const result = await chat.sendMessage(newMessage.text);
+    const response = await result.response;
+    const masterText = response.text();
+    console.log("Resposta da IA:", masterText);
+
+    // --- Etapa 4: Salvar a Resposta no Chat ---
+    await messagesRef.add({
+      from: 'mestre',
+      uid: 'mestre-ai',
+      text: masterText,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return null;
+});

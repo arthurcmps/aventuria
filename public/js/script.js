@@ -81,22 +81,13 @@ async function sendMessage() {
   inputText.value = '';
   const messagesRef = collection(db, 'sessions', currentSessionId, 'messages');
 
+  // Apenas envia a mensagem do jogador. A resposta da IA virá da Cloud Function.
   await addDoc(messagesRef, {
     from: 'player',
     uid: currentUser.uid,
     text,
     createdAt: serverTimestamp()
   });
-
-  // Simulate AI response
-  setTimeout(async () => {
-    await addDoc(messagesRef, {
-      from: 'mestre',
-      uid: 'mestre-ai',
-      text: `O Mestre responde: \"${text}\" — o mundo reage...`,
-      createdAt: serverTimestamp()
-    });
-  }, 700);
 }
 
 function listenMessages() {
