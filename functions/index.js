@@ -12,11 +12,11 @@ admin.initializeApp();
 // --- CONFIGURAÇÃO DA CHAVE DE API (MÉTODO INSEGURO PARA TESTE) ---
 // !!! RISCO DE SEGURANÇA: Cole sua chave de API aqui APENAS para teste. !!!
 // !!! NÃO ENVIE ESTE ARQUIVO COM A CHAVE PARA UM GITHUB PÚBLICO. !!!
-const geminiApiKey = "AIzaSyDe0XOGu2NFUvd3FJOpbi7RKQ85PDPmKgE"; // <--- SUBSTITUA ISTO PELA SUA CHAVE
+const geminiApiKey = "AIzaSyBvnhbaN2IA8kx9bviCNa33p6rgUlSU0yI"; // <--- SUBSTITUA ISTO PELA SUA CHAVE
 
 // const geminiApiKey = functions.config().gemini.key; // Jeito seguro (desativado)
 
-if (geminiApiKey === "AIzaSyDe0XOGu2NFUvd3FJOpbi7RKQ85PDPmKgE") {
+if (geminiApiKey === "AIzaSyBvnhbaN2IA8kx9bviCNa33p6rgUlSU0yI") {
     throw new Error("API Key do Gemini não foi configurada. Insira a chave na linha 13 do functions/index.js");
 }
 
