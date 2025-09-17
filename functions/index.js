@@ -1,5 +1,5 @@
 /*
- *  functions/index.js
+ *  functions/index.js (Versão Segura para Deploy)
  *  O Cérebro do Mestre de Jogo (IA)
  */
 
@@ -9,72 +9,101 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 admin.initializeApp();
 
-// --- CONFIGURAÇÃO DA CHAVE DE API (MÉTODO INSEGURO PARA TESTE) ---
-// !!! RISCO DE SEGURANÇA: Cole sua chave de API aqui APENAS para teste. !!!
-// !!! NÃO ENVIE ESTE ARQUIVO COM A CHAVE PARA UM GITHUB PÚBLICO. !!!
-const geminiApiKey = "AIzaSyBvnhbaN2IA8kx9bviCNa33p6rgUlSU0yI"; // <--- SUBSTITUA ISTO PELA SUA CHAVE
+// --- CONFIGURAÇÃO DA CHAVE DE API ---
+// !!! SUBSTITUA PELA SUA CHAVE DE API REAL ANTES DE FAZER O DEPLOY !!!
+const geminiApiKey = "AIzaSyBvnhbaN2IA8kx9bviCNa33p6rgUlSU0yI";
 
-// const geminiApiKey = functions.config().gemini.key; // Jeito seguro (desativado)
 
-if (geminiApiKey === "AIzaSyBvnhbaN2IA8kx9bviCNa33p6rgUlSU0yI") {
-    throw new Error("API Key do Gemini não foi configurada. Insira a chave na linha 13 do functions/index.js");
-}
+// --- PROMPT (A PERSONALIDADE DA IA) ---
+const systemInstruction = {
+    role: 'user',
+    parts: [{ text: `
+# INSTRUÇÃO MESTRE DE RPG - FANTASIA SOMBRIA
 
-const genAI = new GoogleGenerativeAI(geminiApiKey);
+## PERSONA
+Você é "O Mestre das Sombras", um narrador de RPG de mesa experiente. Seu tom é sério, sua narração é imersiva e o mundo que você descreve é perigoso e envolto em mistério. Você nunca quebra o personagem e narra em português do Brasil.
 
-/**
- * Esta função é acionada sempre que uma nova mensagem é criada em QUALQUER sessão.
- */
-exports.generateMasterResponse = functions.firestore
+## MUNDO E CENÁRIO
+O mundo se chama Aethel. É um reino caído, assombrado por criaturas corrompidas e magia esquecida.
+
+## REGRAS DE NARRAÇÃO
+1.  **DESCRIÇÕES VÍVIDAS:** Descreva o ambiente, os sons e os cheiros. Crie uma atmosfera densa.
+2.  **SEJA REATIVO:** Reaja diretamente às ações do jogador.
+3.  **APRESENTE ESCOLHAS:** Descreva a situação e os possíveis caminhos ou ações, mas não decida pelo jogador.
+4.  **INCORPORE DADOS:** Quando um jogador envia uma rolagem de dados (ex: "Rolagem d20: 18"), use o resultado para determinar o sucesso ou falha da ação e descreva a consequência.
+5.  **SEMPRE TERMINE COM UMA PERGUNTA:** Encerre cada narração perguntando ao jogador o que ele faz. Exemplos: "O que você faz?", "Qual o seu próximo movimento?".
+
+## ABERTURA DA AVENTURA (IMPORTANTE)
+Se o histórico de chat tiver apenas a sua instrução inicial, sua PRIMEIRA resposta DEVE ser EXATAMENTE esta narração de abertura para iniciar a aventura. Após esta abertura, reaja normalmente.
+
+**Narração de Abertura:**
+"Você acorda com o som de água pingando. Sua cabeça dói e seus ossos estão gelados. Você está deitado sobre pedra fria e úmida, em uma escuridão quase total. Um cheiro de poeira antiga e mofo preenche o ar. À medida que seus olhos se ajustam, você distingue as paredes de uma cripta. Um feixe de luar atravessa uma rachadura no teto, iluminando uma porta de pedra maciça a poucos metros de distância. Você não se lembra de como chegou aqui. O que você faz?"
+`}]
+};
+
+const modelResponseToSystem = {
+    role: 'model',
+    parts: [{ text: `Entendido. Eu sou o Mestre das Sombras. A escuridão aguarda.` }]
+};
+
+
+exports.generateMasterResponse = functions.region('southamerica-east1').firestore
   .document('sessions/{sessionId}/messages/{messageId}')
   .onCreate(async (snapshot, context) => {
-    const newMessage = snapshot.data();
 
-    if (newMessage.from !== 'player') {
-      console.log("Mensagem ignorada (não é de um jogador).");
+    // 1. Ignora mensagens que não são de jogadores
+    if (snapshot.data().from !== 'player') {
       return null;
     }
 
-    const sessionId = context.params.sessionId;
-    const messagesRef = admin.firestore().collection('sessions', sessionId, 'messages');
+    const messagesRef = snapshot.ref.firestore.collection('sessions', context.params.sessionId, 'messages');
 
-    const historySnapshot = await messagesRef.orderBy("createdAt", "desc").limit(10).get();
-    const history = historySnapshot.docs.map(doc => {
-        const role = doc.data().from === 'player' ? 'user' : 'model';
-        const text = doc.data().text;
-        return { role, parts: [{ text }] };
-    }).reverse();
+    // 2. VERIFICA A CHAVE DE API EM TEMPO DE EXECUÇÃO
+    if (geminiApiKey === "COLE_SUA_CHAVE_AQUI_E_SALVE_O_ARQUIVO") {
+        console.error("A execução falhou porque a chave da API do Gemini não foi inserida no código.");
+        return messagesRef.add({
+            from: 'mestre',
+            text: `(ERRO DO SISTEMA: A chave da API do Mestre não foi configurada no servidor. O deploy funcionou, mas a função não pode ser executada. Verifique o arquivo functions/index.js.)`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    }
 
-    const systemInstruction = {
-        role: 'user',
-        parts: [{ text: `INSTRUÇÃO: Você é um Mestre de um jogo de RPG de fantasia sombria. Responda de forma curta, descritiva e misteriosa. Incorpore os resultados das rolagens de dados (ex: "Rolagem d20: 18") nas suas respostas. Sempre narre em português do Brasil.` }]
-    };
-    const modelResponseToSystem = {
-        role: 'model',
-        parts: [{ text: `Entendido. Assumo o papel do Mestre das Sombras e guiarei os jogadores nesta jornada.` }]
-    };
+    try {
+        // 3. INICIA A IA (AGORA DENTRO DA FUNÇÃO)
+        const genAI = new GoogleGenerativeAI(geminiApiKey);
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    
-    const chat = model.startChat({
-        history: [systemInstruction, modelResponseToSystem, ...history],
-        generationConfig: {
-            maxOutputTokens: 250,
-        },
-    });
+        // 4. Busca o histórico de mensagens
+        const historySnapshot = await messagesRef.orderBy("createdAt", "desc").limit(20).get();
+        const history = historySnapshot.docs.map(doc => {
+            const role = doc.data().from === 'player' ? 'user' : 'model';
+            return { role, parts: [{ text: doc.data().text }] };
+        }).reverse();
 
-    console.log("Enviando para a IA:", newMessage.text);
-    const result = await chat.sendMessage(newMessage.text);
-    const response = await result.response;
-    const masterText = response.text();
-    console.log("Resposta da IA:", masterText);
+        // 5. Configura e inicia o chat com a IA
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const chat = model.startChat({
+            history: [systemInstruction, modelResponseToSystem, ...history],
+            generationConfig: { maxOutputTokens: 400 },
+        });
 
-    await messagesRef.add({
-      from: 'mestre',
-      uid: 'mestre-ai',
-      text: masterText,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+        // 6. Envia a mensagem do jogador para a IA e obtém a resposta
+        const playerMessage = snapshot.data().text;
+        const result = await chat.sendMessage(playerMessage);
+        const masterText = await result.response.text();
 
-    return null;
+        // 7. Salva a resposta do Mestre no banco de dados
+        return messagesRef.add({
+          from: 'mestre',
+          text: masterText,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+    } catch (error) {
+        console.error("Erro ao chamar a API do Gemini:", error);
+        return messagesRef.add({
+            from: 'mestre',
+            text: `(O Mestre parece confuso e não consegue se comunicar. Erro: ${error.message})`,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    }
 });
