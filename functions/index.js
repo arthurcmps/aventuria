@@ -47,7 +47,7 @@ const modelResponseToSystem = {
 };
 
 
-exports.generateMasterResponse = functions.region('southamerica-east1').firestore
+exports.generateMasterResponse = functions.firestore
   .document('sessions/{sessionId}/messages/{messageId}')
   .onCreate(async (snapshot, context) => {
 
