@@ -3,7 +3,7 @@ import { auth, db } from './firebase.js';
 import {
   onAuthStateChanged,
   signInAnonymously
-} from "firebase/auth";
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
   addDoc,
   collection,
@@ -14,7 +14,7 @@ import {
   query,
   serverTimestamp,
   where
-} from "firebase/firestore";
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // ---------- DOM Elements ----------
 const btnAuth = document.getElementById('btn-auth');
@@ -45,6 +45,8 @@ onAuthStateChanged(auth, (user) => {
 
 btnAuth.addEventListener('click', async () => {
   if (currentUser) {
+    // Note: signOut is imported from firebase/auth, but not explicitly used here.
+    // It's a method on the auth object itself.
     await auth.signOut();
   } else {
     try {
@@ -68,8 +70,8 @@ async function ensureSession(slug) {
   const querySnapshot = await getDocs(q);
 
   if (!querySnapshot.empty) {
-    const doc = querySnapshot.docs[0];
-    currentSessionId = doc.id;
+    const docSnapshot = querySnapshot.docs[0];
+    currentSessionId = docSnapshot.id;
   } else {
     const docRef = await addDoc(sessionsRef, {
       slug,
@@ -102,7 +104,7 @@ async function sendMessage() {
     await addDoc(messagesRef, {
       from: 'mestre',
       uid: 'mestre-ai',
-      text: `O Mestre responde: \""${text}\"" — o mundo reage...`,
+      text: `O Mestre responde: \"${text}\" — o mundo reage...`,
       createdAt: serverTimestamp()
     });
   }, 700);
@@ -117,8 +119,8 @@ function listenMessages() {
 
   messagesUnsubscribe = onSnapshot(q, snapshot => {
     narration.innerHTML = ''; // limpa e re-renderiza (p/ MVP)
-    snapshot.forEach(doc => {
-      const m = doc.data();
+    snapshot.forEach(docSnapshot => {
+      const m = docSnapshot.data();
       const el = document.createElement('div');
       el.classList.add('message');
       if (m.from === 'mestre') el.classList.add('m-mestre');
