@@ -2,7 +2,7 @@
 import { auth, db } from './firebase.js';
 import {
   onAuthStateChanged,
-  signInAnonymously
+  signOut
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
   addDoc,
@@ -17,7 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // ---------- DOM Elements ----------
-const btnAuth = document.getElementById('btn-auth');
+const btnLogout = document.getElementById('btn-auth'); // Now a logout button
 const btnSend = document.getElementById('btn-send');
 const inputText = document.getElementById('input-text');
 const narration = document.getElementById('narration');
@@ -28,39 +28,28 @@ let currentUser = null;
 let currentSessionId = null; // id da partida/adventure
 let messagesUnsubscribe = null; // para parar de ouvir msgs
 
-// ---------- Authentication ----------
+// ---------- Authentication & Page Protection ----------
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    usernameEl.innerText = `Player-${user.uid.slice(0, 6)}`;
-    btnAuth.innerText = 'Sair';
+    // Use displayName from Google, or generate from email, or fallback to UID
+    const displayName = user.displayName || user.email.split('@')[0] || `Player-${user.uid.slice(0, 6)}`;
+    usernameEl.innerText = displayName;
+    btnLogout.innerText = 'Sair';
     ensureSession('portal-yalara').then(listenMessages);
   } else {
-    currentUser = null;
-    usernameEl.innerText = 'Visitante';
-    btnAuth.innerText = 'Entrar (Anon)';
-    if(messagesUnsubscribe) messagesUnsubscribe(); // para de ouvir a sessão anterior
+    // If no user is logged in, redirect to the login page.
+    window.location.href = '/login.html';
   }
 });
 
-btnAuth.addEventListener('click', async () => {
-  if (currentUser) {
-    // Note: signOut is imported from firebase/auth, but not explicitly used here.
-    // It's a method on the auth object itself.
-    await auth.signOut();
-  } else {
-    try {
-      const userCredential = await signInAnonymously(auth);
-      currentUser = userCredential.user;
-      usernameEl.innerText = `Player-${currentUser.uid.slice(0, 6)}`;
-      btnAuth.innerText = 'Desconectar';
-      await ensureSession('portal-yalara');
-      listenMessages();
-    } catch (err) {
-      console.error(err);
-      alert('Erro no login: ' + err.message);
-    }
+// Logout Button
+btnLogout.addEventListener('click', async () => {
+  if (messagesUnsubscribe) {
+    messagesUnsubscribe(); // Stop listening to firestore
   }
+  await signOut(auth);
+  // The onAuthStateChanged listener above will handle the redirect.
 });
 
 // ---------- Session Management ----------
@@ -86,7 +75,7 @@ async function ensureSession(slug) {
 
 // ---------- Realtime Chat ----------
 async function sendMessage() {
-  if (!currentUser) { alert('Faça login (Entrar) primeiro.'); return; }
+  if (!currentUser) { return; } // Should not happen due to page protection
   const text = inputText.value.trim();
   if (!text) return;
   inputText.value = '';
@@ -99,7 +88,7 @@ async function sendMessage() {
     createdAt: serverTimestamp()
   });
 
-  // Simular resposta do mestre (aqui você chamaria uma Cloud Function que usa IA)
+  // Simulate AI response
   setTimeout(async () => {
     await addDoc(messagesRef, {
       from: 'mestre',
@@ -111,14 +100,14 @@ async function sendMessage() {
 }
 
 function listenMessages() {
-  if (messagesUnsubscribe) messagesUnsubscribe(); // Cancela listener anterior
+  if (messagesUnsubscribe) messagesUnsubscribe();
   if (!currentSessionId) return;
 
   const messagesRef = collection(db, 'sessions', currentSessionId, 'messages');
   const q = query(messagesRef, orderBy('createdAt', 'asc'));
 
   messagesUnsubscribe = onSnapshot(q, snapshot => {
-    narration.innerHTML = ''; // limpa e re-renderiza (p/ MVP)
+    narration.innerHTML = ''; 
     snapshot.forEach(docSnapshot => {
       const m = docSnapshot.data();
       const el = document.createElement('div');

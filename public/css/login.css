@@ -1,0 +1,123 @@
+/* --- Estilos para a Página de Login --- */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--background-color);
+  padding: 2rem;
+  text-align: center;
+}
+
+.login-container .logo {
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.login-container .logo img {
+  width: 60px;
+  height: 60px;
+}
+
+#auth-form {
+  width: 100%;
+  max-width: 400px;
+  padding: 2.5rem 2rem;
+}
+
+.form-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.form-toggle button {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--text-color-secondary);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px; /* Alinha com a borda do container */
+}
+
+.form-toggle button.active {
+  color: var(--text-color);
+  border-bottom-color: var(--primary-color);
+}
+
+#auth-form form input {
+  width: 100%;
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--background-color-light);
+  font-size: 1rem;
+}
+
+#auth-form form button {
+  width: 100%;
+  padding: 0.9rem;
+  margin-top: 0.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+#auth-form form button:hover {
+  background-color: #a73b23; /* um pouco mais escuro */
+}
+
+#btn-google-login {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #4285F4;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: background-color 0.2s;
+}
+
+#btn-google-login:hover {
+  background-color: #357ae8;
+}
+
+#btn-google-login img {
+  width: 18px;
+  height: 18px;
+  background-color: white;
+  padding: 2px;
+  border-radius: 50%;
+}
+
+.separator {
+  margin: 1.5rem 0;
+  font-style: italic;
+  color: var(--text-color-secondary);
+}
+
+.hidden {
+  display: none;
+}
+
+.error-message {
+  color: var(--danger-color);
+  margin-top: 1rem;
+  min-height: 1.2em;
+}

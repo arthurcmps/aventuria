@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AventurIA — Login</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/login.css" />
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">
+      <img src="assets/img/logo.png" alt="AventurIA" />
+      <h1>AventurIA</h1>
+    </div>
+    <div id="auth-form" class="parchment">
+      <div class="form-toggle">
+        <button id="btn-show-login" class="active">Entrar</button>
+        <button id="btn-show-register">Registrar</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form">
+        <input type="email" id="login-email" placeholder="Email" required />
+        <input type="password" id="login-password" placeholder="Senha" required />
+        <button type="submit">Entrar</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="hidden">
+        <input type="email" id="register-email" placeholder="Email" required />
+        <input type="password" id="register-password" placeholder="Senha (6+ caracteres)" required />
+        <button type="submit">Criar Conta</button>
+      </form>
+
+      <p class="separator">ou</p>
+      
+      <button id="btn-google-login">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo" />
+        Entrar com Google
+      </button>
+    </div>
+    <p id="auth-error" class="error-message"></p>
+  </div>
+
+  <script type="module" src="js/login.js"></script>
+</body>
+</html>
