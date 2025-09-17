@@ -66,12 +66,8 @@
 
   <footer class="footer">© <span id="year"></span> AventurIA</footer>
 
-  <!-- Firebase (compat mode para uso simples em vanilla JS) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
-  <script src="js/script.js"></script>
+  <script type="module" src="js/firebase.js"></script>
+  <script type="module" src="js/script.js"></script>
   <script>document.getElementById('year').innerText = new Date().getFullYear();</script>
 </body>
 </html>
