@@ -3,17 +3,61 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 10, 17);
+    // As sessões contêm os dados principais do jogo.
+    match /sessions/{sessionId} {
+      
+      // PERMISSÕES DE LEITURA:
+      // Permite a leitura se o ID do usuário autenticado (request.auth.uid) estiver
+      // presente na lista de 'memberUIDs' da sessão.
+      allow read: if request.auth != null && request.auth.uid in resource.data.memberUIDs;
+
+      // PERMISSÕES DE ESCRITA:
+      // Permite a CRIAÇÃO de uma nova sessão se o usuário estiver logado.
+      allow create: if request.auth != null;
+
+      // Permite a ATUALIZAÇÃO (ex: convidar jogadores) apenas se o usuário for o 'owner' da sessão.
+      allow update: if request.auth != null && request.auth.uid == resource.data.owner;
+      
+      // Nega a exclusão de sessões por clientes para segurança.
+      allow delete: if false; 
+
+      // ---- Subcoleções da Sessão ----
+
+      // PERSONAGENS: As fichas dos jogadores na sessão.
+      match /characters/{characterId} {
+        // PERMISSÕES DE LEITURA:
+        // Permite a leitura por qualquer membro da sessão (para ver a ficha do grupo).
+        // A permissão do pai (sessão) já garante que apenas membros do grupo possam chegar aqui.
+        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
+
+        // PERMISSÕES DE ESCRITA:
+        // Permite a CRIAÇÃO de um personagem se o ID do personagem for o UID do usuário,
+        // e o usuário for membro da sessão.
+        allow create: if request.auth != null && 
+                      characterId == request.auth.uid && 
+                      get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
+
+        // Permite ATUALIZAR ou DELETAR um personagem apenas se o usuário for o dono daquele personagem.
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+      }
+
+      // MENSAGENS: O chat do jogo.
+      match /messages/{messageId} {
+        // PERMISSÕES DE LEITURA:
+        // Permite a leitura se o usuário for membro da sessão.
+        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
+        
+        // PERMISSÕES DE ESCRITA:
+        // Permite a CRIAÇÃO (envio) de mensagens se o usuário for membro da sessão.
+        // Apenas a Cloud Function (backend) pode criar mensagens do 'mestre'.
+        // A regra `request.resource.data.from == 'player'` garante isso.
+        allow create: if request.auth != null && 
+                        get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]) &&
+                        request.resource.data.from == 'player';
+
+        // Nega atualizações ou exclusões de mensagens pelos clientes.
+        allow update, delete: if false;
+      }
     }
   }
 }

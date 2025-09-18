@@ -3,7 +3,452 @@
  *  Tema: Fantasia Sombria (Alto Contraste)
  */
 
-/* ... (estilos existentes) ... */
+/* --- RESET E PADRÕES GLOBAIS --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #111111; /* Preto mais profundo */
+    color: #EAEAEA; /* Branco suave para texto */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* --- CONTAINER PRINCIPAL --- */
+.container {
+    width: 100%;
+    max-width: 800px;
+    height: 95vh;
+    background-color: #181818; /* Cinza super escuro, quase preto */
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); /* Sombra mais pronunciada */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #333;
+}
+
+/* --- CABEÇALHO --- */
+header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background-color: #1F1F1F;
+    border-bottom: 1px solid #333;
+}
+
+h1 {
+    font-size: 1.5rem;
+    color: #EAEAEA;
+    justify-self: start;
+}
+
+.session-controls {
+    justify-self: center;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-self: end;
+}
+
+
+#username {
+    font-weight: bold;
+    color: #EAEAEA;
+}
+
+/* --- PAINEL DE NARRAÇÃO E PAINEL LATERAL --- */
+main {
+    flex-grow: 1;
+    display: flex;
+    overflow-y: hidden; /* A rolagem agora é interna aos painéis */
+    position: relative; /* Para o overlay de seleção de sessão */
+}
+
+#narration-panel {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+#narration {
+    padding: 1.5rem;
+}
+
+#side-panel {
+    width: 200px;
+    min-width: 200px;
+    padding: 1.5rem 1rem;
+    border-left: 1px solid #333;
+    background-color: #1F1F1F;
+    overflow-y: auto;
+}
+
+.message {
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.message.player .from {
+    color: #90CAF9; /* Azul para o jogador */
+    font-weight: bold;
+}
+
+.message.mestre .from {
+    color: #F48FB1; /* Rosa/Vermelho claro para o Mestre */
+    font-weight: bold;
+}
+
+.message p {
+    margin-top: 0.5rem;
+    white-space: pre-wrap; /* Mantém a formatação do texto da IA */
+}
+
+/* --- ESTILO PADRÃO DOS BOTÕES --- */
+.btn {
+    display: inline-block; 
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: none; 
+    background-color: #D97706; /* Laranja queimado, temático */
+    color: #FFFFFF; 
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, opacity 0.2s ease-in-out;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+.btn:hover {
+    background-color: #B45309; /* Laranja mais escuro no hover */
+}
+
+.btn:disabled {
+    background-color: #555;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.btn.btn-secondary {
+    background-color: #444;
+}
+
+.btn.btn-secondary:hover {
+    background-color: #555;
+}
+
+/* --- ÁREA DE INPUT --- */
+#input-area {
+  display: flex;
+  padding: 1rem;
+  border-top: 1px solid #333;
+  background-color: #1F1F1F;
+  gap: 1rem;
+}
+
+#input-text, .form-group input {
+  flex-grow: 1;
+  padding: 10px 15px;
+  border: 1px solid #444; 
+  border-radius: 5px;
+  background-color: #2C2C2C; 
+  color: #EAEAEA;
+  font-size: 1rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+#input-text:focus, .form-group input:focus {
+    outline: none;
+    border-color: #D97706; /* Destaque temático ao focar */
+}
+
+#input-text:disabled {
+    background-color: #222;
+    cursor: not-allowed;
+}
+
+
+/* --- PAINEL DE SELEÇÃO DE SESSÃO --- */
+#session-selection-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #181818;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    z-index: 10;
+    padding: 2rem;
+}
+
+#session-selection-overlay h2 {
+    margin-bottom: 1rem;
+}
+
+#session-selection-overlay p {
+    font-size: 1.1rem;
+    color: #AAAAAA;
+    margin-bottom: 2rem;
+    max-width: 500px;
+}
+
+#character-list-container {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 2rem;
+}
+
+#character-list-container h3 {
+    color: #D97706;
+    margin-bottom: 1rem;
+}
+
+#character-list {
+    background-color: #1F1F1F;
+    border: 1px solid #333;
+    border-radius: 5px;
+    padding: 1rem;
+    min-height: 100px;
+}
+
+#no-characters-message {
+    color: #777;
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.character-item {
+    background-color: #2c2c2c;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    text-align: left;
+}
+
+.character-item:hover {
+    background-color: #383838;
+    border-color: #D97706;
+}
+
+#btn-create-new-character {
+    padding: 12px 25px;
+    font-size: 1rem;
+}
+
+
+/* --- SCROLLBAR CUSTOMIZADA --- */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #181818;
+}
+::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+
+/* --- MODAIS (CRIAÇÃO DE PERSONAGEM & CONVITE) --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: none; /* Inicia escondido */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: #1F1F1F;
+    padding: 2rem;
+    border-radius: 8px;
+    border: 1px solid #444;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.7);
+}
+
+.modal-content h2 {
+    margin-bottom: 0.5rem;
+    color: #FFFFFF;
+}
+
+.modal-content p {
+    margin-bottom: 1.5rem;
+    color: #AAAAAA;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.attributes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.attribute-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.attribute-item label {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.attribute-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.attr-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    min-width: 40px;
+    text-align: center;
+}
+
+.btn-attr {
+    padding: 5px 10px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    background-color: #444;
+    border: 1px solid #666;
+    color: #EAEAEA;
+    border-radius: 4px;
+}
+
+.btn-attr:hover {
+    background-color: #555;
+}
+
+#btn-save-character {
+    width: 100%;
+    padding: 15px;
+}
+
+
+/* --- FICHA DE PERSONAGEM (PAINEL LATERAL) --- */
+#character-sheet {
+    margin-bottom: 1rem;
+}
+
+#character-sheet-name {
+    color: #D97706; /* Laranja queimado para o nome */
+    margin-bottom: 1rem;
+}
+
+#character-sheet-attributes {
+    list-style-type: none;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+#character-sheet-attributes li {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+#character-sheet-attributes .attr-name {
+    font-weight: bold;
+}
+
+#side-panel-divider, .side-panel-divider-2 {
+    border: none;
+    border-top: 1px solid #333;
+    margin: 1.5rem 0;
+}
+
+
+/* --- PAINEL DE GERENCIAMENTO DO GRUPO --- */
+#party-management-panel {
+    display: none; /* Escondido por padrão, aparece quando uma sessão é carregada */
+}
+
+#party-management-panel h4 {
+    color: #D97706;
+    margin-bottom: 1rem;
+}
+
+#party-list {
+    list-style-type: none;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+#party-list li {
+    background-color: #2c2c2c;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+#btn-invite-player {
+    width: 100%;
+}
+
+/* --- ROLAGEM DE DADOS (PAINEL LATERAL) --- */
+#dice-roller h4 {
+    color: #D97706;
+    margin-bottom: 1rem;
+}
+
+.dice-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.dice-buttons .btn {
+    padding: 8px;
+    font-size: 0.8rem;
+}
 
 /* --- ANIMAÇÃO DE ROLAGEM DE DADO --- */
 #dice-animation-overlay {
@@ -12,13 +457,14 @@
     pointer-events: none; 
     opacity: 0;
     transition: opacity 0.3s ease;
-    display: flex; /* Adicionado para garantir a centralização */
+    display: flex; /* Garante a centralização */
     justify-content: center;
     align-items: center;
 }
 
 #dice-animation-overlay.visible {
     opacity: 1;
+    pointer-events: auto; /* Permite interação (se houver) quando visível */
 }
 
 #dice-container {
@@ -26,13 +472,13 @@
 }
 
 #d20-animation {
-    width: 200px; /* Um pouco maior para caber o texto */
+    width: 200px;
     height: 200px;
     background-color: #1F1F1F;
     border: 3px solid #D97706;
     border-radius: 12px;
     display: flex;
-    flex-direction: column; /* Para empilhar o texto */
+    flex-direction: column; 
     justify-content: center;
     align-items: center;
     font-weight: bold;
@@ -51,7 +497,7 @@
 }
 
 #d20-animation .result-text {
-    font-size: 5rem; /* Resultado bem grande */
+    font-size: 5rem;
     line-height: 1;
 }
 
@@ -59,7 +505,6 @@
     animation: roll-d20 2s ease-out forwards;
 }
 
-/* Animação do Dado */
 @keyframes roll-d20 {
     0% {
         transform: scale(0.5) rotateX(0deg) rotateY(0deg);

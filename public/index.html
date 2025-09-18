@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AventurIA - Suas Sagas de RPG com IA</title>
-  <link rel="stylesheet" href="public/css/style.css" />
+  <link rel="stylesheet" href="css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
@@ -70,30 +70,64 @@
         </div>
       </div>
 
-      <aside id="side-panel">
+      <aside id="side-panel" style="display: none;">
         <div id="character-sheet" style="display: none;">
           <h3 id="character-sheet-name"></h3>
           <ul id="character-sheet-attributes"></ul>
         </div>
         <hr id="side-panel-divider" style="display: none;"/>
-        <h3>Rolagem de Dados</h3>
-        <div class="dice">
-          <button data-d="20" class="btn">d20</button>
-          <button data-d="12" class="btn">d12</button>
-          <button data-d="10" class="btn">d10</button>
-          <button data-d="8" class="btn">d8</button>
-          <button data-d="6" class="btn">d6</button>
-          <button data-d="4" class="btn">d4</button>
+        
+        <div id="party-management-panel" style="display: none;">
+            <h4>Grupo</h4>
+            <ul id="party-list"></ul>
+            <button id="btn-invite-player" class="btn btn-secondary">Convidar</button>
+        </div>
+        
+        <hr class="side-panel-divider-2" style="display: none;"/>
+
+        <div id="dice-roller">
+            <h4>Rolagem de Dados</h4>
+            <div class="dice-buttons">
+                <button data-d="20" class="btn">d20</button>
+                <button data-d="12" class="btn">d12</button>
+                <button data-d="10" class="btn">d10</button>
+                <button data-d="8" class="btn">d8</button>
+                <button data-d="6" class="btn">d6</button>
+                <button data-d="4" class="btn">d4</button>
+            </div>
         </div>
       </aside>
     </main>
 
     <!-- ÁREA DE INPUT (INICIALMENTE OCULTA) -->
-    <div id="input-area" class="input-area" style="display: none;">
+    <div id="input-area" style="display: none;">
       <input id="input-text" placeholder="O que você faz?" />
       <button id="btn-send" class="btn">Enviar</button>
     </div>
   </div>
+
+    <!-- MODAL DE CONVITE -->
+    <div id="invite-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Convidar Jogador</h2>
+            <p>Insira o e-mail do jogador que você deseja convidar para esta sessão.</p>
+            <div class="form-group">
+                <label for="invite-email">E-mail do Jogador:</label>
+                <input type="email" id="invite-email" placeholder="jogador@email.com">
+            </div>
+            <div class="modal-actions">
+                <button id="btn-cancel-invite" class="btn btn-secondary">Cancelar</button>
+                <button id="btn-send-invite" class="btn">Enviar Convite</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERLAY DE ANIMAÇÃO DO DADO -->
+    <div id="dice-animation-overlay" class="modal-overlay">
+        <div id="dice-container">
+            <div id="d20-animation"></div>
+        </div>
+    </div>
 
   <script type="module" src="js/script.js"></script>
 </body>
