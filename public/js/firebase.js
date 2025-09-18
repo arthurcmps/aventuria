@@ -2,13 +2,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { getFunctions } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyD9hHsMbf2c8Y8WvofRlAIF6D02idQ3qjI",
   authDomain: "aventuria-baeba.firebaseapp.com",
   projectId: "aventuria-baeba",
-  storageBucket: "aventuria-baeba.firebasestorage.app",
+  storageBucket: "aventuria-baeba.appspot.com",
   messagingSenderId: "852403801659",
   appId: "1:852403801659:web:8f471f230523fc8a78961e",
   measurementId: "G-JW94CRNV5K"
@@ -20,3 +21,5 @@ const app = initializeApp(firebaseConfig);
 // Initialize and export Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+// CORREÇÃO: Inicializa e exporta a referência para as Functions
+export const functions = getFunctions(app, 'southamerica-east1');
