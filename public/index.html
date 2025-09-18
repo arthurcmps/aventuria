@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AventurIA - Seu Mestre de RPG com IA</title>
+  <title>AventurIA - Suas Sagas de RPG com IA</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +11,7 @@
 </head>
 <body>
 
-  <!-- PAINEL DE CRIAÇÃO DE PERSONAGEM (MODAL) -->
+  <!-- PAINEL DE CRIAÇÃO DE PERSONAGEM (MODAL) - Sem alterações -->
   <div id="character-creation-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
       <h2>Crie seu Personagem</h2>
@@ -23,7 +23,6 @@
       </div>
 
       <div class="attributes-grid">
-        <!-- Atributos (Força, Destreza, etc.) -->
         <div class="attribute-item"><label>Força</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="strength">-</button><span id="attr-strength" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="strength">+</button></div></div>
         <div class="attribute-item"><label>Destreza</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="dexterity">-</button><span id="attr-dexterity" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="dexterity">+</button></div></div>
         <div class="attribute-item"><label>Constituição</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="constitution">-</button><span id="attr-constitution" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="constitution">+</button></div></div>
@@ -32,27 +31,40 @@
         <div class="attribute-item"><label>Carisma</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="charisma">-</button><span id="attr-charisma" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="charisma">+</button></div></div>
       </div>
 
-      <button id="btn-save-character" class="btn">Salvar Personagem</button>
+      <button id="btn-save-character" class="btn">Salvar e Começar</button>
     </div>
   </div>
 
 
   <div class="container">
     <header>
-      <h1>AventurIA</h1>
-      <div class="user-info">
-        <span id="username">Carregando...</span>
-        <button id="btn-auth" class="btn">Sair</button>
-      </div>
+        <h1>AventurIA</h1>
+        <div class="session-controls">
+            <button id="btn-new-game" class="btn">+ Novo Jogo</button>
+        </div>
+        <div class="user-info">
+            <span id="username">Carregando...</span>
+            <button id="btn-auth" class="btn">Sair</button>
+        </div>
     </header>
 
     <main>
-      <div id="narration-panel">
-        <!-- NOVO PAINEL DE INÍCIO -->
-        <div id="start-adventure-overlay">
-            <p>Sua história está prestes a começar.</p>
-            <button id="btn-start-adventure" class="btn">Começar Aventura</button>
-        </div>
+      <!-- PAINEL DE SELEÇÃO DE SESSÃO / BOAS-VINDAS -->
+      <div id="session-selection-overlay">
+          <h2>Bem-vindo a Aethel</h2>
+          <p>Escolha um personagem para continuar sua saga ou crie um novo herói para desbravar a escuridão.</p>
+          <div id="character-list-container">
+              <h3>Meus Personagens</h3>
+              <div id="character-list">
+                  <!-- Personagens existentes serão listados aqui pelo JS -->
+                  <p id="no-characters-message">Nenhum personagem criado ainda.</p>
+              </div>
+          </div>
+          <button id="btn-create-new-character" class="btn">Criar Novo Personagem</button>
+      </div>
+
+      <!-- PAINEL DE NARRAÇÃO (INICIALMENTE OCULTO) -->
+      <div id="narration-panel" style="display: none;">
         <div id="narration">
           <!-- Mensagens do mestre e do jogador aparecerão aqui -->
         </div>
@@ -61,9 +73,7 @@
       <aside id="side-panel">
         <div id="character-sheet" style="display: none;">
           <h3 id="character-sheet-name"></h3>
-          <ul id="character-sheet-attributes">
-            <!-- Atributos serão inseridos aqui pelo JS -->
-          </ul>
+          <ul id="character-sheet-attributes"></ul>
         </div>
         <hr id="side-panel-divider" style="display: none;"/>
         <h3>Rolagem de Dados</h3>
@@ -78,7 +88,8 @@
       </aside>
     </main>
 
-    <div class="input-area">
+    <!-- ÁREA DE INPUT (INICIALMENTE OCULTA) -->
+    <div id="input-area" class="input-area" style="display: none;">
       <input id="input-text" placeholder="O que você faz?" />
       <button id="btn-send" class="btn">Enviar</button>
     </div>

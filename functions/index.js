@@ -1,5 +1,5 @@
 /*
- *  functions/index.js (Versão com Correção de Inicialização)
+ *  functions/index.js (Versão com Suporte a Múltiplas Sessões)
  *  O Cérebro do Mestre de Jogo (IA)
  */
 
@@ -8,11 +8,9 @@ const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { defineSecret } = require("firebase-functions/params");
 
-// --- INICIALIZAÇÃO CORRIGIDA ---
-// Força a inicialização a encontrar o bucket de storage padrão,
-// resolvendo a falha silenciosa de "bucket not found".
-const projectId = process.env.GCLOUD_PROJECT;
+// Inicialização do Firebase Admin SDK
 try {
+  const projectId = process.env.GCLOUD_PROJECT;
   if (projectId) {
     admin.initializeApp({
       storageBucket: `${projectId}.appspot.com`,
@@ -21,18 +19,19 @@ try {
     admin.initializeApp();
   }
 } catch (e) {
-  // Este erro acontecerá localmente se as credenciais não estiverem setadas,
-  // mas é seguro ignorar aqui, pois o que importa é o ambiente de deploy.
   console.warn("Falha na inicialização do Admin SDK (esperado em ambiente local sem config):", e.message);
 }
 
+// Definição do segredo da API Key
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
+// Narração de abertura para novas aventuras
 const openingNarration = "Você acorda com o som de água pingando. Sua cabeça dói e seus ossos estão gelados. Você está deitado sobre pedra fria e úmida, em uma escuridão quase total. Um cheiro de poeira antiga e mofo preenche o ar. À medida que seus olhos se ajustam, você distingue as paredes de uma cripta. Um feixe de luar atravessa uma rachadura no teto, iluminando uma porta de pedra maciça a poucos metros de distância. Você não se lembra de como chegou aqui. O que você faz?";
 
+// Função para criar o prompt do sistema da IA
 const createSystemPrompt = (character) => {
   let characterPromptPart = "";
-  if (character) {
+  if (character && character.name && character.attributes) {
     const attrs = character.attributes;
     characterPromptPart = `
 ## PERSONAGEM DO JOGADOR
@@ -41,7 +40,7 @@ Você está narrando para o seguinte personagem. Leve seus atributos em consider
 - **Atributos:** Força ${attrs.strength}, Destreza ${attrs.dexterity}, Constituição ${attrs.constitution}, Inteligência ${attrs.intelligence}, Sabedoria ${attrs.wisdom}, Carisma ${attrs.charisma}.
 `;
   } else {
-      characterPromptPart = "O jogador ainda não criou um personagem.";
+      characterPromptPart = "O jogador ainda não tem um personagem definido para esta sessão.";
   }
 
   return {
@@ -67,25 +66,29 @@ ${characterPromptPart}
   };
 };
 
+// Resposta padrão do modelo para confirmar o entendimento do prompt
 const modelResponseToSystem = {
     role: 'model',
     parts: [{ text: `Entendido. Eu sou o Mestre das Sombras. A escuridão aguarda a história do jogador.` }]
 };
 
+// --- Cloud Function Principal ---
 exports.generateMasterResponse = functions.runWith({ secrets: [geminiApiKey] }).firestore
   .document('sessions/{sessionId}/messages/{messageId}')
   .onCreate(async (snapshot, context) => {
 
-    // Código simplificado e mais seguro para obter a referência da coleção
     const messagesRef = snapshot.ref.parent;
+    const sessionRef = messagesRef.parent; // Referência ao documento da sessão
 
     try {
         const messageData = snapshot.data();
 
+        // Ignora qualquer mensagem que não seja do jogador
         if (!messageData || messageData.from !== 'player') {
             return null;
         }
 
+        // Se for a mensagem especial de início, envia a narração de abertura
         if (messageData.text && messageData.text.trim() === '__START_ADVENTURE__') {
             return messagesRef.add({
                 from: 'mestre',
@@ -93,33 +96,37 @@ exports.generateMasterResponse = functions.runWith({ secrets: [geminiApiKey] }).
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
         }
-
-        const db = admin.firestore();
-        const playerUid = messageData.uid;
-        if (!playerUid) throw new Error("UID do jogador ausente na mensagem.");
-
-        const charDoc = await db.collection('characters').doc(playerUid).get();
-        const characterData = charDoc.exists ? charDoc.data() : null;
         
+        // *** A LÓGICA CORRIGIDA PARA SESSÕES ***
+        // 1. Carrega os dados da sessão, que contém o personagem
+        const sessionDoc = await sessionRef.get();
+        if (!sessionDoc.exists) throw new Error(`Sessão com ID ${context.params.sessionId} não encontrada.`);
+        const characterData = sessionDoc.data().character;
+
+        // 2. Cria o prompt do sistema com os dados do personagem da sessão
         const systemInstruction = createSystemPrompt(characterData);
         const genAI = new GoogleGenerativeAI(geminiApiKey.value());
 
+        // 3. Busca o histórico de mensagens da sessão atual
         const historySnapshot = await messagesRef.orderBy("createdAt").limitToLast(20).get();
         const history = historySnapshot.docs.map(doc => {
-            if (doc.data().text === '__START_ADVENTURE__') return null;
-            const role = doc.data().from === 'player' ? 'user' : 'model';
-            return { role, parts: [{ text: doc.data().text }] };
+            const data = doc.data();
+            if (data.text === '__START_ADVENTURE__') return null;
+            const role = data.from === 'player' ? 'user' : 'model';
+            return { role, parts: [{ text: data.text }] };
         }).filter(item => item !== null);
 
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // 4. Configura e chama o modelo de IA
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
         const chat = model.startChat({
             history: [systemInstruction, modelResponseToSystem, ...history],
-            generationConfig: { maxOutputTokens: 500 },
+            generationConfig: { maxOutputTokens: 600 },
         });
 
         const result = await chat.sendMessage(messageData.text);
         const masterText = await result.response.text();
 
+        // 5. Salva a resposta do mestre na mesma sessão
         return messagesRef.add({
           from: 'mestre',
           text: masterText,
@@ -127,7 +134,7 @@ exports.generateMasterResponse = functions.runWith({ secrets: [geminiApiKey] }).
         });
 
     } catch (error) {
-        console.error("Erro crítico na Cloud Function generateMasterResponse:", error);
+        console.error(`Erro na Cloud Function para sessão ${context.params.sessionId}:`, error);
         return messagesRef.add({
             from: 'mestre',
             text: `(O Mestre tropeça na escuridão. Um erro grave e inesperado ocorreu. Por favor, reporte este detalhe ao desenvolvedor: ${error.message})`,
