@@ -5,14 +5,13 @@
 // --- IMPORTS --- //
 import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
-// IMPORTAÇÕES ADICIONADAS para o fluxo de convite
 import { onAuthStateChanged, signOut, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
   addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // ===================================================================================
-//  1. DOM ELEMENT REFERENCES (LISTA COMPLETA)
+//  1. DOM ELEMENT REFERENCES
 // ===================================================================================
 const username = document.getElementById('username');
 const btnAuth = document.getElementById('btn-auth');
@@ -66,7 +65,7 @@ let partyUnsubscribe = null;
 let sessionUnsubscribe = null;
 let isDiceRolling = false;
 let lastRollTimestamp = 0;
-let localRollData = null; // Para a rolagem de dados refatorada
+let localRollData = null; 
 
 // ===================================================================================
 //  3. UI MANAGEMENT
@@ -122,12 +121,19 @@ async function loadSession(sessionId) {
     if (sessionUnsubscribe) sessionUnsubscribe();
 
     currentSessionId = sessionId;
+    
+    // Corrigido: Busca o personagem pelo UID do usuário atual na subcoleção da sessão.
+    const partyRef = collection(db, 'sessions', sessionId, 'characters');
+    const q = query(partyRef, where("uid", "==", currentUser.uid));
+    const querySnapshot = await getDocs(q);
 
-    const userCharRef = doc(db, 'sessions', sessionId, 'characters', currentUser.uid);
-    const charDoc = await getDoc(userCharRef);
-    if (charDoc.exists()) {
+    if (!querySnapshot.empty) {
+        const charDoc = querySnapshot.docs[0]; // Pega o primeiro personagem encontrado para o usuário
         currentCharacter = charDoc.data();
         updateCharacterSheet(currentCharacter);
+    } else {
+        console.error("Personagem não encontrado para o usuário nesta sessão.");
+        // Você pode querer mostrar uma mensagem de erro aqui
     }
 
     listenForMessages(sessionId);
@@ -135,6 +141,7 @@ async function loadSession(sessionId) {
     listenForSessionChanges(sessionId);
     showNarrationView();
 }
+
 
 async function sendChatMessage(text) {
   if (!text.trim() || !currentSessionId || !currentCharacter) return;
@@ -245,25 +252,24 @@ btnAuth.addEventListener('click', () => {
     if (currentUser) {
         signOut(auth);
     } else {
-        window.localStorage.setItem('emailForSignIn', prompt('Por favor, insira seu e-mail para o login.'));
-        // A lógica de login agora é principalmente pelo link de convite ou pela página de login dedicada.
         window.location.href = '/login.html';
     }
 });
 
 btnNewGame.addEventListener('click', () => {
-    currentCharacter = null;
-    currentSessionId = null;
-    if (messagesUnsubscribe) messagesUnsubscribe();
-    if (partyUnsubscribe) partyUnsubscribe();
-    if (sessionUnsubscribe) sessionUnsubscribe();
-    showSessionSelection();
+    if (currentUser) {
+        loadSessionList(currentUser.uid);
+    } else {
+        showSessionSelection();
+    }
 });
 
 characterList.addEventListener('click', (e) => {
     if (e.target.classList.contains('character-item')) {
         const sessionId = e.target.dataset.sessionId;
-        loadSession(sessionId);
+        if (sessionId) {
+            loadSession(sessionId);
+        }
     }
 });
 
@@ -296,6 +302,10 @@ btnSaveCharacter.addEventListener('click', async () => {
         alert('Por favor, dê um nome ao seu personagem.');
         return;
     }
+    if (!currentUser) {
+        alert('Você precisa estar logado para criar um personagem.');
+        return;
+    }
 
     try {
         const createAndJoinSession = httpsCallable(functions, 'createAndJoinSession');
@@ -324,9 +334,6 @@ btnSendInvite.addEventListener('click', async () => {
     const email = inviteEmailInput.value.trim();
     if (!email) return alert('Digite um e-mail.');
     
-    // Armazena o e-mail para que o link de login possa usá-lo na volta
-    window.localStorage.setItem('emailForSignIn', email);
-
     const invitePlayer = httpsCallable(functions, 'invitePlayer');
     try {
         const result = await invitePlayer({ email: email, sessionId: currentSessionId });
@@ -374,38 +381,50 @@ d20Animation.addEventListener('animationend', async () => {
 });
 
 // ===================================================================================
-//  7. INICIALIZAÇÃO DO APP (LÓGICA DE CONVITE ADICIONADA)
+//  7. APP INITIALIZATION & AUTHENTICATION (REFACTORED)
 // ===================================================================================
 
-const handleAuth = async (user) => {
-    const url = window.location.href;
-    const params = new URL(url).searchParams;
-    const sessionIdFromUrl = params.get('sessionId');
+// Função centralizada para lidar com o estado de autenticação
+const handleAuthState = async (user) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionIdFromUrl = urlParams.get('sessionId');
+    
+    // Limpa a URL para evitar loops de recarregamento ou re-entrada na sessão.
+    if (sessionIdFromUrl) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 
     if (user) {
+        // --- USUÁRIO LOGADO ---
         currentUser = user;
         username.textContent = user.displayName || user.email;
         btnAuth.textContent = 'Sair';
 
         if (sessionIdFromUrl) {
-            // Limpa a URL para evitar loops de recarregamento
-            window.history.replaceState({}, document.title, window.location.pathname);
-            // O usuário logou E veio de um convite. Tenta entrar na sessão.
-            const joinSession = httpsCallable(functions, 'joinSessionFromInvite');
+            // Se o usuário veio de um link de convite, tenta entrar na sessão
             try {
+                const joinSession = httpsCallable(functions, 'joinSessionFromInvite');
                 await joinSession({ sessionId: sessionIdFromUrl });
                 await loadSession(sessionIdFromUrl);
             } catch (error) {
                 console.error('Falha ao entrar na sessão via convite:', error);
-                alert(error.message);
-                await loadSessionList(user.uid); // Volta para a tela normal
+                alert(`Erro ao entrar na sessão: ${error.message}. Carregando sua lista de personagens.`);
+                await loadSessionList(user.uid); // Se falhar, carrega a lista normal
             }
         } else {
+            // Se for um login normal, apenas carrega a lista de personagens
             await loadSessionList(user.uid);
         }
     } else {
+        // --- USUÁRIO DESLOGADO ---
         currentUser = null;
-        username.textContent = 'Visitante
+        currentCharacter = null;
+        currentSessionId = null;
+        if(messagesUnsubscribe) messagesUnsubscribe();
+        if(partyUnsubscribe) partyUnsubscribe();
+        if(sessionUnsubscribe) sessionUnsubscribe();
+
+        username.textContent = 'Visitante'; // Correção de sintaxe aqui
         btnAuth.textContent = 'Login';
         showSessionSelection();
         characterList.innerHTML = '<p id="no-characters-message">Faça login para ver seus personagens.</p>';
@@ -413,31 +432,37 @@ const handleAuth = async (user) => {
 };
 
 // Função de inicialização principal
-const initialize = async () => {
+const initializeApp = () => {
     const url = window.location.href;
+
+    // 1. Verifica se a URL é um link de login
     if (isSignInWithEmailLink(auth, url)) {
         let email = window.localStorage.getItem('emailForSignIn');
         if (!email) {
             email = window.prompt('Por favor, confirme seu e-mail para completar o login.');
         }
+        
         if (email) {
-            try {
-                const result = await signInWithEmailLink(auth, email, url);
-                window.localStorage.removeItem('emailForSignIn');
-                // O onAuthStateChanged vai ser chamado automaticamente com o usuário logado.
-                // A função handleAuth cuidará do resto.
-            } catch (error) {
-                console.error("Erro ao logar com link:", error);
-                alert("Falha ao fazer login. O link pode ter expirado ou o e-mail está incorreto.");
-                // Remove o email para evitar problemas na próxima tentativa
-                window.localStorage.removeItem('emailForSignIn');
-                onAuthStateChanged(auth, handleAuth);
-            }
+            signInWithEmailLink(auth, email, url)
+                .then((result) => {
+                    window.localStorage.removeItem('emailForSignIn');
+                    // O onAuthStateChanged será acionado automaticamente após o login
+                    // e a função handleAuthState cuidará de todo o fluxo.
+                })
+                .catch((error) => {
+                    console.error("Erro ao logar com link:", error);
+                    alert("Falha ao fazer login. O link pode ter expirado ou o e-mail está incorreto.");
+                    window.localStorage.removeItem('emailForSignIn');
+                    // Mesmo com erro, ativa o listener para tratar o estado de deslogado.
+                    onAuthStateChanged(auth, handleAuthState);
+                });
         }
     } else {
-        // Se não for um link de login, apenas configura o observador normal.
-        onAuthStateChanged(auth, handleAuth);
+        // 2. Se não for um link de login, apenas configura o observador de autenticação.
+        // onAuthStateChanged irá lidar com o usuário logado ou deslogado.
+        onAuthStateChanged(auth, handleAuthState);
     }
 };
 
-initialize();
+// Inicia o aplicativo
+initializeApp();
