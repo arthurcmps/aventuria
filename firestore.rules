@@ -3,6 +3,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Coleção global de personagens para facilitar a busca de quais sessões um usuário participa.
+    match /characters/{userId} {
+      // Permite que um usuário leia, crie ou atualize seu próprio documento de personagem.
+      // O ID do documento {userId} deve ser o mesmo ID do usuário autenticado.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // As sessões contêm os dados principais do jogo.
     match /sessions/{sessionId} {
       
@@ -27,7 +34,6 @@ service cloud.firestore {
       match /characters/{characterId} {
         // PERMISSÕES DE LEITURA:
         // Permite a leitura por qualquer membro da sessão (para ver a ficha do grupo).
-        // A permissão do pai (sessão) já garante que apenas membros do grupo possam chegar aqui.
         allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
 
         // PERMISSÕES DE ESCRITA:
@@ -49,8 +55,6 @@ service cloud.firestore {
         
         // PERMISSÕES DE ESCRITA:
         // Permite a CRIAÇÃO (envio) de mensagens se o usuário for membro da sessão.
-        // Apenas a Cloud Function (backend) pode criar mensagens do 'mestre'.
-        // A regra `request.resource.data.from == 'player'` garante isso.
         allow create: if request.auth != null && 
                         get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]) &&
                         request.resource.data.from == 'player';
