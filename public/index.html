@@ -11,6 +11,32 @@
 </head>
 <body>
 
+  <!-- PAINEL DE CRIAÇÃO DE PERSONAGEM (MODAL) -->
+  <div id="character-creation-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <h2>Crie seu Personagem</h2>
+      <p>Você tem <strong><span id="points-to-distribute">27</span></strong> pontos para distribuir. O valor base de cada atributo é 8.</p>
+      
+      <div class="form-group">
+        <label for="char-name">Nome do Personagem:</label>
+        <input type="text" id="char-name" placeholder="Ex: Kael, o Sombrio">
+      </div>
+
+      <div class="attributes-grid">
+        <!-- Atributos (Força, Destreza, etc.) -->
+        <div class="attribute-item"><label>Força</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="strength">-</button><span id="attr-strength" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="strength">+</button></div></div>
+        <div class="attribute-item"><label>Destreza</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="dexterity">-</button><span id="attr-dexterity" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="dexterity">+</button></div></div>
+        <div class="attribute-item"><label>Constituição</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="constitution">-</button><span id="attr-constitution" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="constitution">+</button></div></div>
+        <div class="attribute-item"><label>Inteligência</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="intelligence">-</button><span id="attr-intelligence" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="intelligence">+</button></div></div>
+        <div class="attribute-item"><label>Sabedoria</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="wisdom">-</button><span id="attr-wisdom" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="wisdom">+</button></div></div>
+        <div class="attribute-item"><label>Carisma</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="charisma">-</button><span id="attr-charisma" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="charisma">+</button></div></div>
+      </div>
+
+      <button id="btn-save-character" class="btn">Salvar Personagem</button>
+    </div>
+  </div>
+
+
   <div class="container">
     <header>
       <h1>AventurIA</h1>
@@ -22,12 +48,24 @@
 
     <main>
       <div id="narration-panel">
+        <!-- NOVO PAINEL DE INÍCIO -->
+        <div id="start-adventure-overlay">
+            <p>Sua história está prestes a começar.</p>
+            <button id="btn-start-adventure" class="btn">Começar Aventura</button>
+        </div>
         <div id="narration">
           <!-- Mensagens do mestre e do jogador aparecerão aqui -->
         </div>
       </div>
 
       <aside id="side-panel">
+        <div id="character-sheet" style="display: none;">
+          <h3 id="character-sheet-name"></h3>
+          <ul id="character-sheet-attributes">
+            <!-- Atributos serão inseridos aqui pelo JS -->
+          </ul>
+        </div>
+        <hr id="side-panel-divider" style="display: none;"/>
         <h3>Rolagem de Dados</h3>
         <div class="dice">
           <button data-d="20" class="btn">d20</button>
