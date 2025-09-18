@@ -14,17 +14,14 @@ body {
     font-family: 'Roboto', sans-serif;
     background-color: #111111; /* Preto mais profundo */
     color: #EAEAEA; /* Branco suave para texto */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
 }
 
 /* --- CONTAINER PRINCIPAL --- */
 .container {
     width: 100%;
     max-width: 800px;
-    height: 95vh;
+    height: 95vh; /* Altura de 95% da tela */
+    margin: auto; /* Centraliza o container */
     background-color: #181818; /* Cinza super escuro, quase preto */
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); /* Sombra mais pronunciada */
@@ -32,6 +29,11 @@ body {
     flex-direction: column;
     overflow: hidden;
     border: 1px solid #333;
+    /* Posicionado no centro da página */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 /* --- CABEÇALHO --- */

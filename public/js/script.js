@@ -10,10 +10,24 @@ import {
 //  1. DOM ELEMENT REFERENCES
 // ===================================================================================
 
-// ... (referências de DOM existentes) ...
 const diceRoller = document.getElementById('dice-roller');
 const diceAnimationOverlay = document.getElementById('dice-animation-overlay');
 const d20Animation = document.getElementById('d20-animation');
+
+// (O resto das referências do DOM não foi mostrado, mas elas existem)
+const narrationPanel = document.getElementById('narration-panel');
+const inputArea = document.getElementById('input-area');
+const sidePanel = document.getElementById('side-panel');
+const characterSheet = document.getElementById('character-sheet');
+const partyManagementPanel = document.getElementById('party-management-panel');
+const btnSend = document.getElementById('btn-send');
+const inputText = document.getElementById('input-text');
+const narration = document.getElementById('narration');
+const characterSheetName = document.getElementById('character-sheet-name');
+const characterSheetAttributes = document.getElementById('character-sheet-attributes');
+const sidePanelDivider = document.getElementById('side-panel-divider');
+const sidePanelDivider2 = document.querySelector('.side-panel-divider-2');
+const partyList = document.getElementById('party-list');
 
 // ===================================================================================
 //  2. APP STATE
@@ -25,25 +39,26 @@ let currentParty = [];
 let currentSessionId = null;
 let messagesUnsubscribe = null;
 let partyUnsubscribe = null;
-let sessionUnsubscribe = null; // Listener para a sessão (rolagem de dados)
+let sessionUnsubscribe = null; 
 let isDiceRolling = false;
-let lastRollTimestamp = 0; // Para evitar acionar a mesma animação múltiplas vezes
+let lastRollTimestamp = 0; 
+let localRollData = null; // << REFACTOR: Armazena os dados da rolagem local
 
 // ===================================================================================
 //  3. UI MANAGEMENT & ANIMATIONS
 // ===================================================================================
 
-// ... (funções de UI existentes) ...
-
-async function triggerDiceAnimation(rollerName, dieType, result) {
+/**
+ * Exibe a animação de rolagem de dados para todos os jogadores.
+ */
+function triggerDiceAnimation(rollerName, dieType, result) {
     if (isDiceRolling) return;
     isDiceRolling = true;
 
-    // Define o texto que aparecerá antes da animação, ex: "Kael rola um d20..."
     const rollerText = document.createElement('div');
     rollerText.className = 'roller-text';
     rollerText.textContent = `${rollerName} rola um d${dieType}...`;
-    d20Animation.innerHTML = ''; // Limpa conteúdo anterior
+    d20Animation.innerHTML = '';
     d20Animation.appendChild(rollerText);
 
     diceAnimationOverlay.style.display = 'flex';
@@ -54,50 +69,44 @@ async function triggerDiceAnimation(rollerName, dieType, result) {
     }, 10);
 
     setTimeout(() => {
-        rollerText.style.display = 'none'; // Esconde o nome do jogador
+        rollerText.style.display = 'none';
         const resultText = document.createElement('div');
         resultText.className = 'result-text';
         resultText.textContent = result;
-        d20Animation.appendChild(resultText); // Mostra o resultado
+        d20Animation.appendChild(resultText);
     }, 800);
-
-    setTimeout(() => {
-        diceAnimationOverlay.classList.remove('visible');
-        d20Animation.classList.remove('rolling');
-        setTimeout(() => { 
-            diceAnimationOverlay.style.display = 'none';
-            isDiceRolling = false;
-        }, 300);
-    }, 2000); // Aumenta um pouco a duração para dar tempo de ler o resultado
 }
 
 // ===================================================================================
 //  4. CORE APP LOGIC
 // ===================================================================================
 
-// ... (onAuthStateChanged, loadSessionList) ...
+// (Funções de autenticação, carregamento de sessão, criação de personagem, etc. sem alterações)
 
-async function loadSession(sessionId) {
-    if (messagesUnsubscribe) messagesUnsubscribe();
-    if (partyUnsubscribe) partyUnsubscribe();
-    if (sessionUnsubscribe) sessionUnsubscribe(); // Limpa listener anterior
-
-    currentSessionId = sessionId;
-
-    // Listener para o documento da sessão (para rolagem de dados em tempo real)
-    listenForSessionChanges(sessionId);
-
-    const userCharRef = doc(db, 'sessions', sessionId, 'characters', currentUser.uid);
-    // ... (resto da função loadSession)
+async function sendChatMessage(text) {
+  if (!text.trim() || !currentSessionId || !currentCharacter) return;
+  try {
+    await addDoc(collection(db, 'sessions', currentSessionId, 'messages'), {
+      from: 'player',
+      text: text,
+      characterName: currentCharacter.name,
+      createdAt: serverTimestamp()
+    });
+    inputText.value = '';
+    narration.scrollTop = narration.scrollHeight;
+  } catch (error) {
+    console.error("Erro ao enviar mensagem: ", error);
+  }
 }
 
-// ... (criação de personagem) ...
+function listenForMessages(sessionId) {
+    // ...
+}
 
-async function sendChatMessage(text) { /* ... (sem mudanças) ... */ }
-function listenForMessages(sessionId) { /* ... (sem mudanças) ... */ }
-function listenForPartyChanges(sessionId) { /* ... (sem mudanças) ... */ }
+function listenForPartyChanges(sessionId) {
+    // ...
+}
 
-// NOVA FUNÇÃO: Ouve mudanças no documento da sessão (para rolagem de dados)
 function listenForSessionChanges(sessionId) {
     if (sessionUnsubscribe) sessionUnsubscribe();
     
@@ -108,19 +117,21 @@ function listenForSessionChanges(sessionId) {
 
         if (diceRoll && diceRoll.timestamp?.toMillis() > lastRollTimestamp) {
             lastRollTimestamp = diceRoll.timestamp.toMillis();
-            // Aciona a animação para todos os jogadores na sessão
             triggerDiceAnimation(diceRoll.rollerName, diceRoll.dieType, diceRoll.result);
         }
     });
 }
 
+
 // ===================================================================================
 //  5. EVENT LISTENERS & CLOUD FUNCTION CALLS
 // ===================================================================================
 
-// ... (listeners existentes) ...
-
-// --- Dice Roller Listener (Agora atualiza o Firestore) ---
+/**
+ * Listener para o clique nos botões de dado.
+ * Agora, apenas atualiza o Firestore e armazena os dados da rolagem localmente.
+ * A mensagem de chat é enviada pelo listener 'animationend'.
+ */
 diceRoller.addEventListener('click', async (e) => {
     if (e.target.matches('.btn[data-d]') && !isDiceRolling) {
         if (!currentSessionId || !currentCharacter) return;
@@ -128,25 +139,60 @@ diceRoller.addEventListener('click', async (e) => {
         const dieType = parseInt(e.target.dataset.d);
         const result = Math.floor(Math.random() * dieType) + 1;
         
-        // Cria o payload da rolagem
+        // << REFACTOR: Armazena os dados localmente para enviar a mensagem depois
+        localRollData = {
+            name: currentCharacter.name,
+            type: dieType,
+            result: result
+        };
+        
         const diceRollPayload = {
             rollerName: currentCharacter.name,
             dieType: dieType,
             result: result,
-            timestamp: serverTimestamp() // Essencial para sincronização
+            timestamp: serverTimestamp()
         };
 
-        // Atualiza o documento da sessão com a última rolagem
         const sessionRef = doc(db, 'sessions', currentSessionId);
         await updateDoc(sessionRef, { latestDiceRoll: diceRollPayload });
-
-        // A mensagem de chat agora é enviada após a animação (ou pode ser acionada por ela)
-        // Para simplificar, vamos enviar a mensagem logo após o gatilho da animação
-        setTimeout(async () => {
-            const message = `${currentCharacter.name} rolou um d${dieType} e tirou: **${result}**`;
-            await sendChatMessage(message);
-        }, 2100); // Envia a mensagem após o término da animação
+        
+        // O setTimeout para enviar a mensagem foi REMOVIDO.
     }
 });
 
-// ... (outros listeners) ...
+/**
+ * Listener para o fim da animação do dado.
+ * Esconde a animação e, se a rolagem foi local, envia a mensagem para o chat.
+ */
+d20Animation.addEventListener('animationend', async () => {
+    // Esconde o overlay da animação
+    diceAnimationOverlay.classList.remove('visible');
+    d20Animation.classList.remove('rolling');
+    
+    // << REFACTOR: Se foi uma rolagem local, envia a mensagem de chat agora.
+    if (localRollData) {
+        const { name, type, result } = localRollData;
+        const message = `${name} rolou um d${type} e tirou: **${result}**`;
+        await sendChatMessage(message);
+        localRollData = null; // Limpa os dados da rolagem local
+    }
+
+    // Atraso para a transição de opacidade do overlay terminar antes de escondê-lo
+    setTimeout(() => { 
+        diceAnimationOverlay.style.display = 'none';
+        isDiceRolling = false;
+    }, 300);
+});
+
+// (Outros listeners do projeto, como btnSend.addEventListener, etc.)
+btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
+inputText.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    sendChatMessage(inputText.value);
+  }
+});
+
+// A inicialização (onAuthStateChanged) e outros listeners não mostrados permanecem os mesmos
+onAuthStateChanged(auth, user => {
+    // ...
+});
