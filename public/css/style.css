@@ -287,6 +287,7 @@ main {
 }
 
 .modal-content {
+    position: relative; /* Adicionado para posicionar o botão de fechar */
     background-color: #1F1F1F;
     padding: 2rem;
     border-radius: 8px;
@@ -294,6 +295,22 @@ main {
     width: 90%;
     max-width: 500px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.7);
+}
+
+.btn-close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 2.5rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.btn-close-modal:hover {
+    color: #fff;
 }
 
 .modal-content h2 {
@@ -370,7 +387,44 @@ main {
 #btn-save-character {
     width: 100%;
     padding: 15px;
+    transition: opacity 0.3s ease-in-out;
 }
+
+#btn-save-character.loading {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* --- INDICADOR DE CARREGAMENTO DA CRIAÇÃO --- */
+#creation-loading-indicator {
+    display: none; /* Começa oculto */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+#creation-loading-indicator p {
+    color: #D97706;
+    font-style: italic;
+    margin-top: 1rem;
+}
+
+.spinner {
+    border: 4px solid #444;
+    border-top: 4px solid #D97706;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 
 
 /* --- FICHA DE PERSONAGEM (PAINEL LATERAL) --- */

@@ -11,9 +11,10 @@
 </head>
 <body>
 
-  <!-- PAINEL DE CRIAÇÃO DE PERSONAGEM (MODAL) - Sem alterações -->
+  <!-- PAINEL DE CRIAÇÃO DE PERSONAGEM (MODAL) - MODIFICADO -->
   <div id="character-creation-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
+       <button id="btn-close-char-creation" class="btn-close-modal">&times;</button> <!-- BOTÃO DE FECHAR ADICIONADO -->
       <h2>Crie seu Personagem</h2>
       <p>Você tem <strong><span id="points-to-distribute">27</span></strong> pontos para distribuir. O valor base de cada atributo é 8.</p>
       
@@ -29,6 +30,12 @@
         <div class="attribute-item"><label>Inteligência</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="intelligence">-</button><span id="attr-intelligence" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="intelligence">+</button></div></div>
         <div class="attribute-item"><label>Sabedoria</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="wisdom">-</button><span id="attr-wisdom" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="wisdom">+</button></div></div>
         <div class="attribute-item"><label>Carisma</label><div class="attribute-control"><button class="btn-attr" data-action="decrease" data-attribute="charisma">-</button><span id="attr-charisma" class="attr-value">8</span><button class="btn-attr" data-action="increase" data-attribute="charisma">+</button></div></div>
+      </div>
+
+      <!-- INDICADOR DE CARREGAMENTO ADICIONADO -->
+      <div id="creation-loading-indicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>Forjando o destino do seu herói...</p>
       </div>
 
       <button id="btn-save-character" class="btn">Salvar e Começar</button>

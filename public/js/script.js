@@ -1,5 +1,5 @@
 /*
- *  script.js - Versão Completa e Corrigida (com tratamento de link de convite)
+ *  script.js - Versão Final com Melhorias de UX no Modal
  */
 
 // --- IMPORTS --- //
@@ -11,7 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // ===================================================================================
-//  1. DOM ELEMENT REFERENCES
+//  1. DOM ELEMENT REFERENCES (MODIFICADO)
 // ===================================================================================
 const username = document.getElementById('username');
 const btnAuth = document.getElementById('btn-auth');
@@ -38,7 +38,10 @@ const partyList = document.getElementById('party-list');
 const btnInvitePlayer = document.getElementById('btn-invite-player');
 const sidePanelDivider2 = document.querySelector('.side-panel-divider-2');
 
+// Referências do Modal de Criação
 const characterCreationModal = document.getElementById('character-creation-modal');
+const btnCloseCharCreation = document.getElementById('btn-close-char-creation'); // NOVO
+const creationLoadingIndicator = document.getElementById('creation-loading-indicator'); // NOVO
 const pointsToDistributeSpan = document.getElementById('points-to-distribute');
 const charNameInput = document.getElementById('char-name');
 const attributesGrid = document.querySelector('.attributes-grid');
@@ -67,8 +70,11 @@ let isDiceRolling = false;
 let lastRollTimestamp = 0;
 let localRollData = null; 
 
+let pointsToDistribute = 27;
+const attributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
+
 // ===================================================================================
-//  3. UI MANAGEMENT
+//  3. UI MANAGEMENT (MODIFICADO)
 // ===================================================================================
 const showNarrationView = () => {
   sessionSelectionOverlay.style.display = 'none';
@@ -87,6 +93,27 @@ const showSessionSelection = () => {
   sidePanelDivider.style.display = 'none';
   sidePanelDivider2.style.display = 'none';
 };
+
+// NOVA FUNÇÃO: Reseta e fecha o modal de criação de personagem
+const resetAndCloseCharacterCreationModal = () => {
+    // Reseta pontos e atributos
+    pointsToDistribute = 27;
+    for (const attr in attributes) {
+        attributes[attr] = 8;
+        document.getElementById(`attr-${attr}`).textContent = 8;
+    }
+    pointsToDistributeSpan.textContent = pointsToDistribute;
+    charNameInput.value = '';
+
+    // Garante que o estado de carregamento seja desativado
+    creationLoadingIndicator.style.display = 'none';
+    btnSaveCharacter.style.display = 'block'; // Garante que o botão salvar esteja visível
+    btnSaveCharacter.disabled = false;
+
+    // Fecha o modal
+    characterCreationModal.style.display = 'none';
+};
+
 
 // ===================================================================================
 //  4. CORE APP LOGIC
@@ -122,18 +149,16 @@ async function loadSession(sessionId) {
 
     currentSessionId = sessionId;
     
-    // Corrigido: Busca o personagem pelo UID do usuário atual na subcoleção da sessão.
     const partyRef = collection(db, 'sessions', sessionId, 'characters');
     const q = query(partyRef, where("uid", "==", currentUser.uid));
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
-        const charDoc = querySnapshot.docs[0]; // Pega o primeiro personagem encontrado para o usuário
+        const charDoc = querySnapshot.docs[0];
         currentCharacter = charDoc.data();
         updateCharacterSheet(currentCharacter);
     } else {
         console.error("Personagem não encontrado para o usuário nesta sessão.");
-        // Você pode querer mostrar uma mensagem de erro aqui
     }
 
     listenForMessages(sessionId);
@@ -245,7 +270,7 @@ function triggerDiceAnimation(rollerName, dieType, result) {
 }
 
 // ===================================================================================
-//  6. EVENT LISTENERS
+//  6. EVENT LISTENERS (MODIFICADO)
 // ===================================================================================
 
 btnAuth.addEventListener('click', () => {
@@ -273,13 +298,16 @@ characterList.addEventListener('click', (e) => {
     }
 });
 
+// Abre o modal de criação
 btnCreateNewCharacter.addEventListener('click', () => {
   characterCreationModal.style.display = 'flex';
 });
 
-let pointsToDistribute = 27;
-const attributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
+// NOVO: Fecha o modal de criação usando a função de reset
+btnCloseCharCreation.addEventListener('click', resetAndCloseCharacterCreationModal);
 
+
+// Lógica da grade de atributos
 attributesGrid.addEventListener('click', (e) => {
     if (e.target.tagName !== 'BUTTON') return;
     const action = e.target.dataset.action;
@@ -296,6 +324,7 @@ attributesGrid.addEventListener('click', (e) => {
     pointsToDistributeSpan.textContent = pointsToDistribute;
 });
 
+// MODIFICADO: Event listener para salvar personagem com feedback de carregamento
 btnSaveCharacter.addEventListener('click', async () => {
     const charName = charNameInput.value.trim();
     if (!charName) {
@@ -307,17 +336,48 @@ btnSaveCharacter.addEventListener('click', async () => {
         return;
     }
 
+    // Ativa o estado de carregamento
+    creationLoadingIndicator.style.display = 'flex';
+    btnSaveCharacter.style.display = 'none';
+    btnSaveCharacter.disabled = true;
+
     try {
-        const createAndJoinSession = httpsCallable(functions, 'createAndJoinSession');
-        const result = await createAndJoinSession({ characterName: charName, attributes: attributes });
+        const idToken = await currentUser.getIdToken();
+        const functionUrl = 'https://us-central1-aventuria-baeba.cloudfunctions.net/createAndJoinSession';
+
+        const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ data: { characterName: charName, attributes: attributes } })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error.message || 'Falha na comunicação com o servidor.');
+        }
+
+        const result = await response.json();
         const { sessionId } = result.data;
+
+        if (!sessionId) {
+            throw new Error('Não foi possível obter o ID da sessão da resposta.');
+        }
         
-        characterCreationModal.style.display = 'none';
+        // Sucesso: reseta e fecha o modal, depois carrega a sessão
+        resetAndCloseCharacterCreationModal();
         await loadSession(sessionId);
 
     } catch (error) {
         console.error("Erro ao salvar personagem e criar sessão: ", error);
         alert(`Erro ao criar sessão: ${error.message}`);
+        
+        // Erro: Desativa o estado de carregamento para permitir nova tentativa
+        creationLoadingIndicator.style.display = 'none';
+        btnSaveCharacter.style.display = 'block';
+        btnSaveCharacter.disabled = false;
     }
 });
 
@@ -389,19 +449,16 @@ const handleAuthState = async (user) => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionIdFromUrl = urlParams.get('sessionId');
     
-    // Limpa a URL para evitar loops de recarregamento ou re-entrada na sessão.
     if (sessionIdFromUrl) {
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     if (user) {
-        // --- USUÁRIO LOGADO ---
         currentUser = user;
         username.textContent = user.displayName || user.email;
         btnAuth.textContent = 'Sair';
 
         if (sessionIdFromUrl) {
-            // Se o usuário veio de um link de convite, tenta entrar na sessão
             try {
                 const joinSession = httpsCallable(functions, 'joinSessionFromInvite');
                 await joinSession({ sessionId: sessionIdFromUrl });
@@ -409,14 +466,12 @@ const handleAuthState = async (user) => {
             } catch (error) {
                 console.error('Falha ao entrar na sessão via convite:', error);
                 alert(`Erro ao entrar na sessão: ${error.message}. Carregando sua lista de personagens.`);
-                await loadSessionList(user.uid); // Se falhar, carrega a lista normal
+                await loadSessionList(user.uid);
             }
         } else {
-            // Se for um login normal, apenas carrega a lista de personagens
             await loadSessionList(user.uid);
         }
     } else {
-        // --- USUÁRIO DESLOGADO ---
         currentUser = null;
         currentCharacter = null;
         currentSessionId = null;
@@ -424,7 +479,7 @@ const handleAuthState = async (user) => {
         if(partyUnsubscribe) partyUnsubscribe();
         if(sessionUnsubscribe) sessionUnsubscribe();
 
-        username.textContent = 'Visitante'; // Correção de sintaxe aqui
+        username.textContent = 'Visitante';
         btnAuth.textContent = 'Login';
         showSessionSelection();
         characterList.innerHTML = '<p id="no-characters-message">Faça login para ver seus personagens.</p>';
@@ -435,7 +490,6 @@ const handleAuthState = async (user) => {
 const initializeApp = () => {
     const url = window.location.href;
 
-    // 1. Verifica se a URL é um link de login
     if (isSignInWithEmailLink(auth, url)) {
         let email = window.localStorage.getItem('emailForSignIn');
         if (!email) {
@@ -446,20 +500,15 @@ const initializeApp = () => {
             signInWithEmailLink(auth, email, url)
                 .then((result) => {
                     window.localStorage.removeItem('emailForSignIn');
-                    // O onAuthStateChanged será acionado automaticamente após o login
-                    // e a função handleAuthState cuidará de todo o fluxo.
                 })
                 .catch((error) => {
                     console.error("Erro ao logar com link:", error);
                     alert("Falha ao fazer login. O link pode ter expirado ou o e-mail está incorreto.");
                     window.localStorage.removeItem('emailForSignIn');
-                    // Mesmo com erro, ativa o listener para tratar o estado de deslogado.
                     onAuthStateChanged(auth, handleAuthState);
                 });
         }
     } else {
-        // 2. Se não for um link de login, apenas configura o observador de autenticação.
-        // onAuthStateChanged irá lidar com o usuário logado ou deslogado.
         onAuthStateChanged(auth, handleAuthState);
     }
 };

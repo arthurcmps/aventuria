@@ -1,11 +1,12 @@
 /*
- *  functions/index.js (Versão com Funções de Sessão Refatoradas)
+ *  functions/index.js (Versão com Funções de Sessão Refatoradas e correção de CORS)
  */
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { defineSecret } = require("firebase-functions/params");
+const cors = require('cors')({origin: true}); // Importa e inicializa o CORS
 
 // Inicialização do Firebase Admin SDK
 try {
@@ -23,61 +24,82 @@ const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const db = admin.firestore();
 
 // ===================================================================================
-//  NOVA Função Chamável: Criar Personagem e Sessão
+//  Função Https onRequest: Criar Personagem e Sessão (com CORS manual)
 // ===================================================================================
-exports.createAndJoinSession = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    }
+exports.createAndJoinSession = functions.https.onRequest(async (req, res) => {
+    // Envolve a lógica da função com o middleware CORS
+    cors(req, res, async () => {
 
-    const { characterName, attributes } = data;
-    if (!characterName || !attributes) {
-        throw new functions.https.HttpsError('invalid-argument', 'Nome do personagem e atributos são obrigatórios.');
-    }
+        // O Firebase popula `req.body.data` para requisições do tipo onCall.
+        const { characterName, attributes } = req.body.data;
+        const context = { auth: null };
 
-    const uid = context.auth.uid;
+        // Verificação de autenticação manual
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(idToken);
+                context.auth = decodedToken;
+            } catch (error) {
+                console.error("Erro ao verificar token de autenticação:", error);
+                res.status(401).send({ error: { message: 'Requisição não autenticada.' } });
+                return;
+            }
+        }
 
-    try {
-        // 1. Criar a nova sessão
-        const sessionRef = await db.collection("sessions").add({
-            owner: uid,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            memberUIDs: [uid] 
-        });
+        if (!context.auth) {
+            res.status(401).send({ error: { message: 'Autenticação necessária.' } });
+            return;
+        }
+        
+        if (!characterName || !attributes) {
+             res.status(422).send({ error: { message: 'Nome do personagem e atributos são obrigatórios.' } });
+             return;
+        }
 
-        // 2. Criar o documento do personagem
-        const newCharacter = {
-            name: characterName,
-            attributes: attributes,
-            uid: uid,
-            sessionId: sessionRef.id
-        };
+        const uid = context.auth.uid;
 
-        // 3. Adicionar o personagem na subcoleção da sessão E na coleção global
-        const characterInSessionRef = db.collection('sessions').doc(sessionRef.id).collection('characters').doc(uid);
-        const globalCharacterRef = db.collection('characters').doc(uid);
+        try {
+            const sessionRef = await db.collection("sessions").add({
+                owner: uid,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                memberUIDs: [uid] 
+            });
 
-        await db.batch()
-            .set(characterInSessionRef, newCharacter)
-            .set(globalCharacterRef, { ...newCharacter })
-            .commit();
+            const newCharacter = {
+                name: characterName,
+                attributes: attributes,
+                uid: uid,
+                sessionId: sessionRef.id
+            };
 
-        // 4. Iniciar a aventura com uma mensagem especial
-        await db.collection('sessions').doc(sessionRef.id).collection('messages').add({
-          from: 'player',
-          text: '__START_ADVENTURE__',
-          characterName: newCharacter.name,
-          uid: uid,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+            const characterInSessionRef = db.collection('sessions').doc(sessionRef.id).collection('characters').doc(uid);
+            // Corrigido: O personagem na coleção global não precisa do ID da sessão
+            const globalCharacterRef = db.collection('characters').doc(); // Cria um ID único
+            
+            await db.batch()
+                .set(characterInSessionRef, newCharacter)
+                .set(globalCharacterRef, { ...newCharacter, sessionId: sessionRef.id }) // Garante que a referência exista
+                .commit();
+            
+            await db.collection('sessions').doc(sessionRef.id).collection('messages').add({
+              from: 'player',
+              text: '__START_ADVENTURE__',
+              characterName: newCharacter.name,
+              uid: uid,
+              createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
 
-        return { success: true, sessionId: sessionRef.id };
+            // Retorna a resposta de sucesso encapsulada em um objeto 'data'
+            res.status(200).send({ data: { success: true, sessionId: sessionRef.id } });
 
-    } catch (error) {
-        console.error("Erro em createAndJoinSession:", error);
-        throw new functions.https.HttpsError('internal', 'Não foi possível criar a sessão.');
-    }
+        } catch (error) {
+            console.error("Erro em createAndJoinSession:", error);
+            res.status(500).send({ error: { message: 'Não foi possível criar a sessão.' } });
+        }
+    });
 });
+
 
 // ===================================================================================
 //  NOVA Função Chamável: Entrar em Sessão por Convite
@@ -119,7 +141,7 @@ exports.joinSessionFromInvite = functions.https.onCall(async (data, context) => 
 
 // ===================================================================================
 //  Função Chamável: Convidar Jogador (Atualizada)
-// ===================================================================================
+// =ame==================================================================================
 exports.invitePlayer = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Você precisa estar logado para convidar jogadores.');
@@ -130,32 +152,23 @@ exports.invitePlayer = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'Por favor, forneça um e-mail e um ID de sessão.');
   }
 
+  // A lógica para enviar o e-mail foi removida do lado do servidor
+  // O link de login é construído no cliente e o e-mail é enviado via provedor de e-mail do Firebase
+  // Esta função agora apenas associa um usuário existente a uma sessão
   try {
-    const actionCodeSettings = {
-      url: `https://aventuria-baeba.web.app/?sessionId=${sessionId}`,
-      handleCodeInApp: true,
-    };
-
-    // Esta função prepara o link para ser enviado pelo sistema de autenticação do Firebase
-    await admin.auth().generateSignInWithEmailLink(email, actionCodeSettings);
-    
-    // Adiciona o UID de um usuário existente à sessão imediatamente.
-    // Se o usuário for novo, ele será adicionado quando clicar no link e chamar `joinSessionFromInvite`.
-    try {
-      const user = await admin.auth().getUserByEmail(email);
-      if (user) {
-        await db.collection('sessions').doc(sessionId).update({
-          memberUIDs: admin.firestore.FieldValue.arrayUnion(user.uid)
-        });
-      }
-    } catch(e) {
-      // Ignora o erro se o usuário não for encontrado. O fluxo de convite tratará disso.
+    const user = await admin.auth().getUserByEmail(email);
+    if (user) {
+      await db.collection('sessions').doc(sessionId).update({
+        memberUIDs: admin.firestore.FieldValue.arrayUnion(user.uid)
+      });
+      return { success: true, message: `Usuário ${email} adicionado à sessão.` };
     }
-
-    return { success: true, message: `Um convite para ${email} foi preparado. O envio depende da ativação do provedor de login por e-mail no Firebase.` };
-
-  } catch (error) {
-    console.error("Erro ao gerar link de convite:", error);
+     return { success: true, message: `Convite para ${email} pode ser enviado pelo cliente.` };
+  } catch(e) {
+      if (e.code === 'auth/user-not-found') {
+         return { success: true, message: `Um novo usuário ${email} será convidado.` };
+      }
+    console.error("Erro ao procurar usuário por e-mail:", e);
     throw new functions.https.HttpsError('internal', 'Ocorreu um erro ao processar o convite.');
   }
 });
