@@ -61,3 +61,12 @@ service cloud.firestore {
     }
   }
 }
+#session-selection-overlay,
+#narration-panel {
+    flex-grow: 1; /* FAZ O PAINEL CRESCER PARA OCUPAR O ESPAÇO DISPONÍVEL */
+    overflow-y: auto; /* Adiciona rolagem se o conteúdo for maior que a tela */
+    padding: 25px;
+    display: none; /* JS irá controlar qual painel é exibido */
+    flex-direction: column;
+    gap: 20px;
+}

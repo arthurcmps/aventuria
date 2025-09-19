@@ -7,122 +7,112 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=MedievalSharp&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <header>
-        <div class="header-left">
-            <span id="username">Visitante</span>
-        </div>
-        <div class="header-center">
-            <h1>Aventuria</h1>
-        </div>
-        <div class="header-right">
-            <button id="btn-auth" class="btn">Login</button>
-        </div>
-    </header>
+    <div class="container">
+        <!-- CABEÇALHO -->
+        <header class="header">
+            <div class="user-info">
+                <span id="username">Visitante</span>
+            </div>
+            <div class="header-actions">
+                <button id="btn-new-game" class="btn btn-sm" style="display: none;">Novo Jogo</button>
+                <button id="btn-auth" class="btn btn-sm">Login</button>
+            </div>
+        </header>
 
-    <main>
+        <!-- TELA DE SELEÇÃO DE PERSONAGEM (CLASSE 'overlay' REMOVIDA) -->
         <div id="session-selection-overlay">
-            <div class="session-selection-content">
-                <h2>Escolha seu Personagem</h2>
-                <div id="character-list">
-                    <!-- Personagens carregados aqui -->
-                </div>
-                <p id="no-characters-message" style="display: none;">Você ainda não tem personagens. Crie um novo para começar!</p>
+            <div class="overlay-content-box">
+                <h2>Aventure-se</h2>
+                <div id="character-list"></div>
+                <p id="no-characters-message" style="display: none;">Você ainda não tem personagens.</p>
                 <button id="btn-create-new-character" class="btn">+ Criar Novo Personagem</button>
-                
-                <!-- NOVO: Painel de Convites -->
                 <div id="invites-panel" style="display: none;">
                     <h3>Convites Pendentes</h3>
-                    <div id="invites-list">
-                        <!-- Convites carregados aqui -->
-                    </div>
+                    <div id="invites-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA PRINCIPAL DO JOGO -->
+        <div id="game-view" class="main-content">
+            <!-- Coluna Central -->
+            <div id="narration-panel">
+                <div id="narration"></div>
+                <div id="input-area">
+                    <textarea id="input-text" placeholder="O que você faz?" rows="3"></textarea>
+                    <button id="btn-send" class="btn">Enviar</button>
+                </div>
+            </div>
+
+            <!-- Coluna Lateral -->
+            <aside id="side-panel">
+                <div id="character-sheet" class="side-panel-section">
+                    <h3 id="character-sheet-name"></h3>
+                    <ul id="character-sheet-attributes"></ul>
                 </div>
 
-            </div>
+                <div id="side-panel-divider" class="side-panel-divider" style="display:none;"></div>
+
+                <div id="party-management-panel" class="side-panel-section">
+                    <h3>Grupo</h3>
+                    <ul id="party-list"></ul>
+                    <button id="btn-invite-player" class="btn btn-sm">Convidar</button>
+                </div>
+
+                <div class="side-panel-divider-2" style="display:none;"></div>
+
+                <div id="dice-roller" class="side-panel-section">
+                    <h3>Dados</h3>
+                    <button class="btn" data-d="20">d20</button>
+                    <button class="btn" data-d="12">d12</button>
+                    <button class="btn" data-d="10">d10</button>
+                    <button class="btn" data-d="8">d8</button>
+                    <button class="btn" data-d="6">d6</button>
+                    <button class="btn" data-d="4">d4</button>
+                </div>
+            </aside>
         </div>
+    </div>
 
-        <div id="narration-panel"> 
-            <div id="narration"></div>
-        </div>
-
-        <div id="side-panel">
-            <div id="character-sheet" style="display: none;">
-                <h3 id="character-sheet-name"></h3>
-                <ul id="character-sheet-attributes"></ul>
-            </div>
-
-            <div id="side-panel-divider" class="side-panel-divider" style="display:none;"></div>
-
-            <div id="party-management-panel" style="display: none;">
-                <h3>Grupo</h3>
-                <ul id="party-list"></ul>
-                <button id="btn-invite-player" class="btn">Convidar Jogador</button>
-            </div>
-
-             <div id="side-panel-divider-2" class="side-panel-divider-2" style="display:none;"></div>
-
-            <div id="dice-roller">
-                <h3>Dados</h3>
-                <button class="btn" data-d="20">d20</button>
-                <button class="btn" data-d="12">d12</button>
-                <button class="btn" data-d="10">d10</button>
-                <button class="btn" data-d="8">d8</button>
-                <button class="btn" data-d="6">d6</button>
-                <button class="btn" data-d="4">d4</button>
-            </div>
-        </div>
-
-        <div id="input-area" style="display: none;">
-            <textarea id="input-text" placeholder="O que você faz?" rows="3"></textarea>
-            <button id="btn-send" class="btn">Enviar</button>
-        </div>
-    </main>
-
-    <!-- MODAIS -->
-
+    <!-- MODAIS E OVERLAYS -->
     <div id="character-creation-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Criar Novo Personagem</h2>
-                <button id="btn-close-char-creation" class="btn-close">&times;</button> 
+                <button id="btn-close-char-creation" class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="creation-loading-indicator" class="loading-indicator" style="display: none;">
                     <div class="spinner"></div>
-                    <p>Criando a sessão... isso pode levar um momento.</p>
+                    <p>Criando a sessão...</p>
                 </div>
                 <div class="form-group">
-                    <label for="char-name">Nome do Personagem:</label>
+                    <label for="char-name">Nome:</label>
                     <input type="text" id="char-name" maxlength="50">
                 </div>
                 <div class="attributes-section">
-                    <h4>Atributos (Sistema de Pontos: <span id="points-to-distribute">27</span>)</h4>
-                    <div class="attributes-grid">
-                        <!-- Atributos gerados via JS -->
-                    </div>
+                    <h4>Atributos (Pontos: <span id="points-to-distribute">27</span>)</h4>
+                    <div class="attributes-grid"></div>
                 </div>
-                <button id="btn-save-character" class="btn">Salvar e Iniciar Aventura</button>
+                <button id="btn-save-character" class="btn">Salvar e Iniciar</button>
             </div>
         </div>
     </div>
 
     <div id="invite-modal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>Convidar Jogador</h2>
+            <h2>Convidar Jogador</h2>
+            <div class="form-group">
+                <label for="invite-email">E-mail do Jogador:</label>
+                <input type="email" id="invite-email">
             </div>
-            <div class="modal-body">
-                 <div class="form-group">
-                    <label for="invite-email">E-mail do Jogador:</label>
-                    <input type="email" id="invite-email">
-                </div>
-                <div class="modal-footer">
-                    <button id="btn-cancel-invite" class="btn btn-secondary">Cancelar</button>
-                    <button id="btn-send-invite" class="btn">Enviar Convite</button>
-                </div>
+            <div class="modal-footer">
+                <button id="btn-cancel-invite" class="btn btn-secondary">Cancelar</button>
+                <button id="btn-send-invite" class="btn">Enviar Convite</button>
             </div>
         </div>
     </div>
@@ -130,8 +120,9 @@
     <div id="dice-animation-overlay">
         <div id="d20-animation"></div>
     </div>
-
+    
     <script type="module" src="js/firebase.js"></script>
     <script type="module" src="js/script.js"></script>
+
 </body>
 </html>
