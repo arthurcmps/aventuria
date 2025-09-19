@@ -1,12 +1,12 @@
 /*
- *  functions/index.js (Versão com Funções de Sessão Refatoradas e correção de CORS)
+ *  functions/index.js (Versão Estável com Correção de Erro 500)
  */
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { defineSecret } = require("firebase-functions/params");
-const cors = require('cors')({origin: true}); // Importa e inicializa o CORS
+const cors = require('cors')({origin: true});
 
 // Inicialização do Firebase Admin SDK
 try {
@@ -24,17 +24,16 @@ const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const db = admin.firestore();
 
 // ===================================================================================
-//  Função Https onRequest: Criar Personagem e Sessão (com CORS manual)
+//  Função Https onRequest: Criar Personagem e Sessão (CORRIGIDA)
 // ===================================================================================
+// A chamada para a IA foi removida para garantir estabilidade. A função agora apenas
+// cria a sessão e envia a mensagem oculta para acionar a IA separadamente.
 exports.createAndJoinSession = functions.https.onRequest(async (req, res) => {
-    // Envolve a lógica da função com o middleware CORS
     cors(req, res, async () => {
 
-        // O Firebase popula `req.body.data` para requisições do tipo onCall.
         const { characterName, attributes } = req.body.data;
-        const context = { auth: null };
+        let context = { auth: null };
 
-        // Verificação de autenticação manual
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
             const idToken = req.headers.authorization.split('Bearer ')[1];
             try {
@@ -42,19 +41,16 @@ exports.createAndJoinSession = functions.https.onRequest(async (req, res) => {
                 context.auth = decodedToken;
             } catch (error) {
                 console.error("Erro ao verificar token de autenticação:", error);
-                res.status(401).send({ error: { message: 'Requisição não autenticada.' } });
-                return;
+                return res.status(401).send({ error: { message: 'Requisição não autenticada.' } });
             }
         }
 
         if (!context.auth) {
-            res.status(401).send({ error: { message: 'Autenticação necessária.' } });
-            return;
+            return res.status(401).send({ error: { message: 'Autenticação necessária.' } });
         }
         
         if (!characterName || !attributes) {
-             res.status(422).send({ error: { message: 'Nome do personagem e atributos são obrigatórios.' } });
-             return;
+             return res.status(422).send({ error: { message: 'Nome do personagem e atributos são obrigatórios.' } });
         }
 
         const uid = context.auth.uid;
@@ -74,14 +70,14 @@ exports.createAndJoinSession = functions.https.onRequest(async (req, res) => {
             };
 
             const characterInSessionRef = db.collection('sessions').doc(sessionRef.id).collection('characters').doc(uid);
-            // Corrigido: O personagem na coleção global não precisa do ID da sessão
-            const globalCharacterRef = db.collection('characters').doc(); // Cria um ID único
+            const globalCharacterRef = db.collection('characters').doc();
             
             await db.batch()
                 .set(characterInSessionRef, newCharacter)
-                .set(globalCharacterRef, { ...newCharacter, sessionId: sessionRef.id }) // Garante que a referência exista
+                .set(globalCharacterRef, { ...newCharacter, sessionId: sessionRef.id })
                 .commit();
             
+            // Reintroduz a mensagem oculta para acionar a função da IA de forma assíncrona
             await db.collection('sessions').doc(sessionRef.id).collection('messages').add({
               from: 'player',
               text: '__START_ADVENTURE__',
@@ -90,19 +86,18 @@ exports.createAndJoinSession = functions.https.onRequest(async (req, res) => {
               createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // Retorna a resposta de sucesso encapsulada em um objeto 'data'
-            res.status(200).send({ data: { success: true, sessionId: sessionRef.id } });
+            return res.status(200).send({ data: { success: true, sessionId: sessionRef.id } });
 
         } catch (error) {
             console.error("Erro em createAndJoinSession:", error);
-            res.status(500).send({ error: { message: 'Não foi possível criar a sessão.' } });
+            return res.status(500).send({ error: { message: 'Não foi possível criar a sessão.' } });
         }
     });
 });
 
 
 // ===================================================================================
-//  NOVA Função Chamável: Entrar em Sessão por Convite
+//  Função Chamável: Entrar em Sessão por Convite
 // ===================================================================================
 exports.joinSessionFromInvite = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
@@ -123,7 +118,6 @@ exports.joinSessionFromInvite = functions.https.onCall(async (data, context) => 
             if (!sessionDoc.exists) {
                 throw new functions.https.HttpsError('not-found', 'Sessão não encontrada.');
             }
-            // Adiciona o novo membro à lista da sessão
             transaction.update(sessionRef, {
                 memberUIDs: admin.firestore.FieldValue.arrayUnion(uid)
             });
@@ -133,15 +127,14 @@ exports.joinSessionFromInvite = functions.https.onCall(async (data, context) => 
 
     } catch (error) {
         console.error(`Erro ao tentar entrar na sessão ${sessionId}:`, error);
-        // Não vaza o erro interno, apenas informa que não foi possível entrar.
         throw new functions.https.HttpsError('internal', 'Não foi possível entrar na sessão.');
     }
 });
 
 
 // ===================================================================================
-//  Função Chamável: Convidar Jogador (Atualizada)
-// =ame==================================================================================
+//  Função Chamável: Convidar Jogador
+// ===================================================================================
 exports.invitePlayer = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Você precisa estar logado para convidar jogadores.');
@@ -151,10 +144,7 @@ exports.invitePlayer = functions.https.onCall(async (data, context) => {
   if (!email || !sessionId) {
     throw new functions.https.HttpsError('invalid-argument', 'Por favor, forneça um e-mail e um ID de sessão.');
   }
-
-  // A lógica para enviar o e-mail foi removida do lado do servidor
-  // O link de login é construído no cliente e o e-mail é enviado via provedor de e-mail do Firebase
-  // Esta função agora apenas associa um usuário existente a uma sessão
+  
   try {
     const user = await admin.auth().getUserByEmail(email);
     if (user) {
@@ -175,30 +165,89 @@ exports.invitePlayer = functions.https.onCall(async (data, context) => {
 
 
 // ===================================================================================
-//  Função do Mestre de Jogo (IA) - Sem alterações
+//  Função do Mestre de Jogo (IA) - Responde às mensagens dos jogadores (MODIFICADA)
 // ===================================================================================
-const openingScenarios = [
-    "Vocês acordam com o som de água pingando...",
-];
 
 const createSystemPrompt = (characters) => {
   let partyRoster = "";
   if (characters && characters.length > 0) {
     partyRoster = "\n## O GRUPO DE AVENTUREIROS\n";
     characters.forEach(char => {
+      if (!char.attributes) return;
       const attrs = char.attributes;
       partyRoster += `- **${char.name}**: Força ${attrs.strength}, Destreza ${attrs.dexterity}, Constituição ${attrs.constitution}, Inteligência ${attrs.intelligence}, Sabedoria ${attrs.wisdom}, Carisma ${attrs.charisma}.\n`;
     });
   } else {
       partyRoster = "Ainda não há aventureiros nesta saga.";
   }
-  return { role: 'user', parts: [{ text: `...INSTRUÇÕES DO MESTRE...` }] };
+  
+  return [
+      { role: 'user', parts: [{ text: `Você é Aethel, o Mestre de uma partida de RPG de fantasia sombria. O tom é sério e misterioso. Descreva as cenas com detalhes, interprete NPCs e apresente desafios. Termine suas respostas perguntando 'O que vocês fazem?'. ${partyRoster}` }]},
+      { role: 'model', parts: [{ text: "Entendido. Estou pronto para mestrar a aventura com base nos personagens fornecidos. Começarei a narração quando receber a primeira mensagem ou comando."}]}
+  ];
 };
-
-const modelResponseToSystem = { role: 'model', parts: [{ text: `Entendido.` }] };
 
 exports.generateMasterResponse = functions.runWith({ secrets: [geminiApiKey] }).firestore
   .document('sessions/{sessionId}/messages/{messageId}')
   .onCreate(async (snapshot, context) => {
-      // LÓGICA DA IA SEM ALTERAÇÕES
-  });
+    const newMessage = snapshot.data();
+    const sessionId = context.params.sessionId;
+
+    // Ignora mensagens do próprio mestre
+    if (newMessage.from === 'mestre') {
+      return null;
+    }
+
+    try {
+        const genAI = new GoogleGenerativeAI(geminiApiKey.value());
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        
+        const charactersSnapshot = await db.collection('sessions').doc(sessionId).collection('characters').get();
+        const characters = charactersSnapshot.docs.map(doc => doc.data());
+
+        let prompt;
+        // Lógica CORRIGIDA para iniciar a aventura
+        if (newMessage.text === '__START_ADVENTURE__') {
+            const character = characters.find(c => c.uid === newMessage.uid);
+            prompt = `Meu personagem é ${character.name}. Acabei de criá-lo. Por favor, descreva a cena de abertura da aventura. Onde estou e qual o primeiro desafio ou mistério que encontro?`;
+            
+            // Deleta a mensagem oculta após usá-la
+            await snapshot.ref.delete();
+
+        } else {
+            prompt = newMessage.text;
+        }
+
+        const historySnapshot = await db.collection('sessions').doc(sessionId).collection('messages').orderBy('createdAt').get();
+        const history = historySnapshot.docs.map(doc => {
+            const data = doc.data();
+            const role = data.from === 'mestre' ? 'model' : 'user';
+            return { role, parts: [{ text: data.text }] };
+        }).filter(msg => msg.parts[0].text !== '__START_ADVENTURE__'); // Filtra a mensagem oculta do histórico
+
+        const systemInstructions = createSystemPrompt(characters);
+        const chat = model.startChat({ history: [...systemInstructions, ...history] });
+
+        const result = await chat.sendMessage(prompt);
+        const response = await result.response;
+        const masterResponse = response.text();
+
+        if (masterResponse) {
+            await db.collection('sessions').doc(sessionId).collection('messages').add({
+                from: 'mestre',
+                text: masterResponse,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        return null;
+    } catch (error) {
+        console.error("Erro na IA do Mestre:", error);
+        // Adiciona uma mensagem de erro no chat para o usuário
+        await db.collection('sessions').doc(sessionId).collection('messages').add({
+            from: 'mestre',
+            text: "(O Mestre parece confuso por um momento, talvez a magia selvagem tenha interferido. Por favor, tente sua ação novamente.)",
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        return null;
+    }
+});

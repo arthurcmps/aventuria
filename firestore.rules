@@ -4,10 +4,15 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Coleção global de personagens para facilitar a busca de quais sessões um usuário participa.
-    match /characters/{userId} {
-      // Permite que um usuário leia, crie ou atualize seu próprio documento de personagem.
-      // O ID do documento {userId} deve ser o mesmo ID do usuário autenticado.
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    match /characters/{characterId} {
+      // Permite que um usuário crie um personagem se o ID do usuário (uid) no documento for o mesmo do usuário autenticado.
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      
+      // Permite que um usuário leia uma lista de seus próprios personagens.
+      allow list, read: if request.auth != null && request.auth.uid == resource.data.uid;
+      
+      // Permite que um usuário atualize seu personagem.
+      allow write: if request.auth != null && request.auth.uid == resource.data.uid;
     }
 
     // As sessões contêm os dados principais do jogo.
