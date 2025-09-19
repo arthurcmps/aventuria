@@ -390,21 +390,47 @@ btnCancelInvite.addEventListener('click', () => {
   inviteEmailInput.value = '';
 });
 
+// MODIFICADO: Event listener para convidar jogador com a função HTTPS
 btnSendInvite.addEventListener('click', async () => {
     const email = inviteEmailInput.value.trim();
-    if (!email) return alert('Digite um e-mail.');
-    
-    const invitePlayer = httpsCallable(functions, 'invitePlayer');
+    if (!email) {
+        alert('Digite um e-mail.');
+        return;
+    }
+    if (!currentUser) {
+        alert('Você precisa estar logado para convidar.');
+        return;
+    }
+
     try {
-        const result = await invitePlayer({ email: email, sessionId: currentSessionId });
+        const idToken = await currentUser.getIdToken();
+        const functionUrl = 'https://us-central1-aventuria-baeba.cloudfunctions.net/sendInvite';
+        
+        const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ data: { email: email, sessionId: currentSessionId } })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error.message || 'Falha ao convidar jogador.');
+        }
+
+        const result = await response.json();
         alert(result.data.message);
         inviteModal.style.display = 'none';
         inviteEmailInput.value = '';
+
     } catch (error) {
         console.error("Erro ao convidar jogador:", error);
-        alert(`Erro: ${error.message}`);
+        alert(`Erro ao convidar: ${error.message}`);
     }
 });
+
 
 btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
 inputText.addEventListener('keypress', (e) => {

@@ -133,34 +133,54 @@ exports.joinSessionFromInvite = functions.https.onCall(async (data, context) => 
 
 
 // ===================================================================================
-//  Função Chamável: Convidar Jogador
+//  Função Https onRequest: Enviar Convite (CORRIGIDA E RENOMEADA)
 // ===================================================================================
-exports.invitePlayer = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Você precisa estar logado para convidar jogadores.');
-  }
+exports.sendInvite = functions.https.onRequest(async (req, res) => {
+    cors(req, res, async () => {
 
-  const { email, sessionId } = data;
-  if (!email || !sessionId) {
-    throw new functions.https.HttpsError('invalid-argument', 'Por favor, forneça um e-mail e um ID de sessão.');
-  }
-  
-  try {
-    const user = await admin.auth().getUserByEmail(email);
-    if (user) {
-      await db.collection('sessions').doc(sessionId).update({
-        memberUIDs: admin.firestore.FieldValue.arrayUnion(user.uid)
-      });
-      return { success: true, message: `Usuário ${email} adicionado à sessão.` };
-    }
-     return { success: true, message: `Convite para ${email} pode ser enviado pelo cliente.` };
-  } catch(e) {
-      if (e.code === 'auth/user-not-found') {
-         return { success: true, message: `Um novo usuário ${email} será convidado.` };
-      }
-    console.error("Erro ao procurar usuário por e-mail:", e);
-    throw new functions.https.HttpsError('internal', 'Ocorreu um erro ao processar o convite.');
-  }
+        let context = { auth: null };
+
+        // 1. Autenticação
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(idToken);
+                context.auth = decodedToken;
+            } catch (error) {
+                console.error("Erro ao verificar token de autenticação:", error);
+                return res.status(401).send({ error: { message: 'Requisição não autenticada.' } });
+            }
+        }
+
+        if (!context.auth) {
+            return res.status(401).send({ error: { message: 'Autenticação necessária.' } });
+        }
+
+        // 2. Validação dos dados
+        const { email, sessionId } = req.body.data;
+        if (!email || !sessionId) {
+            return res.status(422).send({ error: { message: 'E-mail e ID da sessão são obrigatórios.' } });
+        }
+
+        // 3. Lógica da função
+        try {
+            const user = await admin.auth().getUserByEmail(email);
+            if (user) {
+                await db.collection('sessions').doc(sessionId).update({
+                    memberUIDs: admin.firestore.FieldValue.arrayUnion(user.uid)
+                });
+                return res.status(200).send({ data: { success: true, message: `Usuário ${email} adicionado à sessão.` } });
+            }
+            return res.status(200).send({ data: { success: true, message: `Convite para ${email} pode ser processado.` }});
+
+        } catch (error) {
+            if (error.code === 'auth/user-not-found') {
+                return res.status(200).send({ data: { success: true, message: `Usuário ${email} não encontrado. Um convite pode ser enviado.` } });
+            }
+            console.error("Erro ao procurar usuário por e-mail:", error);
+            return res.status(500).send({ error: { message: 'Ocorreu um erro ao processar o convite.' } });
+        }
+    });
 });
 
 
