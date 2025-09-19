@@ -3,68 +3,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Coleção global de personagens para facilitar a busca de quais sessões um usuário participa.
+    // Coleção global de personagens para consulta rápida
     match /characters/{characterId} {
-      // Permite que um usuário crie um personagem se o ID do usuário (uid) no documento for o mesmo do usuário autenticado.
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      // Permite a um usuário LISTAR personagens se estiver logado.
+      // A consulta no lado do cliente DEVE filtrar pelo UID para segurança.
+      allow list: if request.auth != null;
+
+      // Permite GET, UPDATE, DELETE em um documento específico se o usuário for o dono.
+      allow get, update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
       
-      // Permite que um usuário leia uma lista de seus próprios personagens.
-      allow list, read: if request.auth != null && request.auth.uid == resource.data.uid;
-      
-      // Permite que um usuário atualize seu personagem.
-      allow write: if request.auth != null && request.auth.uid == resource.data.uid;
+      // Permite a criação se o UID do novo documento for o do próprio usuário.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
     }
 
-    // As sessões contêm os dados principais do jogo.
+    // Coleção para gerenciar convites
+    match /invites/{inviteId} {
+      // Permite leitura se o email do usuário for o do destinatário.
+      allow read: if request.auth != null && request.auth.token.email == resource.data.recipientEmail;
+      
+      // Permite criação se o remetente for o usuário logado.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
+
+      // Permite atualização (aceitar/recusar) se o usuário for o destinatário.
+      allow update: if request.auth != null && request.auth.token.email == resource.data.recipientEmail;
+
+      // Nega a exclusão direta. O status do convite é atualizado.
+      allow delete: if false;
+    }
+
+    // Coleção principal das sessões de jogo
     match /sessions/{sessionId} {
-      
-      // PERMISSÕES DE LEITURA:
-      // Permite a leitura se o ID do usuário autenticado (request.auth.uid) estiver
-      // presente na lista de 'memberUIDs' da sessão.
-      allow read: if request.auth != null && request.auth.uid in resource.data.memberUIDs;
+      // Permite leitura e atualização se o UID do usuário estiver na lista de membros.
+      allow read, update: if request.auth != null && request.auth.uid in resource.data.memberUIDs;
 
-      // PERMISSÕES DE ESCRITA:
-      // Permite a CRIAÇÃO de uma nova sessão se o usuário estiver logado.
-      allow create: if request.auth != null;
+      // Permite criação se o dono for o próprio usuário.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.owner;
 
-      // Permite a ATUALIZAÇÃO (ex: convidar jogadores) apenas se o usuário for o 'owner' da sessão.
-      allow update: if request.auth != null && request.auth.uid == resource.data.owner;
-      
-      // Nega a exclusão de sessões por clientes para segurança.
-      allow delete: if false; 
+      // === Sub-coleções da Sessão ===
+      match /characters/{characterUid} {
+        // Permite leitura se o usuário for membro da sessão pai.
+        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs;
 
-      // ---- Subcoleções da Sessão ----
-
-      // PERSONAGENS: As fichas dos jogadores na sessão.
-      match /characters/{characterId} {
-        // PERMISSÕES DE LEITURA:
-        // Permite a leitura por qualquer membro da sessão (para ver a ficha do grupo).
-        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
-
-        // PERMISSÕES DE ESCRITA:
-        // Permite a CRIAÇÃO de um personagem se o ID do personagem for o UID do usuário,
-        // e o usuário for membro da sessão.
-        allow create: if request.auth != null && 
-                      characterId == request.auth.uid && 
-                      get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
-
-        // Permite ATUALIZAR ou DELETAR um personagem apenas se o usuário for o dono daquele personagem.
-        allow update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
+        // Permite escrita (criação/atualização) apenas no personagem do próprio usuário.
+        allow write: if request.auth != null && request.auth.uid == characterUid;
       }
 
-      // MENSAGENS: O chat do jogo.
       match /messages/{messageId} {
-        // PERMISSÕES DE LEITURA:
-        // Permite a leitura se o usuário for membro da sessão.
-        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
-        
-        // PERMISSÕES DE ESCRITA:
-        // Permite a CRIAÇÃO (envio) de mensagens se o usuário for membro da sessão.
-        allow create: if request.auth != null && 
-                        get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]) &&
-                        request.resource.data.from == 'player';
+        // Permite leitura se o usuário for membro da sessão pai.
+        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs;
 
-        // Nega atualizações ou exclusões de mensagens pelos clientes.
+        // Permite criação de mensagem se o UID for o do próprio usuário.
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+
+        // Nega atualização e exclusão de mensagens.
         allow update, delete: if false;
       }
     }

@@ -1,5 +1,5 @@
 /*
- *  script.js - Versão Final com Melhorias de UX no Modal
+ *  script.js - Versão Definitiva com URLs Corrigidos
  */
 
 // --- IMPORTS --- //
@@ -7,20 +7,22 @@ import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 import { onAuthStateChanged, signOut, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
-  addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where
+  addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 // ===================================================================================
-//  1. DOM ELEMENT REFERENCES (MODIFICADO)
+//  1. DOM ELEMENT REFERENCES
 // ===================================================================================
 const username = document.getElementById('username');
 const btnAuth = document.getElementById('btn-auth');
-const btnNewGame = document.getElementById('btn-new-game');
 
 const sessionSelectionOverlay = document.getElementById('session-selection-overlay');
 const characterList = document.getElementById('character-list');
 const noCharactersMessage = document.getElementById('no-characters-message');
 const btnCreateNewCharacter = document.getElementById('btn-create-new-character');
+
+const invitesPanel = document.getElementById('invites-panel');
+const invitesList = document.getElementById('invites-list');
 
 const narrationPanel = document.getElementById('narration-panel');
 const narration = document.getElementById('narration');
@@ -38,10 +40,9 @@ const partyList = document.getElementById('party-list');
 const btnInvitePlayer = document.getElementById('btn-invite-player');
 const sidePanelDivider2 = document.querySelector('.side-panel-divider-2');
 
-// Referências do Modal de Criação
 const characterCreationModal = document.getElementById('character-creation-modal');
-const btnCloseCharCreation = document.getElementById('btn-close-char-creation'); // NOVO
-const creationLoadingIndicator = document.getElementById('creation-loading-indicator'); // NOVO
+const btnCloseCharCreation = document.getElementById('btn-close-char-creation');
+const creationLoadingIndicator = document.getElementById('creation-loading-indicator');
 const pointsToDistributeSpan = document.getElementById('points-to-distribute');
 const charNameInput = document.getElementById('char-name');
 const attributesGrid = document.querySelector('.attributes-grid');
@@ -68,18 +69,19 @@ let partyUnsubscribe = null;
 let sessionUnsubscribe = null;
 let isDiceRolling = false;
 let lastRollTimestamp = 0;
-let localRollData = null; 
+let localRollData = null;
 
 let pointsToDistribute = 27;
-const attributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
+const baseAttributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
+let attributes = { ...baseAttributes };
 
 // ===================================================================================
-//  3. UI MANAGEMENT (MODIFICADO)
+//  3. UI MANAGEMENT
 // ===================================================================================
 const showNarrationView = () => {
   sessionSelectionOverlay.style.display = 'none';
   narrationPanel.style.display = 'block';
-  sidePanel.style.display = 'block';
+  sidePanel.style.display = 'flex';
   inputArea.style.display = 'flex';
 };
 
@@ -94,51 +96,87 @@ const showSessionSelection = () => {
   sidePanelDivider2.style.display = 'none';
 };
 
-// NOVA FUNÇÃO: Reseta e fecha o modal de criação de personagem
 const resetAndCloseCharacterCreationModal = () => {
-    // Reseta pontos e atributos
+    attributes = { ...baseAttributes };
     pointsToDistribute = 27;
-    for (const attr in attributes) {
-        attributes[attr] = 8;
-        document.getElementById(`attr-${attr}`).textContent = 8;
-    }
     pointsToDistributeSpan.textContent = pointsToDistribute;
     charNameInput.value = '';
+    updateAttributesUI();
 
-    // Garante que o estado de carregamento seja desativado
     creationLoadingIndicator.style.display = 'none';
-    btnSaveCharacter.style.display = 'block'; // Garante que o botão salvar esteja visível
+    btnSaveCharacter.style.display = 'block';
     btnSaveCharacter.disabled = false;
-
-    // Fecha o modal
     characterCreationModal.style.display = 'none';
 };
 
+const updateAttributesUI = () => {
+    for (const attr in attributes) {
+        const attrElement = document.getElementById(`attr-${attr}`);
+        if(attrElement) attrElement.textContent = attributes[attr];
+    }
+};
 
 // ===================================================================================
 //  4. CORE APP LOGIC
 // ===================================================================================
 
+async function loadPendingInvites() {
+    if (!currentUser) return;
+    const getInvites = httpsCallable(functions, 'getPendingInvites');
+    try {
+        const result = await getInvites();
+        const pendingInvites = result.data;
+        invitesList.innerHTML = '';
+        if (pendingInvites && pendingInvites.length > 0) {
+            invitesPanel.style.display = 'block';
+            pendingInvites.forEach(invite => {
+                const inviteElement = document.createElement('div');
+                inviteElement.className = 'invite-item';
+                inviteElement.innerHTML = `
+                    <span><strong>${invite.senderCharacterName}</strong> te convidou para uma sessão.</span>
+                    <div class="invite-actions">
+                        <button class="btn btn-accept" data-invite-id="${invite.id}">Aceitar</button>
+                        <button class="btn btn-decline" data-invite-id="${invite.id}">Recusar</button>
+                    </div>
+                `;
+                invitesList.appendChild(inviteElement);
+            });
+        } else {
+            invitesPanel.style.display = 'none';
+        }
+    } catch (error) {
+        console.error("Erro ao buscar convites:", error);
+        invitesPanel.style.display = 'none';
+        // Não trava a UI, apenas mostra um erro no console se convites falharem
+    }
+}
+
 async function loadSessionList(userId) {
     const charactersRef = collection(db, "characters");
     const q = query(charactersRef, where("uid", "==", userId));
-    const querySnapshot = await getDocs(q);
-
-    characterList.innerHTML = ''; 
-    if (querySnapshot.empty) {
-        noCharactersMessage.style.display = 'block';
-    } else {
-        noCharactersMessage.style.display = 'none';
-        querySnapshot.forEach(doc => {
-            const character = doc.data();
-            const charElement = document.createElement('div');
-            charElement.className = 'character-item';
-            charElement.textContent = character.name;
-            charElement.dataset.characterId = doc.id;
-            charElement.dataset.sessionId = character.sessionId; 
-            characterList.appendChild(charElement);
-        });
+    
+    try {
+        const querySnapshot = await getDocs(q);
+        characterList.innerHTML = '';
+        if (querySnapshot.empty) {
+            noCharactersMessage.style.display = 'block';
+        } else {
+            noCharactersMessage.style.display = 'none';
+            querySnapshot.forEach(doc => {
+                const character = doc.data();
+                const charElement = document.createElement('div');
+                charElement.className = 'character-item';
+                charElement.textContent = character.name;
+                charElement.dataset.characterId = doc.id;
+                charElement.dataset.sessionId = character.sessionId;
+                characterList.appendChild(charElement);
+            });
+        }
+    } catch (error) {
+        console.error("Erro CRÍTICO ao carregar a lista de personagens:", error);
+        characterList.innerHTML = `<p class="error-message">Não foi possível carregar seus personagens. Verifique as regras de segurança do Firestore e a conexão.</p>`;
     }
+    
     showSessionSelection();
 }
 
@@ -148,17 +186,18 @@ async function loadSession(sessionId) {
     if (sessionUnsubscribe) sessionUnsubscribe();
 
     currentSessionId = sessionId;
-    
-    const partyRef = collection(db, 'sessions', sessionId, 'characters');
-    const q = query(partyRef, where("uid", "==", currentUser.uid));
-    const querySnapshot = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-        const charDoc = querySnapshot.docs[0];
+    const charInSessionRef = doc(db, 'sessions', sessionId, 'characters', currentUser.uid);
+    const charDoc = await getDoc(charInSessionRef);
+
+    if (charDoc.exists()) {
         currentCharacter = charDoc.data();
         updateCharacterSheet(currentCharacter);
     } else {
-        console.error("Personagem não encontrado para o usuário nesta sessão.");
+        console.error("Personagem não encontrado nesta sessão para o usuário logado.");
+        alert("Você ainda não tem um personagem nesta sessão. Crie um para participar!");
+        showSessionSelection();
+        return;
     }
 
     listenForMessages(sessionId);
@@ -166,7 +205,6 @@ async function loadSession(sessionId) {
     listenForSessionChanges(sessionId);
     showNarrationView();
 }
-
 
 async function sendChatMessage(text) {
   if (!text.trim() || !currentSessionId || !currentCharacter) return;
@@ -197,6 +235,8 @@ function listenForMessages(sessionId) {
             narration.innerHTML += `<div class="message ${messageClass}"><p class="from">${from}</p><p>${message.text}</p></div>`;
         });
         narration.scrollTop = narration.scrollHeight;
+    }, error => {
+        console.error("Erro ao ouvir mensagens:", error);
     });
 }
 
@@ -215,19 +255,23 @@ function listenForPartyChanges(sessionId) {
         partyManagementPanel.style.display = 'block';
         sidePanelDivider.style.display = 'block';
         sidePanelDivider2.style.display = 'block';
+    }, error => {
+        console.error("Erro ao ouvir mudanças no grupo:", error);
     });
 }
 
 function listenForSessionChanges(sessionId) {
-    if (sessionUnsubscribe) sessionUnsubscribe();
     const sessionRef = doc(db, 'sessions', sessionId);
     sessionUnsubscribe = onSnapshot(sessionRef, (doc) => {
         const sessionData = doc.data();
+        if (!sessionData) return;
         const diceRoll = sessionData.latestDiceRoll;
         if (diceRoll && diceRoll.timestamp?.toMillis() > lastRollTimestamp) {
             lastRollTimestamp = diceRoll.timestamp.toMillis();
             triggerDiceAnimation(diceRoll.rollerName, diceRoll.dieType, diceRoll.result);
         }
+    }, error => {
+        console.error("Erro ao ouvir mudanças na sessão:", error);
     });
 }
 
@@ -250,27 +294,19 @@ function updateCharacterSheet(character) {
 function triggerDiceAnimation(rollerName, dieType, result) {
     if (isDiceRolling) return;
     isDiceRolling = true;
-    const rollerText = document.createElement('div');
-    rollerText.className = 'roller-text';
-    rollerText.textContent = `${rollerName} rola um d${dieType}...`;
-    d20Animation.innerHTML = '';
-    d20Animation.appendChild(rollerText);
+    d20Animation.innerHTML = `<div class="roller-text">${rollerName} rola um d${dieType}...</div>`;
     diceAnimationOverlay.style.display = 'flex';
     setTimeout(() => {
         diceAnimationOverlay.classList.add('visible');
         d20Animation.classList.add('rolling');
     }, 10);
     setTimeout(() => {
-        rollerText.style.display = 'none';
-        const resultText = document.createElement('div');
-        resultText.className = 'result-text';
-        resultText.textContent = result;
-        d20Animation.appendChild(resultText);
+        d20Animation.innerHTML = `<div class="result-text">${result}</div>`;
     }, 800);
 }
 
 // ===================================================================================
-//  6. EVENT LISTENERS (MODIFICADO)
+//  6. EVENT LISTENERS
 // ===================================================================================
 
 btnAuth.addEventListener('click', () => {
@@ -278,14 +314,6 @@ btnAuth.addEventListener('click', () => {
         signOut(auth);
     } else {
         window.location.href = '/login.html';
-    }
-});
-
-btnNewGame.addEventListener('click', () => {
-    if (currentUser) {
-        loadSessionList(currentUser.uid);
-    } else {
-        showSessionSelection();
     }
 });
 
@@ -298,16 +326,12 @@ characterList.addEventListener('click', (e) => {
     }
 });
 
-// Abre o modal de criação
 btnCreateNewCharacter.addEventListener('click', () => {
   characterCreationModal.style.display = 'flex';
 });
 
-// NOVO: Fecha o modal de criação usando a função de reset
 btnCloseCharCreation.addEventListener('click', resetAndCloseCharacterCreationModal);
 
-
-// Lógica da grade de atributos
 attributesGrid.addEventListener('click', (e) => {
     if (e.target.tagName !== 'BUTTON') return;
     const action = e.target.dataset.action;
@@ -320,11 +344,10 @@ attributesGrid.addEventListener('click', (e) => {
         attributes[attribute]--;
         pointsToDistribute++;
     }
-    document.getElementById(`attr-${attribute}`).textContent = attributes[attribute];
+    updateAttributesUI();
     pointsToDistributeSpan.textContent = pointsToDistribute;
 });
 
-// MODIFICADO: Event listener para salvar personagem com feedback de carregamento
 btnSaveCharacter.addEventListener('click', async () => {
     const charName = charNameInput.value.trim();
     if (!charName) {
@@ -336,14 +359,14 @@ btnSaveCharacter.addEventListener('click', async () => {
         return;
     }
 
-    // Ativa o estado de carregamento
     creationLoadingIndicator.style.display = 'flex';
     btnSaveCharacter.style.display = 'none';
     btnSaveCharacter.disabled = true;
 
     try {
         const idToken = await currentUser.getIdToken();
-        const functionUrl = 'https://us-central1-aventuria-baeba.cloudfunctions.net/createAndJoinSession';
+        // **CORREÇÃO: URL aponta para a região correta**
+        const functionUrl = 'https://southamerica-east1-aventuria-baeba.cloudfunctions.net/createAndJoinSession';
 
         const response = await fetch(functionUrl, {
             method: 'POST',
@@ -354,27 +377,18 @@ btnSaveCharacter.addEventListener('click', async () => {
             body: JSON.stringify({ data: { characterName: charName, attributes: attributes } })
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error.message || 'Falha na comunicação com o servidor.');
-        }
-
         const result = await response.json();
-        const { sessionId } = result.data;
-
-        if (!sessionId) {
-            throw new Error('Não foi possível obter o ID da sessão da resposta.');
+        if (!response.ok) {
+             throw new Error(result.error.message || 'Falha na comunicação com o servidor.');
         }
         
-        // Sucesso: reseta e fecha o modal, depois carrega a sessão
+        const { sessionId } = result.data;
         resetAndCloseCharacterCreationModal();
         await loadSession(sessionId);
 
     } catch (error) {
-        console.error("Erro ao salvar personagem e criar sessão: ", error);
+        console.error("Erro ao salvar personagem: ", error);
         alert(`Erro ao criar sessão: ${error.message}`);
-        
-        // Erro: Desativa o estado de carregamento para permitir nova tentativa
         creationLoadingIndicator.style.display = 'none';
         btnSaveCharacter.style.display = 'block';
         btnSaveCharacter.disabled = false;
@@ -390,21 +404,19 @@ btnCancelInvite.addEventListener('click', () => {
   inviteEmailInput.value = '';
 });
 
-// MODIFICADO: Event listener para convidar jogador com a função HTTPS
 btnSendInvite.addEventListener('click', async () => {
     const email = inviteEmailInput.value.trim();
-    if (!email) {
-        alert('Digite um e-mail.');
-        return;
-    }
-    if (!currentUser) {
-        alert('Você precisa estar logado para convidar.');
-        return;
-    }
+    if (!email) return alert('Digite um e-mail.');
+    if (!currentUser || !currentSessionId) return alert('Sessão ou usuário inválido.');
+
+    const button = btnSendInvite;
+    button.disabled = true;
+    button.textContent = 'Enviando...';
 
     try {
         const idToken = await currentUser.getIdToken();
-        const functionUrl = 'https://us-central1-aventuria-baeba.cloudfunctions.net/sendInvite';
+        // **CORREÇÃO: URL aponta para a região correta**
+        const functionUrl = 'https://southamerica-east1-aventuria-baeba.cloudfunctions.net/sendInvite';
         
         const response = await fetch(functionUrl, {
             method: 'POST',
@@ -415,22 +427,62 @@ btnSendInvite.addEventListener('click', async () => {
             body: JSON.stringify({ data: { email: email, sessionId: currentSessionId } })
         });
 
+        const result = await response.json();
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error.message || 'Falha ao convidar jogador.');
+            throw new Error(result.error ? result.error.message : (result.data ? result.data.message : 'Falha ao enviar convite.'));
         }
 
-        const result = await response.json();
         alert(result.data.message);
         inviteModal.style.display = 'none';
         inviteEmailInput.value = '';
 
     } catch (error) {
         console.error("Erro ao convidar jogador:", error);
-        alert(`Erro ao convidar: ${error.message}`);
+        alert(`Erro: ${error.message}`);
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Enviar Convite';
     }
 });
 
+invitesList.addEventListener('click', async (e) => {
+    if (!e.target.dataset.inviteId) return;
+    const button = e.target;
+    const inviteId = button.dataset.inviteId;
+    
+    button.closest('.invite-actions').querySelectorAll('button').forEach(btn => btn.disabled = true);
+    button.textContent = '...';
+
+    if (button.classList.contains('btn-accept')) {
+        try {
+            const accept = httpsCallable(functions, 'acceptInvite');
+            const result = await accept({ inviteId });
+            if (result.data.success) {
+                alert("Convite aceito! Agora crie seu personagem para entrar na sessão.");
+                window.location.reload(); 
+            }
+        } catch (error) {
+            console.error("Erro ao aceitar convite:", error);
+            alert(`Erro: ${error.message}`);
+            button.closest('.invite-actions').querySelectorAll('button').forEach(btn => btn.disabled = false);
+            button.textContent = 'Aceitar';
+        }
+    } else if (button.classList.contains('btn-decline')) {
+        try {
+            const decline = httpsCallable(functions, 'declineInvite');
+            await decline({ inviteId });
+            button.closest('.invite-item').remove();
+            if (invitesList.children.length === 0) {
+                invitesPanel.style.display = 'none';
+            }
+        } catch (error) {
+            console.error("Erro ao recusar convite:", error);
+            alert(`Erro: ${error.message}`);
+            button.closest('.invite-actions').querySelectorAll('button').forEach(btn => btn.disabled = false);
+            button.textContent = 'Recusar';
+        }
+    }
+});
 
 btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
 inputText.addEventListener('keypress', (e) => {
@@ -467,36 +519,18 @@ d20Animation.addEventListener('animationend', async () => {
 });
 
 // ===================================================================================
-//  7. APP INITIALIZATION & AUTHENTICATION (REFACTORED)
+//  7. APP INITIALIZATION & AUTHENTICATION
 // ===================================================================================
 
-// Função centralizada para lidar com o estado de autenticação
 const handleAuthState = async (user) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionIdFromUrl = urlParams.get('sessionId');
-    
-    if (sessionIdFromUrl) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
     if (user) {
         currentUser = user;
         username.textContent = user.displayName || user.email;
         btnAuth.textContent = 'Sair';
 
-        if (sessionIdFromUrl) {
-            try {
-                const joinSession = httpsCallable(functions, 'joinSessionFromInvite');
-                await joinSession({ sessionId: sessionIdFromUrl });
-                await loadSession(sessionIdFromUrl);
-            } catch (error) {
-                console.error('Falha ao entrar na sessão via convite:', error);
-                alert(`Erro ao entrar na sessão: ${error.message}. Carregando sua lista de personagens.`);
-                await loadSessionList(user.uid);
-            }
-        } else {
-            await loadSessionList(user.uid);
-        }
+        await loadPendingInvites();
+        await loadSessionList(user.uid);
+
     } else {
         currentUser = null;
         currentCharacter = null;
@@ -509,34 +543,48 @@ const handleAuthState = async (user) => {
         btnAuth.textContent = 'Login';
         showSessionSelection();
         characterList.innerHTML = '<p id="no-characters-message">Faça login para ver seus personagens.</p>';
+        invitesPanel.style.display = 'none';
     }
 };
 
-// Função de inicialização principal
 const initializeApp = () => {
-    const url = window.location.href;
+    const attributeNames = Object.keys(baseAttributes);
+    attributeNames.forEach(attr => {
+        const div = document.createElement('div');
+        div.className = 'attribute-control';
+        div.innerHTML = `
+            <span>${attr.charAt(0).toUpperCase() + attr.slice(1)}</span>
+            <div class="buttons">
+                <button class="btn-sm" data-action="decrease" data-attribute="${attr}">-</button>
+                <span id="attr-${attr}">8</span>
+                <button class="btn-sm" data-action="increase" data-attribute="${attr}">+</button>
+            </div>
+        `;
+        attributesGrid.appendChild(div);
+    });
+    updateAttributesUI();
+    pointsToDistributeSpan.textContent = pointsToDistribute;
 
+    const url = window.location.href;
     if (isSignInWithEmailLink(auth, url)) {
         let email = window.localStorage.getItem('emailForSignIn');
         if (!email) {
             email = window.prompt('Por favor, confirme seu e-mail para completar o login.');
         }
-        
         if (email) {
             signInWithEmailLink(auth, email, url)
-                .then((result) => {
+                .then(() => {
                     window.localStorage.removeItem('emailForSignIn');
                 })
-                .catch((error) => {
-                    console.error("Erro ao logar com link:", error);
-                    alert("Falha ao fazer login. O link pode ter expirado ou o e-mail está incorreto.");
+                .catch(err => {
+                    console.error("Erro no login com link:", err);
+                    alert("Falha ao fazer login com o link. Pode ter expirado ou o e-mail está incorreto.");
                     window.localStorage.removeItem('emailForSignIn');
-                    onAuthStateChanged(auth, handleAuthState);
                 });
         }
-    } else {
-        onAuthStateChanged(auth, handleAuthState);
     }
+    
+    onAuthStateChanged(auth, handleAuthState);
 };
 
 // Inicia o aplicativo
