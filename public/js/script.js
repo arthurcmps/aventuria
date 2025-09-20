@@ -1,6 +1,6 @@
 
 /*
- *  script.js - Correção DEFINITIVA do bug da tela de rolagem de dados
+ *  script.js - Correção do Rolamento Fantasma e Reação em Cadeia da IA
  */
 
 // --- IMPORTS --- //
@@ -13,9 +13,7 @@ import {
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ===================================================================================
-    //  1. DOM ELEMENT REFERENCES
-    // ===================================================================================
+    // ... (DOM element references e App State permanecem os mesmos) ...
     const username = document.getElementById('username');
     const btnAuth = document.getElementById('btn-auth');
 
@@ -58,9 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const diceAnimationOverlay = document.getElementById('dice-animation-overlay');
     const d20Animation = document.getElementById('d20-animation');
 
-    // ===================================================================================
-    //  2. APP STATE
-    // ===================================================================================
     let currentUser = null;
     let currentCharacter = null;
     let currentParty = [];
@@ -75,10 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let pointsToDistribute = 27;
     const baseAttributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
     let attributes = { ...baseAttributes };
-
-    // ===================================================================================
-    //  3. UI MANAGEMENT
-    // ===================================================================================
+    
     const showNarrationView = () => {
         sessionSelectionOverlay.style.display = 'none';
         gameView.style.display = 'grid';
@@ -108,10 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if(attrElement) attrElement.textContent = attributes[attr];
         }
     };
-
-    // ===================================================================================
-    //  4. CORE APP LOGIC
-    // ===================================================================================
 
     async function loadPendingInvites() {
         if (!currentUser) return;
@@ -173,12 +161,18 @@ document.addEventListener('DOMContentLoaded', () => {
         showSessionSelection();
     }
 
+    // ===================================================================================
+    //  4. CORE APP LOGIC (COM CORREÇÃO PARA ROLAMENTO FANTASMA)
+    // ===================================================================================
     async function loadSession(sessionId) {
         if (messagesUnsubscribe) messagesUnsubscribe();
         if (partyUnsubscribe) partyUnsubscribe();
         if (sessionUnsubscribe) sessionUnsubscribe();
 
         currentSessionId = sessionId;
+
+        // CORREÇÃO: Define o timestamp inicial ao carregar a sessão para ignorar rolagens antigas.
+        lastRollTimestamp = Date.now();
 
         const charInSessionRef = doc(db, 'sessions', sessionId, 'characters', currentUser.uid);
         const charDoc = await getDoc(charInSessionRef);
@@ -194,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         listenForMessages(sessionId);
         listenForPartyChanges(sessionId);
-        listenForSessionChanges(sessionId);
+        listenForSessionChanges(sessionId); // Agora usará o timestamp correto
         showNarrationView();
     }
 
@@ -256,20 +250,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const sessionRef = doc(db, 'sessions', sessionId);
         sessionUnsubscribe = onSnapshot(sessionRef, (doc) => {
             const sessionData = doc.data();
-            if (!sessionData) return;
+            if (!sessionData || !sessionData.latestDiceRoll || !sessionData.latestDiceRoll.timestamp) return;
+
             const diceRoll = sessionData.latestDiceRoll;
-            if (diceRoll && diceRoll.timestamp?.toMillis() > lastRollTimestamp) {
-                lastRollTimestamp = diceRoll.timestamp.toMillis();
+            const rollTime = diceRoll.timestamp.toMillis();
+
+            // A condição `> lastRollTimestamp` agora impede a reação a rolagens antigas (o "rolamento fantasma").
+            if (rollTime > lastRollTimestamp) {
+                lastRollTimestamp = rollTime;
                 // Anima apenas se a rolagem não for do próprio jogador que está vendo
                 if (diceRoll.uid !== currentUser.uid) { 
-                    triggerDiceAnimation(diceRoll.rollerName, diceRoll.dieType, diceRoll.result);
+                    triggerDiceAnimation(diceRoll.rollerName, diceRoll.dieType, diceRoll.result, false); // `false` indica que não é um rolamento local
                 }
             }
         }, error => {
             console.error("Erro ao ouvir mudanças na sessão:", error);
         });
     }
-
+    
     function updateCharacterSheet(character) {
         if (!character) return;
         characterSheetName.textContent = character.name;
@@ -283,41 +281,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================================================================================
-    //  5. DICE ROLLING LOGIC (CORRIGIDO)
+    //  5. DICE ROLLING LOGIC (COM CORREÇÃO PARA MENSAGEM FANTASMA)
     // ===================================================================================
 
-    function triggerDiceAnimation(rollerName, dieType, result) {
+    function triggerDiceAnimation(rollerName, dieType, result, isLocal) {
         if (isDiceRolling || !d20Animation || !diceAnimationOverlay) return;
         
         isDiceRolling = true;
+        // CORREÇÃO: Guarda os dados de rolamento apenas se for um rolamento local.
+        if (isLocal) {
+            localRollData = { name: rollerName, type: dieType, result: result };
+        } else {
+            localRollData = null;
+        }
+
         d20Animation.innerHTML = `<div class="roller-text">${rollerName} rola um d${dieType}...</div>`;
         diceAnimationOverlay.style.display = 'flex';
         
-        // 1. Fade In
         setTimeout(() => {
             diceAnimationOverlay.classList.add('visible');
             d20Animation.classList.add('rolling');
         }, 10);
 
-        // 2. Mostra o resultado
         setTimeout(() => {
             d20Animation.innerHTML = `<div class="result-text">${result}</div>`;
         }, 800);
 
-        // 3. Inicia o Fade Out (A PEÇA QUE FALTAVA)
         setTimeout(() => {
             diceAnimationOverlay.classList.remove('visible');
-        }, 2000); // Mantém o resultado na tela por 1.2s (2000ms - 800ms)
+        }, 2000);
     }
 
     async function handleLocalDiceRoll(dieType) {
         if (isDiceRolling || !currentSessionId || !currentCharacter) return;
 
         const result = Math.floor(Math.random() * dieType) + 1;
-        localRollData = { name: currentCharacter.name, type: dieType, result: result };
         
-        // A animação agora é acionada para o jogador local também
-        triggerDiceAnimation(localRollData.name, localRollData.type, localRollData.result);
+        // Aciona a animação para o jogador local, indicando que é um rolamento local (`true`)
+        triggerDiceAnimation(currentCharacter.name, dieType, result, true);
         
         const diceRollPayload = { 
             rollerName: currentCharacter.name, 
@@ -329,10 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await updateDoc(doc(db, 'sessions', currentSessionId), { latestDiceRoll: diceRollPayload });
     }
 
-    // ===================================================================================
-    //  6. EVENT LISTENERS
-    // ===================================================================================
-
+    // ... (outros event listeners permanecem os mesmos) ...
     btnAuth.addEventListener('click', () => {
         if (currentUser) {
             signOut(auth);
@@ -476,7 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Listener que fecha a tela e envia a mensagem após a animação de fade-out
+    // Listener que fecha a tela e envia a mensagem (apenas para rolagens locais)
     if(diceAnimationOverlay) {
         diceAnimationOverlay.addEventListener('transitionend', async (e) => {
             if (e.target !== diceAnimationOverlay) return;
@@ -486,21 +484,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 d20Animation.classList.remove('rolling');
                 isDiceRolling = false;
                 
+                // CORREÇÃO: Envia a mensagem apenas se `localRollData` existir (ou seja, foi um rolamento local).
                 if (localRollData) {
                     const { name, type, result } = localRollData;
                     const message = `${name} rolou um d${type} e tirou: **${result}**`;
                     await sendChatMessage(message);
-                    localRollData = null;
+                    localRollData = null; // Limpa os dados após o envio.
                 }
             }
         });
     }
-
-
-    // ===================================================================================
-    //  7. APP INITIALIZATION & AUTHENTICATION
-    // ===================================================================================
-
+    
     const handleAuthState = async (user) => {
         if (user) {
             currentUser = user;

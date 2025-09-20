@@ -1,5 +1,7 @@
 /*
- *  functions/index.js (Versão de Depuração para getPendingInvites)
+ *  functions/index.js (Correção Final e Definitiva)
+ *  - Ignora rolagens de dados para não acionar a IA desnecessariamente.
+ *  - Remove a última mensagem do histórico para evitar duplicatas.
  */
 
 const functions = require("firebase-functions");
@@ -8,22 +10,14 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { defineSecret } = require("firebase-functions/params");
 const cors = require('cors')({origin: true});
 
-// Inicialização do Firebase Admin SDK
-try {
-  admin.initializeApp();
-} catch (e) {
-  console.warn("Falha na inicialização do Admin SDK (pode já estar inicializado):");
-}
+// Inicialização
+try { admin.initializeApp(); } catch (e) { console.warn("Falha na inicialização do Admin SDK."); }
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const db = admin.firestore();
-
-// Define a região para todas as funções
 const regionalFunctions = functions.region('southamerica-east1');
 
-// ===================================================================================
-//  Função Https onRequest: Criar Personagem e Iniciar Sessão
-// ===================================================================================
+// ... (Outras funções permanecem inalteradas) ...
 exports.createAndJoinSession = regionalFunctions.https.onRequest(async (req, res) => {
     cors(req, res, async () => {
         if (req.method !== 'POST') {
@@ -59,7 +53,7 @@ exports.createAndJoinSession = regionalFunctions.https.onRequest(async (req, res
             const newCharacter = { name: characterName, attributes, uid, sessionId: sessionRef.id };
 
             const characterInSessionRef = db.collection('sessions').doc(sessionRef.id).collection('characters').doc(uid);
-            const globalCharacterRef = db.collection('characters').doc(); 
+            const globalCharacterRef = db.collection('characters').doc();
 
             await db.batch()
                 .set(characterInSessionRef, newCharacter)
@@ -83,9 +77,6 @@ exports.createAndJoinSession = regionalFunctions.https.onRequest(async (req, res
     });
 });
 
-// ===================================================================================
-//  Função Https onRequest: Enviar Convite
-// ===================================================================================
 exports.sendInvite = regionalFunctions.https.onRequest(async (req, res) => {
     cors(req, res, async () => {
         let context = { auth: null };
@@ -108,19 +99,25 @@ exports.sendInvite = regionalFunctions.https.onRequest(async (req, res) => {
 
         const senderUid = context.auth.uid;
         try {
+            const recipientUser = await admin.auth().getUserByEmail(email);
+            if (!recipientUser) {
+                return res.status(404).send({ error: { message: `Nenhum usuário encontrado com o e-mail ${email}.` } });
+            }
+            const recipientUid = recipientUser.uid;
+
             const charDoc = await db.collection('sessions').doc(sessionId).collection('characters').doc(senderUid).get();
             if (!charDoc.exists) {
-                return res.status(404).send({ error: { message: 'Seu personagem não foi encontrado nesta sessão para enviar o convite.' } });
+                return res.status(404).send({ error: { message: 'Seu personagem não foi encontrado nesta sessão.' } });
             }
             const senderCharacterName = charDoc.data().name;
 
             const invitesRef = db.collection('invites');
-            const existingInviteQuery = await invitesRef.where('recipientEmail', '==', email).where('sessionId', '==', sessionId).get();
+            const existingInviteQuery = await invitesRef.where('recipientUid', '==', recipientUid).where('sessionId', '==', sessionId).get();
 
             if (!existingInviteQuery.empty) {
                  const existing = existingInviteQuery.docs[0].data();
                  if(existing.status === 'pending'){
-                    return res.status(409).send({ data: { message: 'Este jogador já tem um convite pendente para esta sessão.' } });
+                    return res.status(200).send({ data: { message: 'Este jogador já tem um convite pendente para esta sessão.' } });
                  }
             }
 
@@ -128,6 +125,7 @@ exports.sendInvite = regionalFunctions.https.onRequest(async (req, res) => {
                 senderId: senderUid,
                 senderCharacterName: senderCharacterName,
                 recipientEmail: email,
+                recipientUid: recipientUid,
                 sessionId: sessionId,
                 status: 'pending',
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -137,41 +135,42 @@ exports.sendInvite = regionalFunctions.https.onRequest(async (req, res) => {
 
         } catch (error) {
             console.error("Erro em sendInvite:", error);
+            if (error.code === 'auth/user-not-found') {
+                 return res.status(404).send({ error: { message: `Nenhum usuário encontrado com o e-mail ${email}.` } });
+            }
             return res.status(500).send({ error: { message: 'Ocorreu um erro ao enviar o convite.' } });
         }
     });
 });
 
-// ===================================================================================
-//  Funções Chamáveis: Gerenciamento de Convites (VERSÃO DE DEPURAÇÃO)
-// ===================================================================================
 exports.getPendingInvites = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth || !context.auth.token.email) {
-        throw new functions.https.HttpsError('unauthenticated', 'Autenticação com e-mail válido é necessária.');
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Autenticação é necessária.');
     }
     try {
-        const userEmail = context.auth.token.email;
+        const userUid = context.auth.uid;
         const invitesRef = db.collection('invites');
 
-        const snapshot = await invitesRef.where('recipientEmail', '==', userEmail).get();
+        const snapshot = await invitesRef
+            .where('recipientUid', '==', userUid)
+            .where('status', '==', 'pending')
+            .get();
 
         if (snapshot.empty) {
             return [];
         }
 
-        // APENAS PARA DEPURAÇÃO: Retorna todos os convites, sem filtrar por status.
         const invites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
         return invites;
 
     } catch (error) {
-        console.error("Erro CRÍTICO em getPendingInvites (versão de depuração):", error);
+        console.error("Erro CRÍTICO em getPendingInvites:", error);
         throw new functions.https.HttpsError('internal', 'Não foi possível buscar os convites.');
     }
 });
 
 exports.acceptInvite = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth || !context.auth.token.email) {
+    if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
     }
     const { inviteId } = data;
@@ -189,14 +188,13 @@ exports.acceptInvite = regionalFunctions.https.onCall(async (data, context) => {
             if (!inviteDoc.exists || inviteDoc.data().status !== 'pending') {
                 throw new functions.https.HttpsError('not-found', 'Convite não encontrado ou já foi respondido.');
             }
-
-            if (inviteDoc.data().recipientEmail !== context.auth.token.email) {
+            if (inviteDoc.data().recipientUid !== uid) {
                 throw new functions.https.HttpsError('permission-denied', 'Este convite não é para você.');
             }
             sessionId = inviteDoc.data().sessionId;
             const sessionRef = db.collection('sessions').doc(sessionId);
             transaction.update(sessionRef, { memberUIDs: admin.firestore.FieldValue.arrayUnion(uid) });
-            transaction.update(inviteRef, { status: 'accepted' });
+            transaction.update(inviteRef, { status: 'accepted', respondedAt: admin.firestore.FieldValue.serverTimestamp() });
         });
         return { success: true, sessionId: sessionId };
     } catch (error) {
@@ -206,14 +204,14 @@ exports.acceptInvite = regionalFunctions.https.onCall(async (data, context) => {
 });
 
 exports.declineInvite = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth || !context.auth.token.email) {
+    if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
     }
     const { inviteId } = data;
     if (!inviteId) {
         throw new functions.https.HttpsError('invalid-argument', 'ID do convite é obrigatório.');
     }
-
+    const uid = context.auth.uid;
     const inviteRef = db.collection('invites').doc(inviteId);
     try {
         const inviteDoc = await inviteRef.get();
@@ -221,10 +219,10 @@ exports.declineInvite = regionalFunctions.https.onCall(async (data, context) => 
             throw new functions.https.HttpsError('not-found', 'Convite não encontrado.');
         }
 
-        if (inviteDoc.data().recipientEmail !== context.auth.token.email) {
+        if (inviteDoc.data().recipientUid !== uid) {
             throw new functions.https.HttpsError('permission-denied', 'Este convite não é para você.');
         }
-        await inviteRef.update({ status: 'declined' }); 
+        await inviteRef.update({ status: 'declined', respondedAt: admin.firestore.FieldValue.serverTimestamp() }); 
         return { success: true };
     } catch (error) {
         console.error(`Erro ao recusar convite ${inviteId}:`, error);
@@ -232,8 +230,9 @@ exports.declineInvite = regionalFunctions.https.onCall(async (data, context) => 
     }
 });
 
+
 // ===================================================================================
-//  Função do Mestre de Jogo (IA)
+//  Função do Mestre de Jogo (IA) - ROBUSTA E CORRIGIDA
 // ===================================================================================
 const createSystemPrompt = (characters) => {
   let partyRoster = "";
@@ -260,7 +259,10 @@ exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApi
     const newMessage = snapshot.data();
     const sessionId = context.params.sessionId;
 
-    if (newMessage.from === 'mestre') return null;
+    // Se a mensagem for do mestre, ou uma mensagem de rolagem de dados, ignora.
+    if (newMessage.from === 'mestre' || newMessage.text.includes('rolou um d')) {
+        return null;
+    }
 
     try {
         const genAI = new GoogleGenerativeAI(geminiApiKey.value());
@@ -279,9 +281,15 @@ exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApi
         }
 
         const historySnapshot = await db.collection('sessions').doc(sessionId).collection('messages').orderBy('createdAt').get();
-        const history = historySnapshot.docs.map(doc => {
+        
+        const historyDocs = historySnapshot.docs;
+        if (historyDocs.length > 0) {
+            historyDocs.pop(); 
+        }
+
+        const history = historyDocs.map(doc => {
             const data = doc.data();
-            if (data.text === '__START_ADVENTURE__') return null;
+            if (data.text === '__START_ADVENTURE__' || data.text.includes('rolou um d')) return null;
             const role = data.from === 'mestre' ? 'model' : 'user';
             return { role, parts: [{ text: data.text }] };
         }).filter(Boolean);
