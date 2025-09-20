@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Novas Fontes Ancestrais -->
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Lato:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -19,6 +18,8 @@
                 <span id="username">Visitante</span>
             </div>
             <div class="header-actions">
+                <!-- BOTÃO VOLTAR ADICIONADO AQUI -->
+                <button id="btn-back-to-selection" class="btn btn-sm" style="display: none;">Voltar</button>
                 <button id="btn-new-game" class="btn btn-sm" style="display: none;">Novo Jogo</button>
                 <button id="btn-auth" class="btn btn-sm">Login</button>
             </div>
@@ -28,12 +29,9 @@
         <div id="session-selection-overlay">
             <div class="overlay-content-box">
                 
-                <!-- NOVA SEÇÃO DE NOTIFICAÇÕES -->
                 <section id="notifications-section" style="display: none;">
                     <h3>Convites Pendentes</h3>
-                    <div id="invites-list">
-                        <!-- Cards de convite serão inseridos aqui pelo JavaScript -->
-                    </div>
+                    <div id="invites-list"></div>
                 </section>
 
                 <h2>Aventure-se</h2>
@@ -62,15 +60,11 @@
                     <ul id="character-sheet-attributes"></ul>
                 </div>
 
-                <div id="side-panel-divider" class="side-panel-divider" style="display:none;"></div>
-
                 <div id="party-management-panel" class="side-panel-section">
                     <h3>Grupo</h3>
                     <ul id="party-list"></ul>
                     <button id="btn-invite-player" class="btn btn-sm">Convidar</button>
                 </div>
-
-                <div class="side-panel-divider-2" style="display:none;"></div>
 
                 <div id="dice-roller" class="side-panel-section">
                     <h3>Dados</h3>
@@ -122,10 +116,6 @@
                 <button id="btn-send-invite" class="btn">Enviar Convite</button>
             </div>
         </div>
-    </div>
-
-    <div id="dice-animation-overlay">
-        <div id="d20-animation"></div>
     </div>
     
     <script type="module" src="js/firebase.js"></script>

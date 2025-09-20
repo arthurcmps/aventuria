@@ -1,9 +1,8 @@
 /*
- *  script.js - VERSÃO DE RECUPERAÇÃO COMPLETA (2.0)
- *  - Restaura TODAS as funcionalidades principais que foram acidentalmente removidas.
- *  - Mantém o sistema de notificação de convites e o novo design.
- *  - Corrige o bug dos seletores de atributos na criação de personagem.
- *  - Garante que todos os modais funcionem e estejam ocultos por padrão.
+ *  script.js - VERSÃO COM BOTÃO VOLTAR
+ *  - Adicionado botão para retornar à tela de seleção de personagem a partir da tela de jogo.
+ *  - A lógica de exibição do cabeçalho foi atualizada para mostrar/ocultar os botões contextuais.
+ *  - Implementada a função de limpeza para encerrar listeners da sessão ativa ao voltar.
  */
 
 // --- IMPORTS --- //
@@ -19,13 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM ELEMENT REFERENCES ---
     const username = document.getElementById('username');
     const btnAuth = document.getElementById('btn-auth');
+    const btnBackToSelection = document.getElementById('btn-back-to-selection'); // BOTÃO VOLTAR
+    const btnCreateNewCharacter = document.getElementById('btn-create-new-character');
     const gameView = document.getElementById('game-view');
     const sessionSelectionOverlay = document.getElementById('session-selection-overlay');
     const notificationsSection = document.getElementById('notifications-section');
     const invitesList = document.getElementById('invites-list');
     const characterList = document.getElementById('character-list');
     const noCharactersMessage = document.getElementById('no-characters-message');
-    const btnCreateNewCharacter = document.getElementById('btn-create-new-character');
     const narration = document.getElementById('narration');
     const inputText = document.getElementById('input-text');
     const btnSend = document.getElementById('btn-send');
@@ -65,10 +65,38 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionSelectionOverlay.style.display = 'none';
         gameView.style.display = 'none';
         view.style.display = view === gameView ? 'grid' : 'flex';
+
+        // Gerencia a visibilidade dos botões do cabeçalho
+        const isInGame = view === gameView;
+        btnBackToSelection.style.display = isInGame ? 'inline-block' : 'none';
+        btnCreateNewCharacter.style.display = isInGame ? 'none' : (currentUser ? 'inline-block' : 'none');
+        btnAuth.style.display = 'inline-block';
     };
 
     const showModal = (modal) => { modal.style.display = 'flex'; };
     const hideModal = (modal) => { modal.style.display = 'none'; };
+    
+    const returnToSelectionScreen = async () => {
+        if (messagesUnsubscribe) messagesUnsubscribe();
+        if (partyUnsubscribe) partyUnsubscribe();
+        if (sessionUnsubscribe) sessionUnsubscribe();
+        
+        messagesUnsubscribe = null;
+        partyUnsubscribe = null;
+        sessionUnsubscribe = null;
+        currentCharacter = null;
+        currentSessionId = null;
+
+        narration.innerHTML = '';
+        characterSheetName.textContent = '';
+        characterSheetAttributes.innerHTML = '';
+        partyList.innerHTML = '';
+
+        showView(sessionSelectionOverlay);
+        if (currentUser) {
+            await loadUserCharacters(currentUser.uid);
+        }
+    };
 
     const resetAndCloseCharacterCreationModal = () => {
         attributes = { ...baseAttributes };
@@ -89,7 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pointsToDistributeSpan.textContent = pointsToDistribute;
     };
 
-    // --- NOTIFICATION / INVITE LOGIC ---
+    // --- (O restante do código para notificações, sessões, etc. permanece o mesmo) ---
+    
     async function loadPendingInvites() {
         if (!currentUser) return;
         const getInvites = httpsCallable(functions, 'getPendingInvites');
@@ -161,7 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- SESSION & CORE APP LOGIC ---
     async function loadUserCharacters(userId) {
         const charactersRef = collection(db, "characters");
         const q = query(charactersRef, where("uid", "==", userId));
@@ -200,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCharacterSheet(currentCharacter);
         } else {
             console.error("Personagem não encontrado nesta sessão para o usuário.");
-            showView(sessionSelectionOverlay);
+            await returnToSelectionScreen();
             return;
         }
 
@@ -226,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
             snapshot.forEach(doc => {
                 const msg = doc.data();
                 const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
-                const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); // Suporte para negrito
+                const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
                 narration.innerHTML += `<div class="message"><p class="from">${from}</p><p>${text}</p></div>`;
             });
             if(narration.scrollTop + narration.clientHeight >= narration.scrollHeight - 50){
@@ -260,6 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Erro ao enviar mensagem:", error);
         }
     }
+
     async function handleLocalDiceRoll(dieType) {
         if (!currentSessionId || !currentCharacter) return;
         const result = Math.floor(Math.random() * dieType) + 1;
@@ -293,8 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             resetAndCloseCharacterCreationModal();
-            await loadUserCharacters(currentUser.uid); // Recarrega a lista de personagens
-            await loadSession(targetSessionId); // Entra direto na sessão
+            await loadUserCharacters(currentUser.uid);
+            await loadSession(targetSessionId);
 
         } catch (error) {
             console.error("Erro ao salvar personagem:", error);
@@ -306,6 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- EVENT LISTENERS ---
+    btnBackToSelection.addEventListener('click', returnToSelectionScreen);
+
     btnAuth.addEventListener('click', () => {
         if (currentUser) {
             signOut(auth).catch(err => console.error("Erro no logout:", err));
@@ -410,25 +441,14 @@ document.addEventListener('DOMContentLoaded', () => {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
-            btnCreateNewCharacter.style.display = 'block';
             showView(sessionSelectionOverlay);
             await Promise.all([loadPendingInvites(), loadUserCharacters(user.uid)]);
         } else {
             currentUser = null;
-            currentCharacter = null;
-            currentSessionId = null;
-            if (messagesUnsubscribe) messagesUnsubscribe();
-            if (partyUnsubscribe) partyUnsubscribe();
-            if (sessionUnsubscribe) sessionUnsubscribe();
-
+            await returnToSelectionScreen(); // Limpa a tela e o estado ao fazer logout
             username.textContent = 'Visitante';
             btnAuth.textContent = 'Login';
-            characterList.innerHTML = '';
             noCharactersMessage.textContent = 'Faça login para ver ou criar personagens.';
-            noCharactersMessage.style.display = 'block';
-            btnCreateNewCharacter.style.display = 'none';
-            notificationsSection.style.display = 'none';
-            showView(sessionSelectionOverlay);
         }
     };
 
