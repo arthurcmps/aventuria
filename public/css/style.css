@@ -1,19 +1,17 @@
-/* css/style.css - Nova Paleta de Cores e Fontes Ancestrais */
+/* css/style.css - VERSÃO DE RECUPERAÇÃO COMPLETA */
 
 /* ----------------------------------
  * Variáveis e Estilos Globais
  * ---------------------------------- */
 :root {
-    --primary-bg-color: #261e16;      /* Marrom Terra Escuro */
-    --secondary-bg-color: #3d2f24;    /* Marrom Médio */
-    --tertiary-bg-color: #524135;    /* Marrom Claro */
-    --font-color: #e5dacf;            /* Bege Pergaminho */
-    --accent-color: #e57e22;          /* Laranja Queimado / Argila */
-    --accent-hover-color: #d35400;    /* Laranja Queimado mais escuro */
-    --error-color: #c0392b;            /* Vermelho Terroso */
-    --border-color: #614d3c;           /* Borda Marrom */
-    
-    /* Novas Fontes */
+    --primary-bg-color: #261e16;
+    --secondary-bg-color: #3d2f24;
+    --tertiary-bg-color: #524135;
+    --font-color: #e5dacf;
+    --accent-color: #e57e22;
+    --accent-hover-color: #d35400;
+    --error-color: #c0392b;
+    --border-color: #614d3c;
     --font-main: 'Lato', sans-serif;
     --font-display: 'IM Fell English SC', serif;
 }
@@ -59,7 +57,6 @@ body {
     margin-left: 10px;
 }
 
-
 /* ----------------------------------
  * Botões
  * ---------------------------------- */
@@ -71,7 +68,7 @@ body {
     border-radius: 5px;
     cursor: pointer;
     font-family: var(--font-main);
-    font-weight: 700; /* A Lato fica ótima em bold */
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     transition: background-color 0.3s ease, transform 0.1s ease;
@@ -83,6 +80,12 @@ body {
 
 .btn:active {
     transform: translateY(1px);
+}
+
+.btn:disabled {
+    background-color: var(--tertiary-bg-color);
+    color: #aaa;
+    cursor: not-allowed;
 }
 
 .btn.btn-sm {
@@ -104,10 +107,9 @@ body {
  * ---------------------------------- */
 .main-content {
     display: none; /* Inicia oculto */
-    grid-template-columns: 1fr 320px; /* Coluna do jogo e painel lateral */
+    grid-template-columns: 1fr 320px;
     gap: 20px;
 }
-
 
 /* ----------------------------------
  * Painel de Narração (Central)
@@ -117,7 +119,7 @@ body {
     border-radius: 8px;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 120px); 
+    height: calc(100vh - 120px);
 }
 
 #narration {
@@ -125,7 +127,7 @@ body {
     padding: 20px;
     overflow-y: auto;
     font-family: var(--font-display);
-    font-size: 1.4em; /* Aumentar o tamanho da fonte de narração */
+    font-size: 1.4em;
     line-height: 1.7;
 }
 
@@ -151,7 +153,6 @@ body {
     margin-left: 10px;
 }
 
-
 /* ----------------------------------
  * Painel Lateral (Direita)
  * ---------------------------------- */
@@ -159,7 +160,7 @@ body {
     background-color: var(--secondary-bg-color);
     border-radius: 8px;
     padding: 20px;
-    height: fit-content; 
+    height: fit-content;
 }
 
 .side-panel-section {
@@ -169,7 +170,7 @@ body {
 .side-panel-section h3, h2 {
     font-family: var(--font-display);
     color: var(--accent-color);
-    font-weight: 400; /* Essa fonte não tem bold */
+    font-weight: 400;
 }
 
 .side-panel-section h3 {
@@ -190,13 +191,19 @@ h2 {
 
 #character-sheet-attributes li, #party-list li {
     margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.attr-name {
+    font-weight: 700;
 }
 
 #dice-roller .btn {
     margin: 5px;
 }
 
-.side-panel-divider, .side-panel-divider-2 {
+.side-panel-divider {
     border: 0;
     height: 1px;
     background-color: var(--border-color);
@@ -206,27 +213,28 @@ h2 {
 /* ----------------------------------
  * Overlays e Modais
  * ---------------------------------- */
-.overlay, .modal-overlay {
+.modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: flex;
+    background-color: rgba(20, 10, 5, 0.85);
+    display: none; /* <<<< CORREÇÃO CRÍTICA: Iniciar oculto */
     justify-content: center;
     align-items: center;
     z-index: 100;
+    padding: 20px;
 }
 
 #session-selection-overlay {
-     position: fixed;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     background-color: rgba(20, 10, 5, 0.85);
-    display: flex;
+    display: flex; /* Este começa visível */
     justify-content: center;
     align-items: center;
     z-index: 90;
@@ -240,6 +248,7 @@ h2 {
     max-width: 600px;
     text-align: center;
     border: 1px solid var(--border-color);
+    box-shadow: 0 5px 25px rgba(0,0,0,0.5);
 }
 
 .modal-header {
@@ -257,6 +266,7 @@ h2 {
     color: var(--font-color);
     font-size: 2em;
     cursor: pointer;
+    line-height: 1;
 }
 
 .form-group {
@@ -317,13 +327,9 @@ h2 {
     font-weight: 400;
 }
 
-.attributes-section h4 {
-    margin-bottom: 15px;
-}
-
 .attributes-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 15px;
     text-align: left;
 }
@@ -346,9 +352,13 @@ h2 {
     color: var(--accent-color);
 }
 
+.attr-buttons {
+    display: flex;
+    gap: 5px;
+}
+
 .attr-buttons button {
-    width: 30px;
-    height: 30px;
+    flex: 1;
     border: 1px solid var(--border-color);
     background-color: var(--tertiary-bg-color);
     color: var(--font-color);
@@ -357,6 +367,7 @@ h2 {
 
 .loading-indicator {
     text-align: center;
+    padding: 30px;
 }
 
 .spinner {
@@ -372,26 +383,6 @@ h2 {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-
-/* ----------------------------------
- * Animação de Dados
- * ---------------------------------- */
-#dice-animation-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    display: none; 
-    justify-content: center; align-items: center;
-    background-color: rgba(20, 10, 5, 0.85);
-    z-index: 200;
-}
-
-#d20-animation {
-    width: 100px; height: 100px;
-    background-image: url('../assets/d20-sprite.png');
-    background-repeat: no-repeat;
-    background-size: cover;
-    transform: scale(2);
 }
 
 /* ----------------------------------
@@ -446,6 +437,7 @@ h2 {
 .invite-actions {
     display: flex;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .invite-actions .btn {
@@ -469,21 +461,20 @@ h2 {
     background-color: #a93226;
 }
 
-
 /* ----------------------------------
- * Responsividade (Mobile)
+ * Responsividade
  * ---------------------------------- */
 @media (max-width: 768px) {
     .main-content {
-        grid-template-columns: 1fr; 
+        grid-template-columns: 1fr;
     }
 
     #side-panel {
-        order: -1; 
+        order: -1;
     }
 
     #narration-panel {
-        height: auto; 
+        height: auto;
         min-height: 400px;
     }
 }
