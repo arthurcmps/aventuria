@@ -1,6 +1,6 @@
 /*
- *  functions/index.js (Correção Final e Definitiva)
- *  - Modelo da IA atualizado para 'gemini-1.0-pro' para corrigir erro 404.
+ *  functions/index.js (Solução Final)
+ *  - Modelo da IA atualizado para 'gemini-1.5-flash' para garantir compatibilidade com a API v1beta.
  *  - Mensagem de erro no chat restaurada para a versão amigável.
  */
 
@@ -265,8 +265,8 @@ exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApi
 
     try {
         const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-        // CORREÇÃO: Usando o modelo 'gemini-1.0-pro' para compatibilidade.
-        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+        // CORREÇÃO FINAL: Usando o modelo 'gemini-1.5-flash' para máxima compatibilidade.
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         
         const charactersSnapshot = await db.collection('sessions').doc(sessionId).collection('characters').get();
         const characters = charactersSnapshot.docs.map(doc => doc.data());
