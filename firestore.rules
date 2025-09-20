@@ -2,71 +2,100 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Coleção global de personagens para consulta rápida
-    match /characters/{characterId} {
-      // Permite a um usuário LISTAR personagens se estiver logado.
-      // A consulta no lado do cliente DEVE filtrar pelo UID para segurança.
-      allow list: if request.auth != null;
-
-      // Permite GET, UPDATE, DELETE em um documento específico se o usuário for o dono.
-      allow get, update, delete: if request.auth != null && request.auth.uid == resource.data.uid;
-      
-      // Permite a criação se o UID do novo documento for o do próprio usuário.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+  
+    // =================================================================
+    // Regras Gerais
+    // =================================================================
+    
+    // Nega leitura e escrita em toda a base por padrão.
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // Coleção para gerenciar convites
+    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
+    // Coleção: characters (Global)
+    // Permite que usuários autenticados leiam a lista global de 
+    // personagens para fins de busca ou exibição.
+    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
+    match /characters/{charId} {
+        allow read: if request.auth != null;
+        allow write: if false; // Ninguém pode escrever diretamente aqui.
+    }
+
+    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
+    // Coleção: invites (REGRAS CORRIGIDAS E SEGURAS)
+    // Regras para convites de sessão.
+    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
     match /invites/{inviteId} {
-      // Permite leitura se o email do usuário for o do destinatário.
-      allow read: if request.auth != null && request.auth.token.email == resource.data.recipientEmail;
-      
-      // Permite criação se o remetente for o usuário logado.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
+        // Leitura: O destinatário E o remetente podem ler o convite.
+        allow read: if request.auth != null && (request.auth.uid == resource.data.recipientUid || request.auth.uid == resource.data.senderId);
+        
+        // Criação: Qualquer usuário autenticado pode criar um convite (a lógica de validação está na Cloud Function).
+        allow create: if request.auth != null;
+        
+        // Atualização: Apenas o destinatário pode atualizar (aceitar/recusar).
+        allow update: if request.auth != null && request.auth.uid == resource.data.recipientUid;
 
-      // Permite atualização (aceitar/recusar) se o usuário for o destinatário.
-      allow update: if request.auth != null && request.auth.token.email == resource.data.recipientEmail;
-
-      // Nega a exclusão direta. O status do convite é atualizado.
-      allow delete: if false;
+        // Exclusão: Ninguém pode excluir convites diretamente.
+        allow delete: if false;
     }
-
-    // Coleção principal das sessões de jogo
+    
+    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
+    // Coleção: sessions
+    // Regras para as sessões de jogo.
+    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
     match /sessions/{sessionId} {
-      // Permite leitura e atualização se o UID do usuário estiver na lista de membros.
-      allow read, update: if request.auth != null && request.auth.uid in resource.data.memberUIDs;
+      // Permite leitura da sessão se o usuário for membro.
+      allow read: if request.auth != null && request.auth.uid in resource.data.memberUIDs;
+      
+      // Permite que o dono da sessão atualize a lista de membros (ex: ao aceitar convite).
+      // NOTA: A função 'acceptInvite' agora usa uma transação, mas essa regra ainda é um bom backup.
+      allow update: if request.auth != null && request.auth.uid == resource.data.owner;
 
-      // Permite criação se o dono for o próprio usuário.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.owner;
+      // Ninguém pode criar ou deletar sessões diretamente por aqui.
+      allow create, delete: if false;
 
-      // === Sub-coleções da Sessão ===
-      match /characters/{characterUid} {
-        // Permite leitura se o usuário for membro da sessão pai.
-        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs;
+      // =================================================================
+      // Sub-coleção: characters (dentro da sessão)
+      // =================================================================
+      match /characters/{charId} {
+        // Permite leitura se o usuário for membro da sessão.
+        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
 
-        // Permite escrita (criação/atualização) apenas no personagem do próprio usuário.
-        allow write: if request.auth != null && request.auth.uid == characterUid;
+        // Permite escrita se for o próprio usuário criando/atualizando seu personagem.
+        allow write: if request.auth != null && request.auth.uid == charId;
       }
-
+      
+      // =================================================================
+      // Sub-coleção: messages
+      // =================================================================
       match /messages/{messageId} {
-        // Permite leitura se o usuário for membro da sessão pai.
-        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs;
+        // Permite leitura se o usuário for membro da sessão.
+        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
 
-        // Permite criação de mensagem se o UID for o do próprio usuário.
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+        // Permite criação SE:
+        // 1. O usuário está logado e o UID da mensagem é o dele, OU
+        // 2. A mensagem está vindo do 'mestre' (nossa Cloud Function).
+        allow create: if (request.auth != null && request.auth.uid == request.resource.data.uid) || 
+                         (request.resource.data.from == 'mestre');
 
         // Nega atualização e exclusão de mensagens.
         allow update, delete: if false;
       }
+      
+      // =================================================================
+      // Sub-coleção: dice_rolls
+      // =================================================================
+      match /dice_rolls/{rollId} {
+          // Permite leitura se o usuário for membro da sessão.
+          allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
+          
+          // Permite criar rolagens se o UID for o do próprio usuário.
+          allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+          
+          // Nega atualização e exclusão.
+          allow update, delete: if false;
+      }
     }
   }
-}
-#session-selection-overlay,
-#narration-panel {
-    flex-grow: 1; /* FAZ O PAINEL CRESCER PARA OCUPAR O ESPAÇO DISPONÍVEL */
-    overflow-y: auto; /* Adiciona rolagem se o conteúdo for maior que a tela */
-    padding: 25px;
-    display: none; /* JS irá controlar qual painel é exibido */
-    flex-direction: column;
-    gap: 20px;
 }

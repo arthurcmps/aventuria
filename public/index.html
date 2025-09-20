@@ -23,17 +23,23 @@
             </div>
         </header>
 
-        <!-- TELA DE SELEÇÃO DE PERSONAGEM (CLASSE 'overlay' REMOVIDA) -->
+        <!-- TELA DE SELEÇÃO DE SESSÃO/PERSONAGEM -->
         <div id="session-selection-overlay">
             <div class="overlay-content-box">
+                
+                <!-- NOVA SEÇÃO DE NOTIFICAÇÕES -->
+                <section id="notifications-section" style="display: none;">
+                    <h3>Convites Pendentes</h3>
+                    <div id="invites-list">
+                        <!-- Cards de convite serão inseridos aqui pelo JavaScript -->
+                    </div>
+                </section>
+
                 <h2>Aventure-se</h2>
                 <div id="character-list"></div>
                 <p id="no-characters-message" style="display: none;">Você ainda não tem personagens.</p>
                 <button id="btn-create-new-character" class="btn">+ Criar Novo Personagem</button>
-                <div id="invites-panel" style="display: none;">
-                    <h3>Convites Pendentes</h3>
-                    <div id="invites-list"></div>
-                </div>
+                
             </div>
         </div>
 

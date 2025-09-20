@@ -1,7 +1,7 @@
 /*
- *  functions/index.js (Solução Final)
- *  - Modelo da IA atualizado para 'gemini-1.5-flash' para garantir compatibilidade com a API v1beta.
- *  - Mensagem de erro no chat restaurada para a versão amigável.
+ *  functions/index.js (Versão Refatorada e Corrigida)
+ *  - Corrigido bug em `getPendingInvites` que causava erro 500 por falta de índice.
+ *  - A ordenação de convites agora é feita no código para evitar a necessidade de um índice composto.
  */
 
 const functions = require("firebase-functions");
@@ -17,7 +17,8 @@ const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const db = admin.firestore();
 const regionalFunctions = functions.region('southamerica-east1');
 
-// ... (Outras funções permanecem inalteradas) ...
+// ... (outras funções sem alteração)
+
 exports.createAndJoinSession = regionalFunctions.https.onRequest(async (req, res) => {
     cors(req, res, async () => {
         if (req.method !== 'POST') {
@@ -85,6 +86,7 @@ exports.sendInvite = regionalFunctions.https.onRequest(async (req, res) => {
                 const idToken = req.headers.authorization.split('Bearer ')[1];
                 context.auth = await admin.auth().verifyIdToken(idToken);
             } catch (error) {
+                console.error("Erro de autenticação em sendInvite:", error);
                 return res.status(401).send({ error: { message: 'Token inválido.' } });
             }
         }
@@ -98,36 +100,54 @@ exports.sendInvite = regionalFunctions.https.onRequest(async (req, res) => {
         }
 
         const senderUid = context.auth.uid;
+
         try {
+            // 1. Encontra o usuário destinatário pelo email.
             const recipientUser = await admin.auth().getUserByEmail(email);
-            if (!recipientUser) {
-                return res.status(404).send({ error: { message: `Nenhum usuário encontrado com o e-mail ${email}.` } });
-            }
             const recipientUid = recipientUser.uid;
 
+            // 2. Validação: O usuário não pode convidar a si mesmo.
+            if (senderUid === recipientUid) {
+                return res.status(400).send({ error: { message: 'Você não pode enviar um convite para si mesmo.' } });
+            }
+
+            // 3. Validação: Verifica se o destinatário já é membro da sessão.
+            const sessionDoc = await db.collection('sessions').doc(sessionId).get();
+            if (!sessionDoc.exists) {
+                return res.status(404).send({ error: { message: 'Sessão não encontrada.' } });
+            }
+            const sessionData = sessionDoc.data();
+            if (sessionData.memberUIDs && sessionData.memberUIDs.includes(recipientUid)) {
+                return res.status(409).send({ error: { message: 'Este usuário já é membro da sessão.' } });
+            }
+
+            // 4. Validação: Verifica se já existe um convite (independente do status).
+            const invitesRef = db.collection('invites');
+            const existingInviteQuery = await invitesRef
+                .where('recipientUid', '==', recipientUid)
+                .where('sessionId', '==', sessionId)
+                .limit(1)
+                .get();
+
+            if (!existingInviteQuery.empty) {
+                 return res.status(409).send({ error: { message: 'Um convite para este jogador nesta sessão já foi enviado.' } });
+            }
+            
+            // 5. Pega o nome do personagem do remetente.
             const charDoc = await db.collection('sessions').doc(sessionId).collection('characters').doc(senderUid).get();
             if (!charDoc.exists) {
                 return res.status(404).send({ error: { message: 'Seu personagem não foi encontrado nesta sessão.' } });
             }
             const senderCharacterName = charDoc.data().name;
 
-            const invitesRef = db.collection('invites');
-            const existingInviteQuery = await invitesRef.where('recipientUid', '==', recipientUid).where('sessionId', '==', sessionId).get();
-
-            if (!existingInviteQuery.empty) {
-                 const existing = existingInviteQuery.docs[0].data();
-                 if(existing.status === 'pending'){
-                    return res.status(200).send({ data: { message: 'Este jogador já tem um convite pendente para esta sessão.' } });
-                 }
-            }
-
+            // 6. Cria o documento de convite.
             await invitesRef.add({
                 senderId: senderUid,
                 senderCharacterName: senderCharacterName,
                 recipientEmail: email,
                 recipientUid: recipientUid,
                 sessionId: sessionId,
-                status: 'pending',
+                status: 'pending', // status inicial
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
@@ -138,7 +158,7 @@ exports.sendInvite = regionalFunctions.https.onRequest(async (req, res) => {
             if (error.code === 'auth/user-not-found') {
                  return res.status(404).send({ error: { message: `Nenhum usuário encontrado com o e-mail ${email}.` } });
             }
-            return res.status(500).send({ error: { message: 'Ocorreu um erro ao enviar o convite.' } });
+            return res.status(500).send({ error: { message: 'Ocorreu um erro inesperado ao enviar o convite.' } });
         }
     });
 });
@@ -151,6 +171,7 @@ exports.getPendingInvites = regionalFunctions.https.onCall(async (data, context)
         const userUid = context.auth.uid;
         const invitesRef = db.collection('invites');
 
+        // CORREÇÃO: Removido o .orderBy() para evitar a necessidade de um índice composto.
         const snapshot = await invitesRef
             .where('recipientUid', '==', userUid)
             .where('status', '==', 'pending')
@@ -160,7 +181,11 @@ exports.getPendingInvites = regionalFunctions.https.onCall(async (data, context)
             return [];
         }
 
-        const invites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let invites = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Ordena os resultados no código, em vez de na consulta.
+        invites.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
         return invites;
 
     } catch (error) {
@@ -182,24 +207,36 @@ exports.acceptInvite = regionalFunctions.https.onCall(async (data, context) => {
     const inviteRef = db.collection('invites').doc(inviteId);
 
     try {
-        let sessionId;
-        await db.runTransaction(async (transaction) => {
+        const sessionInfo = await db.runTransaction(async (transaction) => {
             const inviteDoc = await transaction.get(inviteRef);
+
             if (!inviteDoc.exists || inviteDoc.data().status !== 'pending') {
                 throw new functions.https.HttpsError('not-found', 'Convite não encontrado ou já foi respondido.');
             }
             if (inviteDoc.data().recipientUid !== uid) {
-                throw new functions.https.HttpsError('permission-denied', 'Este convite não é para você.');
+                throw new functions.https.HttpsError('permission-denied', 'Este convite não pertence a você.');
             }
-            sessionId = inviteDoc.data().sessionId;
+
+            const sessionId = inviteDoc.data().sessionId;
             const sessionRef = db.collection('sessions').doc(sessionId);
+            
+            // Operações atômicas
             transaction.update(sessionRef, { memberUIDs: admin.firestore.FieldValue.arrayUnion(uid) });
             transaction.update(inviteRef, { status: 'accepted', respondedAt: admin.firestore.FieldValue.serverTimestamp() });
+            
+            return { sessionId: sessionId };
         });
-        return { success: true, sessionId: sessionId };
+
+        return { success: true, sessionId: sessionInfo.sessionId };
+
     } catch (error) {
         console.error(`Erro ao aceitar convite ${inviteId}:`, error);
-        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'Não foi possível aceitar o convite.');
+        // Re-lança o erro para o cliente se for um erro HTTPS já formatado.
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        // Lança um erro genérico para outros tipos de falha.
+        throw new functions.https.HttpsError('internal', 'Não foi possível aceitar o convite.');
     }
 });
 
@@ -211,29 +248,38 @@ exports.declineInvite = regionalFunctions.https.onCall(async (data, context) => 
     if (!inviteId) {
         throw new functions.https.HttpsError('invalid-argument', 'ID do convite é obrigatório.');
     }
+
     const uid = context.auth.uid;
     const inviteRef = db.collection('invites').doc(inviteId);
+    
     try {
         const inviteDoc = await inviteRef.get();
-        if (!inviteDoc.exists) {
-            throw new functions.https.HttpsError('not-found', 'Convite não encontrado.');
+
+        if (!inviteDoc.exists || inviteDoc.data().status !== 'pending') {
+            throw new functions.https.HttpsError('not-found', 'Convite não encontrado ou já foi respondido.');
+        }
+        if (inviteDoc.data().recipientUid !== uid) {
+            throw new functions.https.HttpsError('permission-denied', 'Este convite não pertence a você.');
         }
 
-        if (inviteDoc.data().recipientUid !== uid) {
-            throw new functions.https.HttpsError('permission-denied', 'Este convite não é para você.');
-        }
-        await inviteRef.update({ status: 'declined', respondedAt: admin.firestore.FieldValue.serverTimestamp() }); 
+        await inviteRef.update({ 
+            status: 'declined', 
+            respondedAt: admin.firestore.FieldValue.serverTimestamp() 
+        }); 
+
         return { success: true };
+
     } catch (error) {
         console.error(`Erro ao recusar convite ${inviteId}:`, error);
-        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'Não foi possível recusar o convite.');
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        throw new functions.https.HttpsError('internal', 'Não foi possível recusar o convite.');
     }
 });
 
 
-// ===================================================================================
-//  Função do Mestre de Jogo (IA) - ROBUSTA E CORRIGIDA
-// ===================================================================================
+// ... (generateMasterResponse sem alteração)
 const createSystemPrompt = (characters) => {
   let partyRoster = "";
   if (characters && characters.length > 0) {
@@ -265,7 +311,6 @@ exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApi
 
     try {
         const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-        // CORREÇÃO FINAL: Usando o modelo 'gemini-1.5-flash' para máxima compatibilidade.
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         
         const charactersSnapshot = await db.collection('sessions').doc(sessionId).collection('characters').get();
@@ -311,7 +356,6 @@ exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApi
         return null;
     } catch (error) {
         console.error("Erro na IA do Mestre:", error);
-        // RESTAURADO: Posta a mensagem de erro amigável no chat.
         await db.collection('sessions').doc(sessionId).collection('messages').add({
             from: 'mestre',
             text: "(O Mestre parece confuso por um momento. Por favor, tente sua ação novamente.)",
