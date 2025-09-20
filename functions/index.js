@@ -1,7 +1,7 @@
 /*
  *  functions/index.js (Correção Final e Definitiva)
- *  - Ignora rolagens de dados para não acionar a IA desnecessariamente.
- *  - Remove a última mensagem do histórico para evitar duplicatas.
+ *  - Modelo da IA atualizado para 'gemini-1.0-pro' para corrigir erro 404.
+ *  - Mensagem de erro no chat restaurada para a versão amigável.
  */
 
 const functions = require("firebase-functions");
@@ -259,14 +259,14 @@ exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApi
     const newMessage = snapshot.data();
     const sessionId = context.params.sessionId;
 
-    // Se a mensagem for do mestre, ou uma mensagem de rolagem de dados, ignora.
     if (newMessage.from === 'mestre' || newMessage.text.includes('rolou um d')) {
         return null;
     }
 
     try {
         const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // CORREÇÃO: Usando o modelo 'gemini-1.0-pro' para compatibilidade.
+        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
         
         const charactersSnapshot = await db.collection('sessions').doc(sessionId).collection('characters').get();
         const characters = charactersSnapshot.docs.map(doc => doc.data());
@@ -311,6 +311,7 @@ exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApi
         return null;
     } catch (error) {
         console.error("Erro na IA do Mestre:", error);
+        // RESTAURADO: Posta a mensagem de erro amigável no chat.
         await db.collection('sessions').doc(sessionId).collection('messages').add({
             from: 'mestre',
             text: "(O Mestre parece confuso por um momento. Por favor, tente sua ação novamente.)",
