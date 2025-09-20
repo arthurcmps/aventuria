@@ -18,54 +18,51 @@
                 <span id="username">Visitante</span>
             </div>
             <div class="header-actions">
-                <!-- BOTÃO VOLTAR ADICIONADO AQUI -->
                 <button id="btn-back-to-selection" class="btn btn-sm" style="display: none;">Voltar</button>
-                <button id="btn-new-game" class="btn btn-sm" style="display: none;">Novo Jogo</button>
                 <button id="btn-auth" class="btn btn-sm">Login</button>
             </div>
         </header>
 
-        <!-- TELA DE SELEÇÃO DE SESSÃO/PERSONAGEM -->
+        <!-- TELA DE SELEÇÃO -->
         <div id="session-selection-overlay">
             <div class="overlay-content-box">
-                
                 <section id="notifications-section" style="display: none;">
                     <h3>Convites Pendentes</h3>
                     <div id="invites-list"></div>
                 </section>
-
                 <h2>Aventure-se</h2>
                 <div id="character-list"></div>
                 <p id="no-characters-message" style="display: none;">Você ainda não tem personagens.</p>
-                <button id="btn-create-new-character" class="btn">+ Criar Novo Personagem</button>
-                
+                <button id="btn-create-new-character" class="btn" style="display: none;">+ Criar Novo Personagem</button>
             </div>
         </div>
 
         <!-- TELA PRINCIPAL DO JOGO -->
         <div id="game-view" class="main-content">
-            <!-- Coluna Central -->
             <div id="narration-panel">
                 <div id="narration"></div>
+                <!-- ÁREA DE INPUT ATUALIZADA -->
                 <div id="input-area">
-                    <textarea id="input-text" placeholder="O que você faz?" rows="3"></textarea>
-                    <button id="btn-send" class="btn">Enviar</button>
+                    <div id="turn-status" class="turn-status-bar">Aguardando informações do turno...</div>
+                    <textarea id="input-text" placeholder="O que você faz?" rows="3" disabled></textarea>
+                    <div class="input-buttons">
+                        <button id="btn-send" class="btn" disabled>Enviar</button>
+                        <button id="btn-pass-turn" class="btn btn-secondary" disabled>Passar Turno</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Coluna Lateral -->
+            <!-- PAINEL LATERAL -->
             <aside id="side-panel">
-                <div id="character-sheet" class="side-panel-section">
+                 <div id="character-sheet" class="side-panel-section">
                     <h3 id="character-sheet-name"></h3>
                     <ul id="character-sheet-attributes"></ul>
                 </div>
-
                 <div id="party-management-panel" class="side-panel-section">
                     <h3>Grupo</h3>
                     <ul id="party-list"></ul>
                     <button id="btn-invite-player" class="btn btn-sm">Convidar</button>
                 </div>
-
                 <div id="dice-roller" class="side-panel-section">
                     <h3>Dados</h3>
                     <button class="btn" data-d="20">d20</button>
@@ -79,10 +76,10 @@
         </div>
     </div>
 
-    <!-- MODAIS E OVERLAYS -->
+    <!-- MODAIS -->
     <div id="character-creation-modal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header">
+             <div class="modal-header">
                 <h2>Criar Novo Personagem</h2>
                 <button id="btn-close-char-creation" class="modal-close">&times;</button>
             </div>

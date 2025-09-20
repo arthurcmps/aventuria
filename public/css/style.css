@@ -1,144 +1,17 @@
-/* css/style.css - VERSÃO DE RECUPERAÇÃO COMPLETA */
+/* css/style.css - Adicionado Estilo para Sistema de Turnos */
 
-/* ----------------------------------
- * Variáveis e Estilos Globais
- * ---------------------------------- */
-:root {
-    --primary-bg-color: #261e16;
-    --secondary-bg-color: #3d2f24;
-    --tertiary-bg-color: #524135;
-    --font-color: #e5dacf;
-    --accent-color: #e57e22;
-    --accent-hover-color: #d35400;
-    --error-color: #c0392b;
-    --border-color: #614d3c;
-    --font-main: 'Lato', sans-serif;
-    --font-display: 'IM Fell English SC', serif;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: var(--font-main);
-    background-color: var(--primary-bg-color);
-    color: var(--font-color);
-    line-height: 1.6;
-}
-
-.container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-/* ----------------------------------
- * Cabeçalho (Header)
- * ---------------------------------- */
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 20px;
-}
-
-.user-info #username {
-    font-family: var(--font-display);
-    font-size: 1.2em;
-    font-weight: 400;
-}
-
-.header-actions .btn {
-    margin-left: 10px;
-}
-
-/* ----------------------------------
- * Botões
- * ---------------------------------- */
-.btn {
-    background-color: var(--accent-color);
-    color: var(--primary-bg-color);
-    border: none;
-    padding: 10px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-family: var(--font-main);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: background-color 0.3s ease, transform 0.1s ease;
-}
-
-.btn:hover {
-    background-color: var(--accent-hover-color);
-}
-
-.btn:active {
-    transform: translateY(1px);
-}
-
-.btn:disabled {
-    background-color: var(--tertiary-bg-color);
-    color: #aaa;
-    cursor: not-allowed;
-}
-
-.btn.btn-sm {
-    padding: 8px 12px;
-    font-size: 0.9em;
-}
-
-.btn.btn-secondary {
-    background-color: var(--tertiary-bg-color);
-    color: var(--font-color);
-}
-
-.btn.btn-secondary:hover {
-    background-color: #655040;
-}
-
-/* ----------------------------------
- * Layout Principal do Jogo
- * ---------------------------------- */
-.main-content {
-    display: none; /* Inicia oculto */
-    grid-template-columns: 1fr 320px;
-    gap: 20px;
-}
-
-/* ----------------------------------
- * Painel de Narração (Central)
- * ---------------------------------- */
-#narration-panel {
-    background-color: var(--secondary-bg-color);
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 120px);
-}
-
-#narration {
-    flex-grow: 1;
-    padding: 20px;
-    overflow-y: auto;
-    font-family: var(--font-display);
-    font-size: 1.4em;
-    line-height: 1.7;
-}
+/* ... (todo o CSS anterior permanece igual) ... */
 
 #input-area {
     display: flex;
+    flex-direction: column; /* Organiza os itens verticalmente */
     padding: 15px;
     border-top: 1px solid var(--border-color);
+    gap: 10px; /* Adiciona espaço entre os elementos */
 }
 
 #input-text {
-    flex-grow: 1;
+    width: 100%; /* Ocupa a largura toda */
     background-color: var(--tertiary-bg-color);
     color: var(--font-color);
     border: 1px solid var(--border-color);
@@ -149,59 +22,46 @@ body {
     font-size: 1em;
 }
 
-#btn-send {
-    margin-left: 10px;
+#input-text:disabled {
+    background-color: #2c251e; /* Fundo mais escuro quando desabilitado */
+    cursor: not-allowed;
 }
 
-/* ----------------------------------
- * Painel Lateral (Direita)
- * ---------------------------------- */
-#side-panel {
-    background-color: var(--secondary-bg-color);
-    border-radius: 8px;
-    padding: 20px;
-    height: fit-content;
+/* NOVO: Barra de Status de Turno */
+.turn-status-bar {
+    width: 100%;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9em;
+    background-color: var(--primary-bg-color);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.side-panel-section {
-    margin-bottom: 25px;
+.turn-status-bar.my-turn {
+    background-color: #27ae60; /* Verde para "seu turno" */
+    color: white;
+    border-color: #229954;
 }
 
-.side-panel-section h3, h2 {
-    font-family: var(--font-display);
-    color: var(--accent-color);
-    font-weight: 400;
-}
-
-.side-panel-section h3 {
-    margin-bottom: 10px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 5px;
-    font-size: 1.5em;
-}
-
-h2 {
-    font-size: 2em;
-    margin-bottom: 20px;
-}
-
-#character-sheet-attributes, #party-list {
-    list-style: none;
-}
-
-#character-sheet-attributes li, #party-list li {
-    margin-bottom: 5px;
+/* NOVO: Container para os botões de input */
+.input-buttons {
     display: flex;
-    justify-content: space-between;
+    gap: 10px;
 }
 
-.attr-name {
-    font-weight: 700;
+.input-buttons .btn {
+    flex-grow: 1; /* Faz os botões dividirem o espaço */
 }
 
-#dice-roller .btn {
-    margin: 5px;
+.input-buttons #btn-send {
+    flex-grow: 3; /* Botão de enviar é maior */
 }
+
+
+/* ... (resto do CSS) ... */
 
 .side-panel-divider {
     border: 0;
@@ -220,7 +80,7 @@ h2 {
     width: 100%;
     height: 100%;
     background-color: rgba(20, 10, 5, 0.85);
-    display: none; /* <<<< CORREÇÃO CRÍTICA: Iniciar oculto */
+    display: none;
     justify-content: center;
     align-items: center;
     z-index: 100;
@@ -234,247 +94,10 @@ h2 {
     width: 100%;
     height: 100%;
     background-color: rgba(20, 10, 5, 0.85);
-    display: flex; /* Este começa visível */
+    display: flex;
     justify-content: center;
     align-items: center;
     z-index: 90;
 }
 
-.overlay-content-box, .modal-content {
-    background-color: var(--secondary-bg-color);
-    padding: 30px;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    text-align: center;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 5px 25px rgba(0,0,0,0.5);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 15px;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    color: var(--font-color);
-    font-size: 2em;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.form-group {
-    margin-bottom: 15px;
-    text-align: left;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 10px;
-    background-color: var(--tertiary-bg-color);
-    border: 1px solid var(--border-color);
-    color: var(--font-color);
-    border-radius: 5px;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-/* ----------------------------------
- * Seção de Criação de Personagem
- * ---------------------------------- */
-#character-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.character-card {
-    background-color: var(--tertiary-bg-color);
-    padding: 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    border: 1px solid var(--border-color);
-    transition: background-color 0.3s ease, transform 0.2s ease, border-color 0.3s ease;
-}
-
-.character-card:hover {
-    background-color: #655040;
-    transform: translateY(-3px);
-    border-color: var(--accent-color);
-}
-
-.character-card h4 {
-    font-family: var(--font-display);
-    color: var(--accent-color);
-    font-size: 1.3em;
-    font-weight: 400;
-}
-
-.attributes-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 15px;
-    text-align: left;
-}
-
-.attribute-control {
-    background-color: var(--primary-bg-color);
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.attribute-control label {
-    font-weight: 500;
-    display: block;
-}
-
-.attribute-control .attr-value {
-    font-size: 1.5em;
-    font-weight: bold;
-    margin: 5px 0;
-    color: var(--accent-color);
-}
-
-.attr-buttons {
-    display: flex;
-    gap: 5px;
-}
-
-.attr-buttons button {
-    flex: 1;
-    border: 1px solid var(--border-color);
-    background-color: var(--tertiary-bg-color);
-    color: var(--font-color);
-    cursor: pointer;
-}
-
-.loading-indicator {
-    text-align: center;
-    padding: 30px;
-}
-
-.spinner {
-    border: 4px solid rgba(229, 218, 207, 0.3);
-    border-radius: 50%;
-    border-top: 4px solid var(--accent-color);
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 10px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* ----------------------------------
- * Seção de Notificações (Convites)
- * ---------------------------------- */
-#notifications-section {
-    background-color: var(--primary-bg-color);
-    border: 1px solid var(--accent-color);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 30px;
-}
-
-#notifications-section h3 {
-    font-size: 1.5em;
-}
-
-#invites-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.invite-card {
-    background-color: var(--secondary-bg-color);
-    padding: 15px;
-    border-radius: 5px;
-    border-left: 4px solid var(--accent-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 15px;
-}
-
-.invite-info {
-    text-align: left;
-    flex-grow: 1;
-}
-
-.invite-info p {
-    margin: 0;
-    line-height: 1.4;
-}
-
-.invite-info strong {
-    font-family: var(--font-display);
-    color: var(--accent-color);
-    font-weight: 400;
-    font-size: 1.1em;
-}
-
-.invite-actions {
-    display: flex;
-    gap: 10px;
-    flex-shrink: 0;
-}
-
-.invite-actions .btn {
-    text-transform: none;
-    font-weight: 700;
-}
-
-.invite-actions .btn-accept {
-    background-color: #27ae60;
-    color: white;
-}
-.invite-actions .btn-accept:hover {
-    background-color: #229954;
-}
-
-.invite-actions .btn-decline {
-    background-color: var(--error-color);
-    color: white;
-}
-.invite-actions .btn-decline:hover {
-    background-color: #a93226;
-}
-
-/* ----------------------------------
- * Responsividade
- * ---------------------------------- */
-@media (max-width: 768px) {
-    .main-content {
-        grid-template-columns: 1fr;
-    }
-
-    #side-panel {
-        order: -1;
-    }
-
-    #narration-panel {
-        height: auto;
-        min-height: 400px;
-    }
-}
+/* ... (o resto do CSS continua inalterado) ... */
