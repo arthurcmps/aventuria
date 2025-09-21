@@ -1,18 +1,17 @@
-/* css/login.css - Nova Paleta de Cores e Fontes Ancestrais */
+/* css/login.css - v1.1 - CORRIGIDO (remove background-image) */
 
 /* ----------------------------------
  * Variáveis Globais (Consistente com style.css)
  * ---------------------------------- */
 :root {
-    --primary-bg-color: #261e16;      /* Marrom Terra Escuro */
-    --secondary-bg-color: #3d2f24;    /* Marrom Médio */
-    --tertiary-bg-color: #524135;    /* Marrom Claro */
-    --font-color: #e5dacf;            /* Bege Pergaminho */
-    --accent-color: #e57e22;          /* Laranja Queimado / Argila */
-    --accent-hover-color: #d35400;    /* Laranja Queimado mais escuro */
-    --border-color: #614d3c;           /* Borda Marrom */
-    
-    /* Novas Fontes */
+    --primary-bg-color: #261e16;
+    --secondary-bg-color: #3d2f24;
+    --tertiary-bg-color: #524135;
+    --font-color: #e5dacf;
+    --accent-color: #e57e22;
+    --accent-hover-color: #d35400;
+    --error-color: #c0392b;
+    --border-color: #614d3c;
     --font-main: 'Lato', sans-serif;
     --font-display: 'IM Fell English SC', serif;
 }
@@ -20,9 +19,12 @@
 /* ----------------------------------
  * Estilos Base
  * ---------------------------------- */
+body, .login-container {
+    background-color: var(--primary-bg-color);
+}
+
 body {
     font-family: var(--font-main);
-    background-color: var(--primary-bg-color);
     color: var(--font-color);
     display: flex;
     justify-content: center;
@@ -40,10 +42,10 @@ body {
     align-items: center;
     width: 100%;
     height: 100%;
-    background: url('../assets/background-login.jpg') no-repeat center center/cover;
     position: relative;
 }
 
+/* Camada de sobreposição escura (opcional, mas mantém o estilo) */
 .login-container::before {
     content: '';
     position: absolute;
@@ -51,7 +53,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(38, 30, 22, 0.8);
+    background-color: rgba(20, 15, 11, 0.4);
 }
 
 .login-box {
@@ -87,16 +89,15 @@ body {
 
 /* ----- Container Geral e Botões ----- */
 .firebaseui-container {
-    max-width: 100% !important; /* Remove a largura máxima padrão */
+    max-width: 100% !important;
 }
 
 .firebaseui-card-content {
-    padding: 0 !important; /* Remove padding interno */
+    padding: 0 !important;
 }
 
-/* Botões de provedor (Google, etc) */
 .firebaseui-idp-list {
-    margin: 0 !important; /* Remove margens */
+    margin: 0 !important;
 }
 
 .firebaseui-idp-button {
@@ -114,7 +115,7 @@ body {
 }
 
 .firebaseui-idp-icon-wrapper {
-    background-color: transparent !important; /* Ícone sem fundo branco */
+    background-color: transparent !important;
 }
 
 /* ----- Formulário de E-mail ----- */
@@ -139,14 +140,12 @@ body {
     height: 40px !important;
 }
 
-/* Label do campo de e-mail */
 .firebaseui-label {
     color: var(--font-color) !important;
     opacity: 0.8;
     font-family: var(--font-main) !important;
 }
 
-/* Botão de "Avançar" / "Salvar" */
 .firebaseui-button, .firebaseui-id-submit {
     background-color: var(--accent-color) !important;
     color: var(--primary-bg-color) !important;
@@ -180,6 +179,9 @@ body {
 
 .firebaseui-text-input-error {
     color: var(--error-color) !important;
+    display: block; /* Garante que a mensagem seja sempre visível */
+    height: auto; /* Permite que a altura se ajuste ao texto */
+    padding-top: 5px;
 }
 
 /* ----- Loader ----- */
