@@ -1,7 +1,8 @@
 /*
- *  js/login.js - v1.1 - CORRIGIDO
- *  - Adicionado o callback `signInFailure` para lidar com erros de login (ex: senha incorreta)
- *    sem avançar para a tela de criação de conta indevidamente.
+ *  js/login.js - v1.2 - CORREÇÃO CRÍTICA
+ *  - REMOVIDO o callback `signInFailure` que estava causando um erro 400 (Bad Request) e 
+ *    quebrando completamente o fluxo de login e criação de conta.
+ *  - A lógica retorna ao padrão do FirebaseUI, que é estável e funcional.
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -15,17 +16,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const uiConfig = {
             callbacks: {
-                // Chamado quando o login falha.
-                signInFailure: function(error) {
-                    // Lida com o erro de senha incorreta ou usuário não encontrado aqui.
-                    // Para erros de senha incorreta (wrong-password), nós queremos que o usuário 
-                    // tente novamente na mesma tela, em vez de o FirebaseUI o levar para a tela de criação de conta.
-                    // O FirebaseUI já exibirá uma mensagem de erro padrão para 'auth/wrong-password' e 'auth/user-not-found'.
-                    // Retornando Promise.resolve() informa ao FirebaseUI que já lidamos com o erro e 
-                    // ele não precisa fazer mais nada (como redirecionar ou mudar a tela).
-                    console.error('FirebaseUI signInFailure:', error);
-                    return Promise.resolve();
-                },
+                // NENHUM `signInFailure` aqui. Deixa o FirebaseUI lidar com os erros.
+                
                 // Chamado quando o login é bem-sucedido.
                 signInSuccessWithAuthResult: function(authResult, redirectUrl) {
                     // Redireciona para a página principal após o login.
@@ -45,8 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 firebase.auth.GoogleAuthProvider.PROVIDER_ID,
                 {
                     provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
-                    // Não força a criação de um displayName na tela de login.
-                    // Nossa Cloud Function `onUserCreate` cuidará disso no backend.
+                    // Nossa Cloud Function `onUserCreate` cuidará de criar um displayName no backend.
                     requireDisplayName: false 
                 }
             ],
