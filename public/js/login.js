@@ -1,59 +1,88 @@
 /*
- *  js/login.js - v2.2 - CORREÇÃO DE PERSISTÊNCIA
- *  - Força o Firebase Auth a usar `browserLocalPersistence` ANTES de o FirebaseUI iniciar.
- *  - Isso garante que o estado de login seja salvo de forma robusta e sobreviva ao 
- *    redirecionamento da página de login para a página principal.
+ *  js/login.js - v5.1 - RECONSTRUÇÃO MODULAR COMPLETA
+ *  - Abandona a biblioteca FirebaseUI e usa a mesma lógica modular do resto do app.
+ *  - Importa a instância `auth` de `firebase.js` para garantir consistência total.
  */
 
-// Importa os serviços necessários do firebase.js e dos SDKs modulares
 import { auth } from './firebase.js';
-import { 
-    GoogleAuthProvider, 
-    EmailAuthProvider, 
-    setPersistence, 
-    browserLocalPersistence // Importa o tipo de persistência
+import {
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// NOTA: O objeto `firebaseui` já está disponível globalmente.
+document.addEventListener('DOMContentLoaded', () => {
+    const btnGoogle = document.getElementById('btn-google-signin');
+    const btnEmailSignIn = document.getElementById('btn-email-signin');
+    const btnEmailSignUp = document.getElementById('btn-email-signup');
+    const emailInput = document.getElementById('login-email');
+    const passwordInput = document.getElementById('login-password');
+    const errorMessage = document.getElementById('login-error');
 
-document.addEventListener('DOMContentLoaded', async function() {
-    try {
-        // --- CORREÇÃO CRUCIAL ---
-        // Define a persistência para LOCAL. Isso garante que o login sobreviva ao F5 e redirecionamentos.
-        // Esta chamada deve ser feita ANTES de qualquer outra operação de auth, incluindo a UI.
-        await setPersistence(auth, browserLocalPersistence);
+    const handleAuthSuccess = (userCredential) => {
+        console.log("Login bem-sucedido, redirecionando...", userCredential.user);
+        window.location.href = '/';
+    };
 
-        // Agora, com a persistência garantida, inicializa a UI
-        const ui = firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(auth);
+    const handleAuthError = (error) => {
+        console.error("Erro de autenticação:", error);
+        errorMessage.textContent = getFriendlyErrorMessage(error.code);
+    };
 
-        const uiConfig = {
-            callbacks: {
-                signInSuccessWithAuthResult: function(authResult, redirectUrl) {
-                    // A persistência já está garantida, então o redirecionamento deve funcionar.
-                    window.location.href = '/';
-                    return false;
-                },
-                uiShown: function() {
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('firebaseui-auth-container').style.display = 'block';
-                }
-            },
-            signInSuccessUrl: '/',
-            signInOptions: [
-                GoogleAuthProvider.PROVIDER_ID,
-                {
-                    provider: EmailAuthProvider.PROVIDER_ID,
-                    requireDisplayName: false
-                }
-            ],
-            credentialHelper: firebaseui.auth.CredentialHelper.NONE
-        };
+    // --- LOGIN COM GOOGLE ---
+    btnGoogle.addEventListener('click', () => {
+        const provider = new GoogleAuthProvider();
+        signInWithPopup(auth, provider)
+            .then(handleAuthSuccess)
+            .catch(handleAuthError);
+    });
 
-        // Inicia o FirebaseUI Widget.
-        ui.start('#firebaseui-auth-container', uiConfig);
+    // --- LOGIN COM EMAIL/SENHA ---
+    btnEmailSignIn.addEventListener('click', () => {
+        const email = emailInput.value;
+        const password = passwordInput.value;
+        if (!email || !password) {
+            errorMessage.textContent = "Por favor, preencha email e senha.";
+            return;
+        }
+        signInWithEmailAndPassword(auth, email, password)
+            .then(handleAuthSuccess)
+            .catch(handleAuthError);
+    });
 
-    } catch (error) {
-        console.error("Erro ao inicializar a página de login:", error);
-        document.getElementById('loader').textContent = "Erro ao carregar. Tente recarregar a página.";
+    // --- CRIAÇÃO DE CONTA COM EMAIL/SENHA ---
+    btnEmailSignUp.addEventListener('click', () => {
+        const email = emailInput.value;
+        const password = passwordInput.value;
+        if (!email || !password) {
+            errorMessage.textContent = "Por favor, preencha email e senha para criar a conta.";
+            return;
+        }
+         if (password.length < 6) {
+            errorMessage.textContent = "A senha deve ter pelo menos 6 caracteres.";
+            return;
+        }
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(handleAuthSuccess)
+            .catch(handleAuthError);
+    });
+
+    // Função para traduzir códigos de erro
+    function getFriendlyErrorMessage(errorCode) {
+        switch (errorCode) {
+            case 'auth/user-not-found':
+                return 'Nenhum usuário encontrado com este email.';
+            case 'auth/wrong-password':
+                return 'Senha incorreta. Tente novamente.';
+            case 'auth/invalid-email':
+                return 'O formato do email é inválido.';
+            case 'auth/email-already-in-use':
+                return 'Este email já está sendo usado por outra conta.';
+             case 'auth/weak-password':
+                return 'A senha é muito fraca. Use pelo menos 6 caracteres.';
+            default:
+                return 'Ocorreu um erro. Por favor, tente novamente.';
+        }
     }
 });

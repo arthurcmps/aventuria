@@ -1,4 +1,4 @@
-<!-- public/login.html - v2 - CORREÇÃO DE CARREGAMENTO DE SCRIPT -->
+<!-- public/login.html - v5 - RECONSTRUÇÃO MODULAR COMPLETA -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -9,24 +9,31 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Lato:wght@400;700&display=swap" rel="stylesheet">
-    
-    <!-- CSS do FirebaseUI -->
-    <link type="text/css" rel="stylesheet" href="https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.css" />
 </head>
 <body>
     <div class="login-container">
         <div class="login-box">
             <h1>Aventuria</h1>
             <p>Entre em seu universo ou comece uma nova jornada.</p>
-            <div id="firebaseui-auth-container"></div>
-            <div id="loader">Carregando...</div>
+            
+            <!-- Formulário de Login Manual -->
+            <div class="manual-login-form">
+                <input type="email" id="login-email" placeholder="Email" required>
+                <input type="password" id="login-password" placeholder="Senha" required>
+                <button id="btn-email-signin">Entrar com Email</button>
+                <button id="btn-email-signup">Criar Conta com Email</button>
+            </div>
+
+            <div class="separator">ou</div>
+
+            <!-- Botão de Login com Google -->
+            <button id="btn-google-signin">Entrar com Google</button>
+
+            <p id="login-error" class="error-message"></p>
         </div>
     </div>
 
-    <!-- SCRIPT DA BIBLIOTECA FIREBASEUI (CARREGAMENTO GLOBAL) -->
-    <script src="https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.js"></script>
-
-    <!-- SCRIPT DE LÓGICA DA PÁGINA (CARREGADO COMO MÓDULO, APÓS A UI) -->
+    <!-- Carrega a lógica de login como um MÓDULO, unificando o app -->
     <script type="module" src="js/login.js"></script>
 </body>
 </html>
