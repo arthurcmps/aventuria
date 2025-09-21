@@ -1,10 +1,11 @@
 /*
- *  script.js - VERSÃO DE RECUPERAÇÃO COMPLETA (3.1)
- *  - CORRIGIDO: Restaurada a lógica de carregamento de personagens e convites no login.
- *  - Integra o sistema de turnos, o botão de voltar e as atualizações em tempo real.
+ *  public/js/script.js (VERSÃO DE REVISÃO COMPLETA)
+ *  - Reescrito metodicamente para garantir que TODAS as funcionalidades estão presentes e corretas.
+ *  - Inclui: Login, Carregamento de Personagens/Convites, Criação de Personagem, Sistema de Convites,
+ *    Lógica de Jogo (Turnos, Chat, Passar Turno), Navegação e Limpeza de Listeners.
  */
 
-// --- IMPORTS --- //
+// --- IMPORTS ---
 import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
@@ -14,7 +15,7 @@ import {
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- DOM ELEMENT REFERENCES ---
+    // --- REFERÊNCIAS DO DOM (COMPLETAS) ---
     const username = document.getElementById('username');
     const btnAuth = document.getElementById('btn-auth');
     const btnBackToSelection = document.getElementById('btn-back-to-selection');
@@ -32,35 +33,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnInvitePlayer = document.getElementById('btn-invite-player');
     const characterSheetName = document.getElementById('character-sheet-name');
     const characterSheetAttributes = document.getElementById('character-sheet-attributes');
+    const diceRoller = document.getElementById('dice-roller');
+    // Modais
     const characterCreationModal = document.getElementById('character-creation-modal');
     const btnCloseCharCreation = document.getElementById('btn-close-char-creation');
+    const inviteModal = document.getElementById('invite-modal');
+    const btnCancelInvite = document.getElementById('btn-cancel-invite');
+    const btnSendInvite = document.getElementById('btn-send-invite');
+    // Criação de Personagem
     const creationLoadingIndicator = document.getElementById('creation-loading-indicator');
     const pointsToDistributeSpan = document.getElementById('points-to-distribute');
     const charNameInput = document.getElementById('char-name');
     const attributesGrid = document.querySelector('.attributes-grid');
     const btnSaveCharacter = document.getElementById('btn-save-character');
-    const inviteModal = document.getElementById('invite-modal');
     const inviteEmailInput = document.getElementById('invite-email');
-    const btnCancelInvite = document.getElementById('btn-cancel-invite');
-    const btnSendInvite = document.getElementById('btn-send-invite');
-    const diceRoller = document.getElementById('dice-roller');
-    // Turn System UI
+    // Sistema de Turnos
     const turnStatus = document.getElementById('turn-status');
     const btnPassTurn = document.getElementById('btn-pass-turn');
 
-    // --- APP STATE ---
+    // --- ESTADO DA APLICAÇÃO ---
     let currentUser = null;
     let currentCharacter = null;
     let currentSessionId = null;
     let messagesUnsubscribe = null;
     let partyUnsubscribe = null;
-    let sessionUnsubscribe = null; // Listener para o turno e outros dados da sessão
-    const attributeNames = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-    const baseAttributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
-    let attributes = { ...baseAttributes };
+    let sessionUnsubscribe = null;
+    const attributeNames = ['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma'];
+    const attributeKeys = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+    let attributes = {};
     let pointsToDistribute = 27;
 
-    // --- API CALLABLES ---
+    // --- FUNÇÕES CLOUD CALLABLE ---
     const createAndJoinSession = httpsCallable(functions, 'createAndJoinSession');
     const joinSession = httpsCallable(functions, 'joinSession');
     const getPendingInvites = httpsCallable(functions, 'getPendingInvites');
@@ -69,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendInvite = httpsCallable(functions, 'sendInvite');
     const passarTurno = httpsCallable(functions, 'passarTurno');
 
-    // --- UI MANAGEMENT ---
+    // --- GERENCIAMENTO DE UI ---
     const showView = (view) => {
         sessionSelectionOverlay.style.display = 'none';
         gameView.style.display = 'none';
@@ -102,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showView(sessionSelectionOverlay);
         if (currentUser) {
             await loadUserCharacters(currentUser.uid);
+            await loadPendingInvitesInternal(); 
         }
     };
 
@@ -116,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isMyTurn) {
             turnStatus.textContent = "É o seu turno!";
             turnStatus.classList.add('my-turn');
-            inputText.focus();
         } else {
             const turnPlayerDocRef = doc(db, `sessions/${currentSessionId}/characters`, sessionData.turnoAtualUid);
             try {
@@ -130,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- CORE LOGIC ---
+    // --- LÓGICA PRINCIPAL ---
 
     async function loadPendingInvitesInternal() {
         if (!currentUser) return;
@@ -139,11 +142,11 @@ document.addEventListener('DOMContentLoaded', () => {
             invitesList.innerHTML = '';
             notificationsSection.style.display = result.data.length > 0 ? 'block' : 'none';
             result.data.forEach(invite => {
-                 const card = document.createElement('div');
-                card.className = 'invite-card';
+                const card = document.createElement('div');
+                card.className = 'invite-card'; 
                 card.dataset.inviteId = invite.id;
                 card.innerHTML = `
-                    <div class="invite-info"><p><strong>${invite.senderCharacterName}</strong> convidou você para uma aventura!</p></div>
+                    <div class="invite-info"><p><strong>${invite.senderCharacterName}</strong> convidou você para a aventura <strong>${invite.sessionId.substring(0, 6)}</strong>!</p></div>
                     <div class="invite-actions">
                         <button class="btn btn-sm btn-accept">Aceitar</button>
                         <button class="btn btn-sm btn-decline">Recusar</button>
@@ -182,9 +185,21 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const charQuery = query(collection(db, 'sessions', sessionId, 'characters'), where("uid", "==", currentUser.uid));
             const charSnapshot = await getDocs(charQuery);
-            if (charSnapshot.empty) throw new Error("Você não tem um personagem nesta sessão.");
+            if (charSnapshot.empty) {
+                throw new Error("Você não tem um personagem nesta sessão. Aceite o convite e crie um.");
+            }
             currentCharacter = { id: charSnapshot.docs[0].id, ...charSnapshot.docs[0].data() };
             
+            // Atualiza a ficha de personagem
+            characterSheetName.textContent = currentCharacter.name;
+            characterSheetAttributes.innerHTML = '';
+            attributeKeys.forEach(key => {
+                const attrName = key.charAt(0).toUpperCase() + key.slice(1);
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="attr-name">${attrName}</span> <span class="attr-value">${currentCharacter.attributes[key] || 10}</span>`;
+                characterSheetAttributes.appendChild(li);
+            });
+
             showView(gameView);
             listenForSessionUpdates(sessionId);
             listenForMessages(sessionId);
@@ -214,8 +229,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const messageElement = document.createElement('div');
                     messageElement.classList.add('message');
                     const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
-                    const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                    const text = msg.text
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
                     messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
+                    if(msg.isTurnoUpdate) messageElement.classList.add('system-message');
                     narration.appendChild(messageElement);
                 }
             });
@@ -234,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function sendChatMessage(text) {
         if (!text.trim() || !currentSessionId || !currentCharacter) return;
-        inputText.disabled = true; // Desabilita para evitar envios duplicados
+        inputText.disabled = true;
         try {
             await addDoc(collection(db, 'sessions', currentSessionId, 'messages'), {
                 from: 'player', text, characterName: currentCharacter.name, uid: currentUser.uid, createdAt: serverTimestamp()
@@ -242,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             inputText.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-            inputText.disabled = false; // Reabilita em caso de erro
+            inputText.disabled = false;
         }
     }
 
@@ -254,26 +272,23 @@ document.addEventListener('DOMContentLoaded', () => {
             await passarTurno({ sessionId: currentSessionId });
         } catch (error) {
             alert(error.message);
-            btnPassTurn.disabled = false;
         } finally {
             btnPassTurn.textContent = 'Passar Turno';
         }
     }
-
-    // --- AUTH STATE CHANGE --- (A PARTE CRÍTICA CORRIGIDA)
+    
+    // --- AUTENTICAÇÃO --- (Revisado e Correto)
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
+            noCharactersMessage.textContent = 'Você ainda não tem personagens.';
             showView(sessionSelectionOverlay);
-            // CORREÇÃO: As chamadas de carregamento foram restauradas aqui.
-            await Promise.all([loadPendingInvitesInternal(), loadUserCharacters(user.uid)]);
+            await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
-            currentUser = null;
-            currentCharacter = null;
-            currentSessionId = null;
+            currentUser = null; currentCharacter = null; currentSessionId = null;
             username.textContent = 'Visitante';
             btnAuth.textContent = 'Login';
             characterList.innerHTML = '';
@@ -285,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- EVENT LISTENERS (COMPLETO) ---
+    // --- LISTENERS DE EVENTOS (COMPLETO E REVISADO) ---
     btnAuth.addEventListener('click', () => {
         if (currentUser) {
             signOut(auth).catch(err => console.error("Erro no logout:", err));
@@ -297,25 +312,184 @@ document.addEventListener('DOMContentLoaded', () => {
     btnBackToSelection.addEventListener('click', returnToSelectionScreen);
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
     inputText.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendChatMessage(inputText.value);
-        }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); }
     });
     btnPassTurn.addEventListener('click', passTurn);
 
     characterList.addEventListener('click', (e) => {
         const card = e.target.closest('.character-card');
-        if (card && card.dataset.sessionId) {
-            loadSession(card.dataset.sessionId);
+        if (card && card.dataset.sessionId) { loadSession(card.dataset.sessionId); }
+    });
+
+    // --- Listeners de Convite ---
+    invitesList.addEventListener('click', async (e) => {
+        const button = e.target;
+        const card = button.closest('.invite-card');
+        if (!card) return;
+
+        const inviteId = card.dataset.inviteId;
+        button.disabled = true;
+        
+        try {
+            if (button.classList.contains('btn-accept')) {
+                const result = await acceptInvite({ inviteId });
+                sessionStorage.setItem('joiningSessionId', result.data.sessionId);
+                resetAndOpenCharacterCreationModal();
+            } else if (button.classList.contains('btn-decline')) {
+                await declineInvite({ inviteId });
+                card.remove();
+            }
+        } catch (error) {
+            console.error("Erro ao responder convite:", error);
+            alert(error.message);
+            button.disabled = false;
         }
     });
 
+    // --- Listeners de Criação de Personagem ---
+    function resetAndOpenCharacterCreationModal() {
+        hideModal(inviteModal); // Garante que o modal de convite feche
+        charNameInput.value = '';
+        pointsToDistribute = 27;
+        attributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
+        updateCreationUI();
+        creationLoadingIndicator.style.display = 'none';
+        btnSaveCharacter.style.display = 'block';
+        charNameInput.disabled = false;
+        showModal(characterCreationModal);
+    }
+
     btnCreateNewCharacter.addEventListener('click', () => {
         sessionStorage.removeItem('joiningSessionId');
-        // resetAndCloseCharacterCreationModal(); // Adicionar essa função
-        showModal(characterCreationModal);
+        resetAndOpenCharacterCreationModal();
     });
 
-    // ... (outros listeners para modais, etc., precisam ser verificados)
+    btnCloseCharCreation.addEventListener('click', () => hideModal(characterCreationModal));
+    
+    btnSaveCharacter.addEventListener('click', async () => {
+        const charName = charNameInput.value.trim();
+        if (charName.length < 3) {
+            alert('O nome do personagem deve ter pelo menos 3 caracteres.');
+            return;
+        }
+        if (pointsToDistribute > 0) {
+            alert('Você ainda tem pontos para distribuir!');
+            return;
+        }
+
+        // UI de Carregamento
+        creationLoadingIndicator.style.display = 'flex';
+        btnSaveCharacter.style.display = 'none';
+        charNameInput.disabled = true;
+
+        try {
+            const joiningSessionId = sessionStorage.getItem('joiningSessionId');
+            let result;
+            if (joiningSessionId) {
+                // Entrando em uma sessão existente via convite
+                result = await joinSession({ sessionId: joiningSessionId, characterName: charName, attributes: attributes });
+                sessionStorage.removeItem('joiningSessionId');
+                hideModal(characterCreationModal);
+                await returnToSelectionScreen(); // Volta para a tela de seleção para mostrar o novo personagem
+                alert(`${charName} foi criado e adicionado à sessão!`);
+            } else {
+                // Criando uma nova sessão
+                result = await createAndJoinSession({ characterName: charName, attributes: attributes });
+                await loadSession(result.data.sessionId);
+                hideModal(characterCreationModal);
+            }
+        } catch (error) {
+            alert(`Erro: ${error.message}`);
+            creationLoadingIndicator.style.display = 'none';
+            btnSaveCharacter.style.display = 'block';
+            charNameInput.disabled = false;
+        }
+    });
+
+    function updateCreationUI() {
+        pointsToDistributeSpan.textContent = pointsToDistribute;
+        attributesGrid.innerHTML = '';
+        attributeKeys.forEach((key, index) => {
+            const value = attributes[key];
+            const cost = value < 13 ? 1 : 2;
+            const div = document.createElement('div');
+            div.className = 'attribute-item';
+            div.innerHTML = `
+                <span>${attributeNames[index]}</span>
+                <div class="attribute-controls">
+                    <button class="btn-attr" data-attr="${key}" data-op="-" ${value <= 8 ? 'disabled' : ''}>-</button>
+                    <span class="attr-value">${value}</span>
+                    <button class="btn-attr" data-attr="${key}" data-op="+" ${pointsToDistribute < cost || value >= 15 ? 'disabled' : ''}>+</button>
+                </div>
+            `;
+            attributesGrid.appendChild(div);
+        });
+    }
+
+    attributesGrid.addEventListener('click', (e) => {
+        if (!e.target.matches('.btn-attr')) return;
+        const button = e.target;
+        const attrKey = button.dataset.attr;
+        const operation = button.dataset.op;
+        let currentValue = attributes[attrKey];
+
+        if (operation === '+') {
+            const cost = currentValue < 13 ? 1 : 2;
+            if (pointsToDistribute >= cost && currentValue < 15) {
+                attributes[attrKey]++;
+                pointsToDistribute -= cost;
+            }
+        } else if (operation === '-') {
+            if (currentValue > 8) {
+                const costToRefund = currentValue <= 13 ? 1 : 2;
+                attributes[attrKey]--;
+                pointsToDistribute += costToRefund;
+            }
+        }
+        updateCreationUI();
+    });
+    
+    updateCreationUI(); // Chamada inicial
+
+    // --- Listeners do Painel Lateral ---
+    btnInvitePlayer.addEventListener('click', () => {
+        if (!currentSessionId) {
+            alert("Você precisa estar em uma sessão para convidar jogadores.");
+            return;
+        }
+        inviteEmailInput.value = '';
+        showModal(inviteModal);
+    });
+
+    btnCancelInvite.addEventListener('click', () => hideModal(inviteModal));
+
+    btnSendInvite.addEventListener('click', async () => {
+        const email = inviteEmailInput.value.trim();
+        if (!email.includes('@')) {
+            alert('Por favor, insira um e-mail válido.');
+            return;
+        }
+        btnSendInvite.disabled = true;
+        btnSendInvite.textContent = 'Enviando...';
+        try {
+            const result = await sendInvite({ email, sessionId: currentSessionId });
+            alert(result.data.message);
+            hideModal(inviteModal);
+        } catch (error) {
+            alert(`Erro: ${error.message}`);
+        } finally {
+            btnSendInvite.disabled = false;
+            btnSendInvite.textContent = 'Enviar Convite';
+        }
+    });
+
+    diceRoller.addEventListener('click', async e => {
+        if (e.target.matches('[data-d]')) {
+            if (!currentSessionId || !currentCharacter) return;
+            const die = e.target.dataset.d;
+            const roll = Math.floor(Math.random() * parseInt(die)) + 1;
+            const text = `rolou 1d${die} e tirou **${roll}**`;
+            await sendChatMessage(text);
+        }
+    });
 });
