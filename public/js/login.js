@@ -1,51 +1,55 @@
 /*
- *  js/login.js - v1.2 - CORREÇÃO CRÍTICA
- *  - REMOVIDO o callback `signInFailure` que estava causando um erro 400 (Bad Request) e 
- *    quebrando completamente o fluxo de login e criação de conta.
- *  - A lógica retorna ao padrão do FirebaseUI, que é estável e funcional.
+ *  js/login.js - VERSÃO MODULAR CORRIGIDA
+ *  - Usa `import` para carregar o `auth` do firebase.js, garantindo consistência.
+ *  - Inicializa o FirebaseUI da maneira moderna, compatível com o resto do app.
  */
 
+// Importa os serviços necessários do firebase.js e dos SDKs
+import { auth } from './firebase.js';
+import { GoogleAuthProvider, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+// Importa o FirebaseUI. Como é uma biblioteca UI, ela é carregada de forma diferente.
+// Precisamos garantir que o objeto `firebaseui` esteja disponível globalmente para o HTML.
+import 'https://www.gstatic.com/firebasejs/ui/6.0.1/firebase-ui-auth.js';
+
 document.addEventListener('DOMContentLoaded', function() {
+    // A verificação onAuthStateChanged não é mais necessária aqui, 
+    // pois o `script.js` principal já cuida disso.
+    // Nós só precisamos mostrar a interface de login.
 
-    // Espera a inicialização do Firebase para garantir que `firebase.auth()` esteja disponível.
-    const unregisterAuthObserver = firebase.auth().onAuthStateChanged(user => {
-        
-        unregisterAuthObserver(); // Para o observador para não rodar desnecessariamente.
+    // Inicializa o FirebaseUI
+    const ui = firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(auth);
 
-        const ui = new firebaseui.auth.AuthUI(firebase.auth());
-
-        const uiConfig = {
-            callbacks: {
-                // NENHUM `signInFailure` aqui. Deixa o FirebaseUI lidar com os erros.
-                
-                // Chamado quando o login é bem-sucedido.
-                signInSuccessWithAuthResult: function(authResult, redirectUrl) {
-                    // Redireciona para a página principal após o login.
-                    window.location.href = '/';
-                    // Retorna `false` para impedir o redirecionamento padrão do FirebaseUI.
-                    return false;
-                },
-                // Chamado quando a interface termina de carregar.
-                uiShown: function() {
-                    // Esconde o loader e mostra o container de autenticação.
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('firebaseui-auth-container').style.display = 'block';
-                }
+    const uiConfig = {
+        callbacks: {
+            // Chamado quando o login é bem-sucedido.
+            signInSuccessWithAuthResult: function(authResult, redirectUrl) {
+                // Redireciona para a página principal após o login.
+                window.location.href = '/';
+                // Retorna `false` para impedir o redirecionamento padrão do FirebaseUI.
+                return false;
             },
-            signInSuccessUrl: '/', // URL para onde o usuário será redirecionado se fechar e abrir a aba.
-            signInOptions: [
-                firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-                {
-                    provider: firebase.auth.EmailAuthProvider.PROVIDER_ID,
-                    // Nossa Cloud Function `onUserCreate` cuidará de criar um displayName no backend.
-                    requireDisplayName: false 
-                }
-            ],
-        };
+            // Chamado quando a interface termina de carregar.
+            uiShown: function() {
+                // Esconde o loader e mostra o container de autenticação.
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('firebaseui-auth-container').style.display = 'block';
+            }
+        },
+        signInSuccessUrl: '/', // URL para onde o usuário é redirecionado em alguns casos.
+        signInOptions: [
+            GoogleAuthProvider.PROVIDER_ID,
+            {
+                provider: EmailAuthProvider.PROVIDER_ID,
+                requireDisplayName: false
+            }
+        ],
+        // Garante que o fluxo de login de um clique (one-tap) não seja usado,
+        // pois ele pode conflitar com o nosso redirecionamento customizado.
+        credentialHelper: firebaseui.auth.CredentialHelper.NONE
+    };
 
-        // Inicia o FirebaseUI Widget.
-        ui.start('#firebaseui-auth-container', uiConfig);
+    // Inicia o FirebaseUI Widget.
+    ui.start('#firebaseui-auth-container', uiConfig);
 
-    }); // Fim do onAuthStateChanged
-
-}); // Fim do DOMContentLoaded
+});
