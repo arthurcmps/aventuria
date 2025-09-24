@@ -1,8 +1,7 @@
 /*
- *  public/js/script.js (VERSÃO DE REVISÃO COMPLETA)
- *  - Reescrito metodicamente para garantir que TODAS as funcionalidades estão presentes e corretas.
- *  - Inclui: Login, Carregamento de Personagens/Convites, Criação de Personagem, Sistema de Convites,
- *    Lógica de Jogo (Turnos, Chat, Passar Turno), Navegação e Limpeza de Listeners.
+ *  public/js/script.js (VERSÃO COM IA ATIVA)
+ *  - REVISADO: `listenForPartyChanges` agora filtra a IA da lista de jogadores.
+ *  - REVISADO: `updateTurnUI` agora mostra uma mensagem específica quando é o turno da IA.
  */
 
 // --- IMPORTS ---
@@ -10,12 +9,12 @@ import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
-  addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where
+  addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- REFERÊNCIAS DO DOM (COMPLETAS) ---
+    // --- REFERÊNCIAS DO DOM ---
     const username = document.getElementById('username');
     const btnAuth = document.getElementById('btn-auth');
     const btnBackToSelection = document.getElementById('btn-back-to-selection');
@@ -34,20 +33,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const characterSheetName = document.getElementById('character-sheet-name');
     const characterSheetAttributes = document.getElementById('character-sheet-attributes');
     const diceRoller = document.getElementById('dice-roller');
-    // Modais
     const characterCreationModal = document.getElementById('character-creation-modal');
     const btnCloseCharCreation = document.getElementById('btn-close-char-creation');
     const inviteModal = document.getElementById('invite-modal');
     const btnCancelInvite = document.getElementById('btn-cancel-invite');
     const btnSendInvite = document.getElementById('btn-send-invite');
-    // Criação de Personagem
     const creationLoadingIndicator = document.getElementById('creation-loading-indicator');
     const pointsToDistributeSpan = document.getElementById('points-to-distribute');
     const charNameInput = document.getElementById('char-name');
     const attributesGrid = document.querySelector('.attributes-grid');
     const btnSaveCharacter = document.getElementById('btn-save-character');
     const inviteEmailInput = document.getElementById('invite-email');
-    // Sistema de Turnos
     const turnStatus = document.getElementById('turn-status');
     const btnPassTurn = document.getElementById('btn-pass-turn');
 
@@ -58,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let messagesUnsubscribe = null;
     let partyUnsubscribe = null;
     let sessionUnsubscribe = null;
+    const AI_UID = 'master-ai';
     const attributeNames = ['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma'];
     const attributeKeys = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
     let attributes = {};
@@ -111,7 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateTurnUI = async (sessionData) => {
         if (!sessionData || !currentUser || !currentSessionId) return;
-        const isMyTurn = sessionData.turnoAtualUid === currentUser.uid;
+        const turnoAtualUid = sessionData.turnoAtualUid;
+        const isMyTurn = turnoAtualUid === currentUser.uid;
         
         inputText.disabled = !isMyTurn;
         btnSend.disabled = !isMyTurn;
@@ -120,9 +118,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isMyTurn) {
             turnStatus.textContent = "É o seu turno!";
             turnStatus.classList.add('my-turn');
+        } else if (turnoAtualUid === AI_UID) {
+            turnStatus.textContent = "O Mestre está agindo...";
+            turnStatus.classList.remove('my-turn');
         } else {
-            const turnPlayerDocRef = doc(db, `sessions/${currentSessionId}/characters`, sessionData.turnoAtualUid);
             try {
+                const turnPlayerDocRef = doc(db, `sessions/${currentSessionId}/characters`, turnoAtualUid);
                 const turnPlayerDoc = await getDoc(turnPlayerDocRef);
                 const playerName = turnPlayerDoc.exists() ? turnPlayerDoc.data().name : "outro jogador";
                 turnStatus.textContent = `Aguardando o turno de ${playerName}...`;
@@ -190,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             currentCharacter = { id: charSnapshot.docs[0].id, ...charSnapshot.docs[0].data() };
             
-            // Atualiza a ficha de personagem
             characterSheetName.textContent = currentCharacter.name;
             characterSheetAttributes.innerHTML = '';
             attributeKeys.forEach(key => {
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function listenForMessages(sessionId) {
       const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
       messagesUnsubscribe = onSnapshot(q, (snapshot) => {
-          narration.innerHTML = ''; // Limpa para redesenhar a partir do snapshot
+          narration.innerHTML = '';
           snapshot.docs.forEach(doc => {
               const msg = doc.data();
               const messageElement = document.createElement('div');
@@ -242,16 +242,21 @@ document.addEventListener('DOMContentLoaded', () => {
   function listenForPartyChanges(sessionId) {
       const partyQuery = collection(db, 'sessions', sessionId, 'characters');
       partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
-          partyList.innerHTML = ''; // Limpa para redesenhar a partir do snapshot
+          partyList.innerHTML = '';
           snapshot.docs.forEach(doc => {
-              partyList.innerHTML += `<li>${doc.data().name}</li>`;
+              const character = doc.data();
+              // Filtra a IA da lista de jogadores na UI
+              if (character.uid !== AI_UID) {
+                 partyList.innerHTML += `<li>${character.name}</li>`;
+              }
           });
       });
   }
 
     async function sendChatMessage(text) {
         if (!text.trim() || !currentSessionId || !currentCharacter) return;
-        inputText.disabled = true;
+        inputText.disabled = true; // Desabilita o input ao enviar
+        btnSend.disabled = true;
         try {
             await addDoc(collection(db, 'sessions', currentSessionId, 'messages'), {
                 from: 'player', text, characterName: currentCharacter.name, uid: currentUser.uid, createdAt: serverTimestamp()
@@ -259,7 +264,9 @@ document.addEventListener('DOMContentLoaded', () => {
             inputText.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-            inputText.disabled = false;
+            // Reabilita se houver erro para o usuário tentar de novo
+            inputText.disabled = false; 
+            btnSend.disabled = false;
         }
     }
 
@@ -271,12 +278,14 @@ document.addEventListener('DOMContentLoaded', () => {
             await passarTurno({ sessionId: currentSessionId });
         } catch (error) {
             alert(error.message);
+            // Se falhar, o turno não passou, então reabilita o botão
+            btnPassTurn.disabled = false; 
         } finally {
+            // O estado do botão será gerenciado pelo updateTurnUI, então só resetamos o texto
             btnPassTurn.textContent = 'Passar Turno';
         }
     }
     
-    // --- AUTENTICAÇÃO --- (Revisado e Correto)
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
         if (user) {
@@ -299,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- LISTENERS DE EVENTOS (COMPLETO E REVISADO) ---
+    // --- LISTENERS DE EVENTOS ---
     btnAuth.addEventListener('click', () => {
         if (currentUser) {
             signOut(auth).catch(err => console.error("Erro no logout:", err));
@@ -320,7 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (card && card.dataset.sessionId) { loadSession(card.dataset.sessionId); }
     });
 
-    // --- Listeners de Convite ---
     invitesList.addEventListener('click', async (e) => {
         const button = e.target;
         const card = button.closest('.invite-card');
@@ -345,9 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Listeners de Criação de Personagem ---
     function resetAndOpenCharacterCreationModal() {
-        hideModal(inviteModal); // Garante que o modal de convite feche
+        hideModal(inviteModal);
         charNameInput.value = '';
         pointsToDistribute = 27;
         attributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
@@ -376,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // UI de Carregamento
         creationLoadingIndicator.style.display = 'flex';
         btnSaveCharacter.style.display = 'none';
         charNameInput.disabled = true;
@@ -385,14 +391,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const joiningSessionId = sessionStorage.getItem('joiningSessionId');
             let result;
             if (joiningSessionId) {
-                // Entrando em uma sessão existente via convite
                 result = await joinSession({ sessionId: joiningSessionId, characterName: charName, attributes: attributes });
                 sessionStorage.removeItem('joiningSessionId');
                 hideModal(characterCreationModal);
-                await returnToSelectionScreen(); // Volta para a tela de seleção para mostrar o novo personagem
+                await returnToSelectionScreen();
                 alert(`${charName} foi criado e adicionado à sessão!`);
             } else {
-                // Criando uma nova sessão
                 result = await createAndJoinSession({ characterName: charName, attributes: attributes });
                 await loadSession(result.data.sessionId);
                 hideModal(characterCreationModal);
@@ -448,9 +452,8 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCreationUI();
     });
     
-    updateCreationUI(); // Chamada inicial
+    updateCreationUI();
 
-    // --- Listeners do Painel Lateral ---
     btnInvitePlayer.addEventListener('click', () => {
         if (!currentSessionId) {
             alert("Você precisa estar em uma sessão para convidar jogadores.");
