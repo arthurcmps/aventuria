@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Redireciona se o usuário já estiver logado
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            window.location.href = '/';
+            window.location.href = 'index.html';
         }
     });
 
