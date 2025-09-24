@@ -220,35 +220,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function listenForMessages(sessionId) {
-        const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
-        narration.innerHTML = '';
-        messagesUnsubscribe = onSnapshot(q, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-                if (change.type === "added") {
-                    const msg = change.doc.data();
-                    const messageElement = document.createElement('div');
-                    messageElement.classList.add('message');
-                    const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
-                    const text = msg.text
-                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
-                    messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
-                    if(msg.isTurnoUpdate) messageElement.classList.add('system-message');
-                    narration.appendChild(messageElement);
-                }
-            });
-            narration.scrollTop = narration.scrollHeight;
-        });
-    }
+      const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
+      messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+          narration.innerHTML = ''; // Limpa para redesenhar a partir do snapshot
+          snapshot.docs.forEach(doc => {
+              const msg = doc.data();
+              const messageElement = document.createElement('div');
+              messageElement.classList.add('message');
+              const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
+              const text = msg.text
+                  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                  .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+              messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
+              if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
+              narration.appendChild(messageElement);
+          });
+          narration.scrollTop = narration.scrollHeight;
+      });
+  }
 
-    function listenForPartyChanges(sessionId) {
-        partyUnsubscribe = onSnapshot(collection(db, 'sessions', sessionId, 'characters'), (snapshot) => {
-            partyList.innerHTML = '';
-            snapshot.forEach(doc => {
-                partyList.innerHTML += `<li>${doc.data().name}</li>`;
-            });
-        });
-    }
+  function listenForPartyChanges(sessionId) {
+      const partyQuery = collection(db, 'sessions', sessionId, 'characters');
+      partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
+          partyList.innerHTML = ''; // Limpa para redesenhar a partir do snapshot
+          snapshot.docs.forEach(doc => {
+              partyList.innerHTML += `<li>${doc.data().name}</li>`;
+          });
+      });
+  }
 
     async function sendChatMessage(text) {
         if (!text.trim() || !currentSessionId || !currentCharacter) return;
