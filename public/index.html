@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -14,8 +15,11 @@
     <div class="container">
         <!-- CABEÇALHO -->
         <header class="header">
-            <div class="user-info">
-                <span id="username">Visitante</span>
+            <div class="header-left">
+                <button id="btn-menu" class="btn btn-icon">☰</button>
+                <div class="user-info">
+                    <span id="username">Visitante</span>
+                </div>
             </div>
             <div class="header-actions">
                 <button id="btn-back-to-selection" class="btn btn-sm" style="display: none;">Voltar</button>
@@ -52,7 +56,7 @@
                 </div>
             </div>
 
-            <!-- PAINEL LATERAL -->
+            <!-- PAINEL LATERAL (SIDE MENU) -->
             <aside id="side-panel">
                  <div id="character-sheet" class="side-panel-section">
                     <h3 id="character-sheet-name"></h3>
@@ -63,18 +67,22 @@
                     <ul id="party-list"></ul>
                     <button id="btn-invite-player" class="btn btn-sm">Convidar</button>
                 </div>
-                <div id="dice-roller" class="side-panel-section">
-                    <h3>Dados</h3>
-                    <button class="btn" data-d="20">d20</button>
-                    <button class="btn" data-d="12">d12</button>
-                    <button class="btn" data-d="10">d10</button>
-                    <button class="btn" data-d="8">d8</button>
-                    <button class="btn" data-d="6">d6</button>
-                    <button class="btn" data-d="4">d4</button>
-                </div>
             </aside>
         </div>
     </div>
+
+    <!-- BARRA INFERIOR DE DADOS -->
+    <footer id="dice-bar">
+        <div id="dice-roller">
+            <h3>Dados</h3>
+            <button class="btn" data-d="20">d20</button>
+            <button class="btn" data-d="12">d12</button>
+            <button class="btn" data-d="10">d10</button>
+            <button class="btn" data-d="8">d8</button>
+            <button class="btn" data-d="6">d6</button>
+            <button class="btn" data-d="4">d4</button>
+        </div>
+    </footer>
 
     <!-- MODAIS -->
     <div id="character-creation-modal" class="modal-overlay">

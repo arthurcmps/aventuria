@@ -1,4 +1,4 @@
-/* css/style.css - VERSÃO RESPONSIVA */
+/* css/style.css - VERSÃO DE RECUPERAÇÃO COMPLETA (3.0) - COM SISTEMA DE TURNOS */
 
 /* ----------------------------------
  * Variáveis e Estilos Globais
@@ -32,7 +32,7 @@ body {
 .container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 0 20px; /* Remover padding vertical */
+    padding: 20px;
 }
 
 /* ----------------------------------
@@ -45,13 +45,6 @@ body {
     padding: 10px 0;
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 20px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--primary-bg-color);
-    z-index: 10;
-    padding: 10px 20px;
 }
 
 .header-left {
@@ -63,12 +56,20 @@ body {
     display: none; /* Oculto por padrão */
     margin-right: 15px;
     font-size: 1.5em;
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    cursor: pointer;
 }
 
 .user-info #username {
     font-family: var(--font-display);
     font-size: 1.2em;
     font-weight: 400;
+}
+
+.header-actions .btn {
+    margin-left: 10px;
 }
 
 /* ----------------------------------
@@ -92,14 +93,47 @@ body {
     background-color: var(--accent-hover-color);
 }
 
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn:disabled {
+    background-color: var(--tertiary-bg-color);
+    color: #8a7e72;
+    cursor: not-allowed;
+    border-color: var(--border-color);
+}
+
+.btn.btn-sm {
+    padding: 8px 12px;
+    font-size: 0.9em;
+}
+
+.btn.btn-secondary {
+    background-color: var(--tertiary-bg-color);
+    color: var(--font-color);
+}
+
+.btn.btn-secondary:hover {
+    background-color: #655040;
+}
+
+.btn.btn-icon {
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    font-size: 1.5em;
+    cursor: pointer;
+}
+
 /* ----------------------------------
  * Layout Principal do Jogo
  * ---------------------------------- */
 .main-content {
-    display: grid; 
+    display: none; 
     grid-template-columns: 1fr 320px;
     gap: 20px;
-    padding-top: 80px; /* Espaço para o header fixo */
+    padding-bottom: 60px; /* Espaço para a barra de dados */
 }
 
 /* ----------------------------------
@@ -110,25 +144,76 @@ body {
     border-radius: 8px;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 150px); /* Ajustado para footer e header */
+    height: calc(100vh - 120px);
 }
 
 #narration {
     flex-grow: 1;
     padding: 20px;
-    overflow-y: auto; /* Barra de rolagem */
+    overflow-y: auto;
     font-family: var(--font-display);
     font-size: 1.4em;
     line-height: 1.7;
 }
 
 #input-area {
+    display: flex;
+    flex-direction: column;
     padding: 15px;
     border-top: 1px solid var(--border-color);
+    gap: 10px;
+}
+
+#input-text {
+    width: 100%;
+    background-color: var(--tertiary-bg-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px;
+    resize: none;
+    font-family: var(--font-main);
+    font-size: 1em;
+}
+
+#input-text:disabled {
+    background-color: #2c251e;
+    cursor: not-allowed;
+}
+
+.turn-status-bar {
+    width: 100%;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9em;
+    background-color: var(--primary-bg-color);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.turn-status-bar.my-turn {
+    background-color: #27ae60;
+    color: white;
+    border-color: #229954;
+}
+
+.input-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.input-buttons .btn {
+    flex-grow: 1;
+}
+
+.input-buttons #btn-send {
+    flex-grow: 3;
 }
 
 /* ----------------------------------
- * Painel Lateral (Side Menu)
+ * Painel Lateral (Direita)
  * ---------------------------------- */
 #side-panel {
     background-color: var(--secondary-bg-color);
@@ -137,8 +222,48 @@ body {
     height: fit-content;
 }
 
+.side-panel-section {
+    margin-bottom: 25px;
+}
+
+.side-panel-section:last-child {
+    margin-bottom: 0;
+}
+
+.side-panel-section h3, h2 {
+    font-family: var(--font-display);
+    color: var(--accent-color);
+    font-weight: 400;
+}
+
+.side-panel-section h3 {
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+    font-size: 1.5em;
+}
+
+h2 {
+    font-size: 2em;
+    margin-bottom: 20px;
+}
+
+#character-sheet-attributes, #party-list {
+    list-style: none;
+}
+
+#character-sheet-attributes li, #party-list li {
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.attr-name {
+    font-weight: 700;
+}
+
 /* ----------------------------------
- * Barra Inferior de Dados
+ * Barra de Dados (Rodapé)
  * ---------------------------------- */
 #dice-bar {
     position: fixed;
@@ -149,26 +274,85 @@ body {
     padding: 10px 20px;
     border-top: 1px solid var(--border-color);
     z-index: 10;
+    display: none; /* Oculta por padrão */
+}
+
+.main-content.in-game + #dice-bar {
+    display: block;
 }
 
 #dice-roller {
     display: flex;
-    justify-content: space-around;
+    justify-content: center;
     align-items: center;
+    gap: 10px;
 }
 
 #dice-roller h3 {
-    display: none; /* Ocultar título na barra */
+    display: none; 
 }
 
+#dice-roller .btn {
+    margin: 0;
+}
+
+/* ----------------------------------
+ * Overlays e Modais
+ * ---------------------------------- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(20, 10, 5, 0.85);
+    display: none; 
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    padding: 20px;
+}
+
+#session-selection-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex; 
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 5;
+}
+
+.overlay-content-box, .modal-content {
+    background-color: var(--secondary-bg-color);
+    padding: 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+}
 
 /* ----------------------------------
  * Responsividade
  * ---------------------------------- */
 @media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    .header {
+        margin-bottom: 10px;
+    }
+
     .main-content {
         grid-template-columns: 1fr;
-        padding-top: 70px;
+        padding-top: 60px; /* Ajuste para header fixo */
+        padding-bottom: 70px; /* Espaço para dice-bar */
     }
 
     #btn-menu {
@@ -183,7 +367,9 @@ body {
         height: 100%;
         z-index: 20;
         transition: left 0.3s ease;
-        padding-top: 80px; /* Espaço para o header */
+        padding-top: 60px; /* Espaço para o header */
+        border-radius: 0;
+        border-right: 1px solid var(--border-color);
     }
 
     #side-panel.open {
@@ -191,6 +377,12 @@ body {
     }
 
     #narration-panel {
-        height: calc(100vh - 140px);
+        height: calc(100vh - 150px); /* Ajuste para header e dice-bar */
     }
+
+    #session-selection-overlay {
+        position: static; /* Remove o posicionamento absoluto */
+        padding-top: 70px;
+    }
+
 }
