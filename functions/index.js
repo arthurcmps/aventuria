@@ -1,9 +1,9 @@
 /*
- *  functions/index.js (VERSÃO COM IA ATIVA)
- *  - ADICIONADO: IA (`master-ai`) agora faz parte do ciclo de turnos.
- *  - ADICIONADO: Nova função `executeAITurn` que é acionada quando o turno passa para a IA.
- *  - REVISADO: `createAndJoinSession` e `joinSession` agora incluem a IA na ordem de turnos.
- *  - REVISADO: `generateMasterResponse` e `passarTurno` agora passam o turno para a IA em vez do próximo jogador.
+ *  functions/index.js (VERSÃO COM IA CENTRALIZADA)
+ *  - REVISADO: A lógica da IA foi unificada na função `executeAITurn` para evitar respostas duplicadas.
+ *  - `generateMasterResponse` agora apenas valida a mensagem do jogador e passa o turno para a IA.
+ *  - `executeAITurn` agora analisa o contexto para decidir se reage a uma ação ou avança a história.
+ *  - `passarTurno` foi simplificado para apenas atualizar o turno, sem enviar mensagens.
  */
 
 const functions = require("firebase-functions");
@@ -50,28 +50,23 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
         const sessionRef = await db.collection("sessions").add({
             owner: uid,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            memberUIDs: [uid, AI_UID], // Adiciona o jogador e a IA
-            turnoAtualUid: uid, // Começa com o jogador
-            ordemDeTurnos: [uid, AI_UID] // Ordem inicial
+            memberUIDs: [uid, AI_UID],
+            turnoAtualUid: uid, 
+            ordemDeTurnos: [uid, AI_UID] 
         });
 
         const playerCharacter = { name: characterName, attributes, uid, sessionId: sessionRef.id };
         const aiCharacter = { name: "Mestre", attributes: {}, uid: AI_UID, sessionId: sessionRef.id };
 
         const batch = db.batch();
-        
-        // Personagem do jogador na sessão e global
         batch.set(db.collection('sessions').doc(sessionRef.id).collection('characters').doc(uid), playerCharacter);
         batch.set(db.collection('characters').doc(), { ...playerCharacter, characterIdInSession: uid });
-        
-        // Personagem da IA na sessão
         batch.set(db.collection('sessions').doc(sessionRef.id).collection('characters').doc(AI_UID), aiCharacter);
-
         await batch.commit();
 
-        // Mensagem inicial para disparar a aventura
+        // Mensagem especial que inicia a aventura. Será processada pela IA.
         await db.collection('sessions').doc(sessionRef.id).collection('messages').add({
-          from: 'player',
+          from: 'player', 
           text: '__START_ADVENTURE__',
           characterName: playerCharacter.name,
           uid: uid,
@@ -87,13 +82,9 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
 });
 
 exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    }
+    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
     const { sessionId, characterName, attributes } = data;
-    if (!sessionId || !characterName || !attributes) {
-        throw new functions.https.HttpsError('invalid-argument', 'Dados incompletos.');
-    }
+    if (!sessionId || !characterName || !attributes) throw new functions.https.HttpsError('invalid-argument', 'Dados incompletos.');
 
     const uid = context.auth.uid;
     const sessionRef = db.collection('sessions').doc(sessionId);
@@ -101,11 +92,8 @@ exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
     try {
         await db.runTransaction(async (transaction) => {
             const sessionDoc = await transaction.get(sessionRef);
-            if (!sessionDoc.exists) {
-                throw new functions.https.HttpsError('not-found', 'Sessão não encontrada.');
-            }
+            if (!sessionDoc.exists) throw new functions.https.HttpsError('not-found', 'Sessão não encontrada.');
             
-            // Adiciona o novo jogador na lista de membros e na ordem de turnos
             transaction.update(sessionRef, {
                 memberUIDs: admin.firestore.FieldValue.arrayUnion(uid),
                 ordemDeTurnos: admin.firestore.FieldValue.arrayUnion(uid) 
@@ -115,9 +103,7 @@ exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
             transaction.set(sessionRef.collection('characters').doc(uid), newCharacter);
             transaction.set(db.collection('characters').doc(), { ...newCharacter, characterIdInSession: uid });
         });
-
         return { success: true };
-
     } catch (error) {
         console.error(`Erro ao entrar na sessão ${sessionId}:`, error);
         throw new functions.https.HttpsError('internal', 'Não foi possível entrar na sessão.');
@@ -134,35 +120,25 @@ exports.passarTurno = regionalFunctions.https.onCall(async (data, context) => {
 
     const sessionDoc = await sessionRef.get();
     if (!sessionDoc.exists) throw new functions.https.HttpsError('not-found', 'Sessão não encontrada.');
-
     const sessionData = sessionDoc.data();
     if (sessionData.turnoAtualUid !== uid) {
         throw new functions.https.HttpsError('permission-denied', 'Não é seu turno.');
     }
 
-    // Passa o turno para a IA
+    // Apenas passa o turno para a IA. O `executeAITurn` fará o resto.
     await sessionRef.update({ turnoAtualUid: AI_UID }); 
-
-    // Adiciona uma mensagem indicando que o jogador passou o turno
-    const playerChar = await sessionRef.collection('characters').doc(uid).get();
-    await db.collection('sessions').doc(sessionId).collection('messages').add({
-        from: 'mestre',
-        text: `**${playerChar.data().name}** observa em silêncio. O turno passa para o mestre.`,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        isTurnoUpdate: true
-    });
 
     return { success: true, proximoTurno: AI_UID };
 });
 
-// --- FUNÇÃO PRINCIPAL DA IA (Disparada por Ação do Jogador) ---
-exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApiKey] }).firestore
+// --- GATILHO: VALIDA AÇÃO DO JOGADOR E PASSA O TURNO PARA A IA ---
+exports.generateMasterResponse = regionalFunctions.firestore
   .document('sessions/{sessionId}/messages/{messageId}')
   .onCreate(async (snapshot, context) => {
     const newMessage = snapshot.data();
     const sessionId = context.params.sessionId;
 
-    // Ignora mensagens do mestre, atualizações de turno ou mensagens de "passar turno"
+    // Ignora mensagens do mestre ou atualizações de turno
     if (newMessage.from === 'mestre' || newMessage.isTurnoUpdate) return null;
     
     const sessionRef = db.collection('sessions').doc(sessionId);
@@ -176,49 +152,28 @@ exports.generateMasterResponse = regionalFunctions.runWith({ secrets: [geminiApi
         await snapshot.ref.delete(); // Apaga a mensagem inválida
         return null;
     }
-
+    
+    // Se a mensagem for válida, simplesmente passa o turno para a IA.
+    // A IA irá ler esta mensagem e reagir a ela na função `executeAITurn`.
     try {
-        // Prepara o prompt para a IA (narração do mestre)
-        let promptText = newMessage.text;
+        await sessionRef.update({ turnoAtualUid: AI_UID });
+        
+        // Se for a mensagem de início, apaga a mensagem técnica para não poluir o chat.
         if (newMessage.text === '__START_ADVENTURE__') {
-            const character = (await sessionRef.collection('characters').doc(newMessage.uid).get()).data();
-            promptText = `Meu personagem é ${character.name}. Acabei de criá-lo. Descreva a cena de abertura da aventura.`;
-            await snapshot.ref.delete(); // Apaga a mensagem técnica
+            await snapshot.ref.delete(); 
         }
 
-        const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt').get();
-        const history = historySnapshot.docs.map(doc => {
-            const data = doc.data();
-            if (data.isTurnoUpdate || data.text === '__START_ADVENTURE__') return null;
-            return { role: data.from === 'mestre' ? 'model' : 'user', parts: [{ text: data.text }] };
-        }).filter(Boolean);
-        
-        // Chama a IA para gerar a narração
-        const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const chat = model.startChat({ history });
-        const result = await chat.sendMessage(promptText);
-        const masterResponse = result.response.text();
-
-        // Salva a resposta do mestre e passa o turno para a IA agir
-        await sessionRef.collection('messages').add({
-            from: 'mestre',
-            text: masterResponse,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        await sessionRef.update({ turnoAtualUid: AI_UID });
         return null;
 
     } catch (error) {
-        console.error("Erro em generateMasterResponse:", error);
-        // Em caso de erro, devolve o turno ao jogador para que ele possa tentar novamente.
-        await db.collection('sessions').doc(sessionId).update({ turnoAtualUid: newMessage.uid });
+        console.error("Erro ao passar turno para a IA em generateMasterResponse:", error);
+        // Devolve o turno ao jogador em caso de erro para não travar o jogo.
+        await sessionRef.update({ turnoAtualUid: newMessage.uid });
         return null;
     }
 });
 
-// --- NOVA FUNÇÃO (Disparada quando é a Vez da IA) ---
+// --- CÉREBRO DA IA: Executa quando o turno é passado para 'master-ai' ---
 exports.executeAITurn = regionalFunctions.runWith({ secrets: [geminiApiKey] }).firestore
   .document('sessions/{sessionId}')
   .onUpdate(async (change, context) => {
@@ -226,7 +181,7 @@ exports.executeAITurn = regionalFunctions.runWith({ secrets: [geminiApiKey] }).f
     const sessionDataBefore = change.before.data();
     const sessionId = context.params.sessionId;
 
-    // A função é acionada se o turno MUDOU PARA a IA
+    // A função só é executada se o turno MUDOU PARA a IA.
     if (sessionDataAfter.turnoAtualUid !== AI_UID || sessionDataBefore.turnoAtualUid === AI_UID) {
         return null;
     }
@@ -234,46 +189,71 @@ exports.executeAITurn = regionalFunctions.runWith({ secrets: [geminiApiKey] }).f
     const sessionRef = db.collection('sessions').doc(sessionId);
 
     try {
-        // Prepara o histórico para a IA
-        const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt').get();
-        const history = historySnapshot.docs.map(doc => {
+        // Monta o histórico de mensagens para dar contexto à IA
+        const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt', 'desc').limit(20).get();
+        const history = historySnapshot.docs.reverse().map(doc => {
             const data = doc.data();
-            if (data.isTurnoUpdate || data.text === '__START_ADVENTURE__') return null;
-            return { role: data.from === 'mestre' ? 'model' : 'user', parts: [{ text: data.text }] };
+            if (data.isTurnoUpdate) return null; // Ignora mensagens de sistema
+            return { role: data.from === 'mestre' ? 'model' : 'user', parts: [{ text: `(${data.characterName}): ${data.text}` }] };
         }).filter(Boolean);
 
+        // Identifica os jogadores na sessão
         const charactersSnapshot = await sessionRef.collection('characters').get();
-        const characterNames = charactersSnapshot.docs.map(d => d.data().name).filter(name => name !== "Mestre").join(', ');
+        const playerCharacters = charactersSnapshot.docs
+            .map(d => d.data())
+            .filter(c => c.uid !== AI_UID);
+        const characterNames = playerCharacters.map(c => c.name).join(', ');
+        
+        // Decide qual prompt usar
+        const lastMessage = history.length > 0 ? history[history.length - 1] : null;
+        let prompt;
 
-        const prompt = `Considerando o histórico da conversa, é a sua vez de agir como Mestre do Jogo. Os jogadores são: ${characterNames}. Narre um evento, a ação de um inimigo, ou uma consequência do que acabou de acontecer. Seja breve e impactante.`;
-
-        // Chama a IA para gerar sua ação
+        if (!lastMessage || lastMessage.role === 'model') {
+            // Se não há histórico ou a última mensagem já foi do mestre (ex: um jogador passou o turno),
+            // a IA deve ser proativa e avançar a história.
+            prompt = `Você é o Mestre de um jogo de RPG. Os jogadores são: ${characterNames}. É a sua vez de agir. Narre um evento, descreva o ambiente, introduza um desafio ou faça um PNJ (personagem não-jogador) agir. Seja criativo e continue a aventura.`;
+        } else {
+            // Se a última mensagem foi de um jogador, a IA deve reagir àquela ação.
+            prompt = `Você é o Mestre de um jogo de RPG. Os jogadores são: ${characterNames}. Reaja à última ação do jogador, descrita no final do histórico. Descreva as consequências, a resposta de PNJs, ou o resultado do que ele tentou fazer. Narre a cena e prepare o próximo momento do jogo.`;
+        }
+        
+        // Chama a IA para gerar sua narração/ação
         const genAI = new GoogleGenerativeAI(geminiApiKey.value());
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const chat = model.startChat({ history });
+        const chat = model.startChat({ 
+            history: history,
+            systemInstruction: "Seja um mestre de RPG criativo, detalhado e imparcial. Nunca fale fora do personagem."
+        });
         const result = await chat.sendMessage(prompt);
         const aiActionResponse = result.response.text();
 
+        // Salva a resposta do mestre no chat
         await sessionRef.collection('messages').add({
             from: 'mestre',
+            characterName: 'Mestre',
             text: aiActionResponse,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // Passa o turno para o próximo jogador
+        // Passa o turno para o próximo jogador na ordem
         const ordem = sessionDataAfter.ordemDeTurnos;
-        const indiceAtualIA = ordem.indexOf(AI_UID);
-        const proximoIndice = (indiceAtualIA + 1) % ordem.length;
-        const proximoUid = ordem[proximoIndice];
+        const indiceIA = ordem.indexOf(AI_UID);
 
+        // Encontra o próximo jogador que não seja a IA
+        let proximoIndice = (indiceIA + 1) % ordem.length;
+        while(ordem[proximoIndice] === AI_UID) {
+            proximoIndice = (proximoIndice + 1) % ordem.length;
+        }
+        const proximoUid = ordem[proximoIndice];
+        
         await sessionRef.update({ turnoAtualUid: proximoUid });
         
-        const proximoCharSnapshot = await sessionRef.collection('characters').doc(proximoUid).get();
-        if (proximoCharSnapshot.exists) {
-            const proximoCharNome = proximoCharSnapshot.data().name;
+        // Anuncia de quem é o próximo turno
+        const proximoCharDoc = playerCharacters.find(c => c.uid === proximoUid);
+        if (proximoCharDoc) {
              await sessionRef.collection('messages').add({
                 from: 'mestre',
-                text: `É o turno de **${proximoCharNome}**.`,
+                text: `É o turno de **${proximoCharDoc.name}**.`,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 isTurnoUpdate: true
             });
@@ -282,15 +262,16 @@ exports.executeAITurn = regionalFunctions.runWith({ secrets: [geminiApiKey] }).f
 
     } catch (error) {
         console.error("Erro em executeAITurn:", error);
-        // Em caso de erro, passa o turno para o próximo jogador para não travar o jogo
+        // Em caso de erro, passa o turno para o próximo jogador para não travar o jogo.
         const ordem = sessionDataAfter.ordemDeTurnos;
-        const indiceAtualIA = ordem.indexOf(AI_UID);
-        const proximoIndice = (indiceAtualIA + 1) % ordem.length;
-        const proximoUid = ordem[proximoIndice];
+        const indiceIA = ordem.indexOf(AI_UID);
+        const proximoIndice = (indiceIA + 1) % ordem.length;
+        const proximoUid = ordem[proximoIndice] || ordem[0]; // Garante que alguém receba o turno
         await sessionRef.update({ turnoAtualUid: proximoUid });
         return null;
     }
 });
+
 
 // --- FUNÇÕES DE CONVITE (Sem alterações) ---
 exports.sendInvite = regionalFunctions.https.onCall(async (data, context) => {
