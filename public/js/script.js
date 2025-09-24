@@ -1,7 +1,5 @@
 /*
- *  public/js/script.js (VERSÃO COM IA ATIVA)
- *  - REVISADO: `listenForPartyChanges` agora filtra a IA da lista de jogadores.
- *  - REVISADO: `updateTurnUI` agora mostra uma mensagem específica quando é o turno da IA.
+ *  public/js/script.js (VERSÃO RESPONSIVA)
  */
 
 // --- IMPORTS ---
@@ -15,6 +13,8 @@ import {
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- REFERÊNCIAS DO DOM ---
+    const btnMenu = document.getElementById('btn-menu');
+    const sidePanel = document.getElementById('side-panel');
     const username = document.getElementById('username');
     const btnAuth = document.getElementById('btn-auth');
     const btnBackToSelection = document.getElementById('btn-back-to-selection');
@@ -309,6 +309,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- LISTENERS DE EVENTOS ---
+
+    // Listener para o menu responsivo
+    btnMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sidePanel.classList.toggle('open');
+    });
+
+    // Fecha o menu se clicar fora dele
+    document.addEventListener('click', (e) => {
+        const isClickInsidePanel = sidePanel.contains(e.target);
+        const isClickOnMenuButton = btnMenu.contains(e.target);
+        if (sidePanel.classList.contains('open') && !isClickInsidePanel && !isClickOnMenuButton) {
+            sidePanel.classList.remove('open');
+        }
+    });
+
     btnAuth.addEventListener('click', () => {
         if (currentUser) {
             signOut(auth).catch(err => console.error("Erro no logout:", err));
