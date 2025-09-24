@@ -327,13 +327,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnAuth.addEventListener('click', () => {
-        if (currentUser) {
-            signOut(auth).catch(err => console.error("Erro no logout:", err));
-        } else {
-            window.location.href = '/login.html';
-        }
-    });
+// Em script.js
+
+btnAuth.addEventListener('click', () => {
+    // ESSA LINHA É NOSSO TESTE
+    console.log('Botão de login clicado!'); 
+
+    if (currentUser) {
+        signOut(auth).catch(err => console.error("Erro no logout:", err));
+    } else {
+        const provider = new GoogleAuthProvider();
+        signInWithPopup(auth, provider)
+            .catch((error) => {
+                // Se houver um erro no pop-up, ele aparecerá aqui
+                console.error("Erro na autenticação com pop-up:", error);
+                alert("Falha no login. Verifique o console para mais detalhes.");
+            });
+    }
+});
     
     btnBackToSelection.addEventListener('click', returnToSelectionScreen);
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
