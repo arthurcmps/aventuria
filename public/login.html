@@ -1,4 +1,3 @@
-<!-- public/login.html - v5 - RECONSTRUÇÃO MODULAR COMPLETA -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -6,34 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Aventuria</title>
     <link rel="stylesheet" href="css/login.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Lato:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="login-container">
         <div class="login-box">
             <h1>Aventuria</h1>
-            <p>Entre em seu universo ou comece uma nova jornada.</p>
+            <p>Forje seu destino em um mundo de magia e perigos.</p>
             
-            <!-- Formulário de Login Manual -->
-            <div class="manual-login-form">
-                <input type="email" id="login-email" placeholder="Email" required>
-                <input type="password" id="login-password" placeholder="Senha" required>
-                <button id="btn-email-signin">Entrar com Email</button>
-                <button id="btn-email-signup">Criar Conta com Email</button>
-            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <input type="email" id="email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="Senha" required>
+                </div>
+                <button type="submit" class="btn-login">Entrar</button>
+            </form>
 
             <div class="separator">ou</div>
 
-            <!-- Botão de Login com Google -->
-            <button id="btn-google-signin">Entrar com Google</button>
-
+            <button id="btn-google-signin" class="btn-google">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google Logo">
+                <span>Entrar com Google</span>
+            </button>
+            
             <p id="login-error" class="error-message"></p>
+
+            <div class="form-footer">
+                <a href="#" id="forgot-password-link">Esqueceu a senha?</a>
+                <span>|</span>
+                <a href="#" id="signup-link">Criar conta</a>
+            </div>
         </div>
     </div>
 
-    <!-- Carrega a lógica de login como um MÓDULO, unificando o app -->
+    <!-- Script da Aplicação -->
+    <!-- O login.js agora importa o firebase.js, que cuida da inicialização -->
     <script type="module" src="js/login.js"></script>
 </body>
 </html>
