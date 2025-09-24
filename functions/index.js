@@ -204,25 +204,18 @@ exports.executeAITurn = regionalFunctions.runWith({ secrets: [geminiApiKey] }).f
             .filter(c => c.uid !== AI_UID);
         const characterNames = playerCharacters.map(c => c.name).join(', ');
         
-        // Decide qual prompt usar
-        const lastMessage = history.length > 0 ? history[history.length - 1] : null;
-        let prompt;
-
-        if (!lastMessage || lastMessage.role === 'model') {
-            // Se não há histórico ou a última mensagem já foi do mestre (ex: um jogador passou o turno),
-            // a IA deve ser proativa e avançar a história.
-            prompt = `Você é o Mestre de um jogo de RPG. Os jogadores são: ${characterNames}. É a sua vez de agir. Narre um evento, descreva o ambiente, introduza um desafio ou faça um PNJ (personagem não-jogador) agir. Seja criativo e continue a aventura.`;
-        } else {
-            // Se a última mensagem foi de um jogador, a IA deve reagir àquela ação.
-            prompt = `Você é o Mestre de um jogo de RPG. Os jogadores são: ${characterNames}. Reaja à última ação do jogador, descrita no final do histórico. Descreva as consequências, a resposta de PNJs, ou o resultado do que ele tentou fazer. Narre a cena e prepare o próximo momento do jogo.`;
-        }
+        // --- PROMPT UNIFICADO E ROBUSTO ---
+        const prompt = `Você é o Mestre de um jogo de RPG de fantasia. Os jogadores são: ${characterNames}. Sua tarefa é continuar a aventura com base no histórico da conversa.
+- Se a última mensagem foi de um jogador, reaja à ação dele. Descreva o resultado, as consequências e o que acontece no mundo.
+- Se a última mensagem foi sua, ou se o jogo está apenas começando, seja proativo: avance a história, descreva um novo ambiente ou introduza um desafio.
+Seja criativo, narre a cena e mantenha a história em movimento.`;
         
         // Chama a IA para gerar sua narração/ação
         const genAI = new GoogleGenerativeAI(geminiApiKey.value());
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const chat = model.startChat({ 
             history: history,
-            systemInstruction: "Seja um mestre de RPG criativo, detalhado e imparcial. Nunca fale fora do personagem."
+            systemInstruction: "Você é um mestre de RPG de fantasia. Sua função é narrar uma história colaborativa, reagindo às ações dos jogadores e avançando o enredo. Nunca saia do personagem. Descreva cenas, interprete NPCs e apresente desafios. Não fale sobre regras ou 'o jogo', apenas narre a história."
         });
         const result = await chat.sendMessage(prompt);
         const aiActionResponse = result.response.text();
@@ -238,8 +231,6 @@ exports.executeAITurn = regionalFunctions.runWith({ secrets: [geminiApiKey] }).f
         // Passa o turno para o próximo jogador na ordem
         const ordem = sessionDataAfter.ordemDeTurnos;
         const indiceIA = ordem.indexOf(AI_UID);
-
-        // Encontra o próximo jogador que não seja a IA
         let proximoIndice = (indiceIA + 1) % ordem.length;
         while(ordem[proximoIndice] === AI_UID) {
             proximoIndice = (proximoIndice + 1) % ordem.length;
@@ -262,12 +253,16 @@ exports.executeAITurn = regionalFunctions.runWith({ secrets: [geminiApiKey] }).f
 
     } catch (error) {
         console.error("Erro em executeAITurn:", error);
-        // Em caso de erro, passa o turno para o próximo jogador para não travar o jogo.
-        const ordem = sessionDataAfter.ordemDeTurnos;
-        const indiceIA = ordem.indexOf(AI_UID);
-        const proximoIndice = (indiceIA + 1) % ordem.length;
-        const proximoUid = ordem[proximoIndice] || ordem[0]; // Garante que alguém receba o turno
-        await sessionRef.update({ turnoAtualUid: proximoUid });
+        
+        // Em caso de erro, avisa o jogador e devolve o turno para ele tentar de novo.
+        const lastPlayerUid = sessionDataBefore.turnoAtualUid;
+        await sessionRef.collection('messages').add({
+            from: 'mestre',
+            characterName: 'Mestre',
+            text: '(O Mestre parece confuso por um momento. Por favor, tente sua ação novamente.)',
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        await sessionRef.update({ turnoAtualUid: lastPlayerUid });
         return null;
     }
 });
