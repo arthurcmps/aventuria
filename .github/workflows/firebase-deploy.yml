@@ -15,12 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Functions Dependencies
+        run: npm install --prefix functions
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: aventuria-baeba
-          # Usa o nome do branch do Pull Request como ID do canal
           channelId: '${{ github.head_ref }}'
 
   # Job para fazer o deploy para o site principal (produção)
@@ -29,15 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      # Instala dependências e faz o build das Cloud Functions (etapa de segurança)
-      - name: Install and Build Functions
-        run: npm install --prefix functions && npm run-script build --prefix functions
-        
+      - name: Install Functions Dependencies
+        run: npm install --prefix functions
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: aventuria-baeba
-          # Faz o deploy para o canal 'live' (produção)
           channelId: live
