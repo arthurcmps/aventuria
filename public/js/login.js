@@ -1,9 +1,3 @@
-/*
- *  js/login.js - v5.1 - RECONSTRUÇÃO MODULAR COMPLETA
- *  - Abandona a biblioteca FirebaseUI e usa a mesma lógica modular do resto do app.
- *  - Importa a instância `auth` de `firebase.js` para garantir consistência total.
- */
-
 import { auth } from './firebase.js';
 import {
     GoogleAuthProvider,
