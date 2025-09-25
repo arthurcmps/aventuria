@@ -1,12 +1,11 @@
 /*
- * public/js/script.js (VERSÃO CORRIGIDA E COMPLETA)
+ *  public/js/script.js (VERSÃO RESPONSIVA CORRIGIDA)
  */
 
 // --- IMPORTS ---
 import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
-// IMPORTAÇÕES CORRIGIDAS PARA INCLUIR AUTENTICAÇÃO POP-UP
-import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
   addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
@@ -106,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         partyList.innerHTML = '';
         characterSheetName.textContent = '';
         characterSheetAttributes.innerHTML = '';
-        gameView.classList.remove('in-game');
+        gameView.classList.remove('in-game'); // Garante que a classe seja removida
         showView(sessionSelectionOverlay);
         if (currentUser) {
             await loadUserCharacters(currentUser.uid);
@@ -143,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- LÓGICA PRINCIPAL ---
+
     async function loadPendingInvitesInternal() {
         if (!currentUser) return;
         try {
@@ -153,7 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('div');
                 card.className = 'invite-card'; 
                 card.dataset.inviteId = invite.id;
-                card.innerHTML = `<div class="invite-info"><p><strong>${invite.senderCharacterName}</strong> convidou você para a aventura <strong>${invite.sessionId.substring(0, 6)}</strong>!</p></div><div class="invite-actions"><button class="btn btn-sm btn-accept">Aceitar</button><button class="btn btn-sm btn-decline">Recusar</button></div>`;
+                card.innerHTML = `
+                    <div class="invite-info"><p><strong>${invite.senderCharacterName}</strong> convidou você para a aventura <strong>${invite.sessionId.substring(0, 6)}</strong>!</p></div>
+                    <div class="invite-actions">
+                        <button class="btn btn-sm btn-accept">Aceitar</button>
+                        <button class="btn btn-sm btn-decline">Recusar</button>
+                    </div>`;
                 invitesList.appendChild(card);
             });
         } catch (error) {
@@ -184,11 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
+
         try {
             const charQuery = query(collection(db, 'sessions', sessionId, 'characters'), where("uid", "==", currentUser.uid));
             const charSnapshot = await getDocs(charQuery);
             if (charSnapshot.empty) {
-                throw new Error("Você não tem um personagem nesta sessão.");
+                throw new Error("Você não tem um personagem nesta sessão. Aceite o convite e crie um.");
             }
             currentCharacter = { id: charSnapshot.docs[0].id, ...charSnapshot.docs[0].data() };
             
@@ -229,16 +235,18 @@ document.addEventListener('DOMContentLoaded', () => {
               const messageElement = document.createElement('div');
               messageElement.classList.add('message');
               const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
-              const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
+              const text = msg.text
+                  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                  .replace(/\*([^*]+)\*/g, '<em>$1</em>');
               messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
               if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
               narration.appendChild(messageElement);
           });
           narration.scrollTop = narration.scrollHeight;
       });
-    }
+  }
 
-    function listenForPartyChanges(sessionId) {
+  function listenForPartyChanges(sessionId) {
       const partyQuery = collection(db, 'sessions', sessionId, 'characters');
       partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
           partyList.innerHTML = '';
@@ -249,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
               }
           });
       });
-    }
+  }
 
     async function sendChatMessage(text) {
         if (!text.trim() || !currentSessionId || !currentCharacter) return;
@@ -306,23 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LISTENERS DE EVENTOS ---
 
-    // ***** CÓDIGO CRÍTICO ADICIONADO AQUI *****
-    btnAuth.addEventListener('click', () => {
-        if (currentUser) {
-            // Se estiver logado, faz o logout
-            signOut(auth).catch(err => console.error("Erro no logout:", err));
-        } else {
-            // Se NÃO estiver logado, abre o pop-up do Google
-            const provider = new GoogleAuthProvider();
-            signInWithPopup(auth, provider)
-                .catch((error) => {
-                    // Se o usuário fechar o pop-up ou houver um erro, ele será mostrado no console.
-                    console.error("Erro na autenticação com pop-up:", error);
-                });
-        }
-    });
-    // ***** FIM DO CÓDIGO CRÍTICO *****
-
     btnMenu.addEventListener('click', (e) => {
         e.stopPropagation();
         sidePanel.classList.toggle('open');
@@ -333,6 +324,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const isClickOnMenuButton = btnMenu.contains(e.target);
         if (sidePanel.classList.contains('open') && !isClickInsidePanel && !isClickOnMenuButton) {
             sidePanel.classList.remove('open');
+        }
+    });
+
+    btnAuth.addEventListener('click', () => {
+        if (currentUser) {
+            // Se o usuário está logado, o botão funciona como "Sair"
+            signOut(auth).catch(err => console.error("Erro no logout:", err));
+        } else {
+            // Se não há usuário, redireciona para a página de login
+            window.location.href = 'login.html';
         }
     });
     
@@ -406,14 +407,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const joiningSessionId = sessionStorage.getItem('joiningSessionId');
+            let result;
             if (joiningSessionId) {
-                await joinSession({ sessionId: joiningSessionId, characterName: charName, attributes: attributes });
+                result = await joinSession({ sessionId: joiningSessionId, characterName: charName, attributes: attributes });
                 sessionStorage.removeItem('joiningSessionId');
                 hideModal(characterCreationModal);
                 await returnToSelectionScreen();
                 alert(`${charName} foi criado e adicionado à sessão!`);
             } else {
-                const result = await createAndJoinSession({ characterName: charName, attributes: attributes });
+                result = await createAndJoinSession({ characterName: charName, attributes: attributes });
                 await loadSession(result.data.sessionId);
                 hideModal(characterCreationModal);
             }
@@ -433,7 +435,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const cost = value < 13 ? 1 : 2;
             const div = document.createElement('div');
             div.className = 'attribute-item';
-            div.innerHTML = `<span>${attributeNames[index]}</span><div class="attribute-controls"><button class="btn-attr" data-attr="${key}" data-op="-" ${value <= 8 ? 'disabled' : ''}>-</button><span class="attr-value">${value}</span><button class="btn-attr" data-attr="${key}" data-op="+" ${pointsToDistribute < cost || value >= 15 ? 'disabled' : ''}>+</button></div>`;
+            div.innerHTML = `
+                <span>${attributeNames[index]}</span>
+                <div class="attribute-controls">
+                    <button class="btn-attr" data-attr="${key}" data-op="-" ${value <= 8 ? 'disabled' : ''}>-</button>
+                    <span class="attr-value">${value}</span>
+                    <button class="btn-attr" data-attr="${key}" data-op="+" ${pointsToDistribute < cost || value >= 15 ? 'disabled' : ''}>+</button>
+                </div>
+            `;
             attributesGrid.appendChild(div);
         });
     }
