@@ -1,10 +1,10 @@
 /*
- *  functions/index.js (VERSÃO COM IA CENTRALIZADA)
- *  - REVISADO: A lógica da IA foi unificada na função `executeAITurn` para evitar respostas duplicadas.
- *  - `generateMasterResponse` agora apenas valida a mensagem do jogador e passa o turno para a IA.
- *  - `executeAITurn` agora analisa o contexto para decidir se reage a uma ação ou avança a história.
- *  - `passarTurno` foi simplificado para apenas atualizar o turno, sem enviar mensagens.
- *  - CORREÇÃO: `createAndJoinSession` e `joinSession` agora salvam os dados do Orixá.
+ * functions/index.js (VERSÃO COM IA CENTRALIZADA)
+ * - REVISADO: A lógica da IA foi unificada na função `executeAITurn` para evitar respostas duplicadas.
+ * - `generateMasterResponse` agora apenas valida a mensagem do jogador e passa o turno para a IA.
+ * - `executeAITurn` agora analisa o contexto para decidir se reage a uma ação ou avança a história.
+ * - `passarTurno` foi simplificado para apenas atualizar o turno, sem enviar mensagens.
+ * - CORREÇÃO: `createAndJoinSession` e `joinSession` agora salvam os dados do Orixá.
  */
 
 const functions = require("firebase-functions");
@@ -41,7 +41,6 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
     }
-    // MODIFICADO: Adicionado 'orixa'
     const { characterName, attributes, orixa } = data;
     if (!characterName || !attributes || !orixa) {
         throw new functions.https.HttpsError('invalid-argument', 'Nome, atributos e orixá são obrigatórios.');
@@ -57,13 +56,11 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
             ordemDeTurnos: [uid, AI_UID] 
         });
 
-        // MODIFICADO: Adicionado 'orixa' ao objeto do personagem
         const playerCharacter = { name: characterName, attributes, orixa, uid, sessionId: sessionRef.id };
         const aiCharacter = { name: "Mestre", attributes: {}, uid: AI_UID, sessionId: sessionRef.id };
 
         const batch = db.batch();
         batch.set(db.collection('sessions').doc(sessionRef.id).collection('characters').doc(uid), playerCharacter);
-        // MODIFICADO: Garante que 'orixa' é salvo na coleção principal de personagens
         batch.set(db.collection('characters').doc(), { ...playerCharacter, characterIdInSession: uid });
         batch.set(db.collection('sessions').doc(sessionRef.id).collection('characters').doc(AI_UID), aiCharacter);
         await batch.commit();
@@ -86,7 +83,6 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
 
 exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    // MODIFICADO: Adicionado 'orixa'
     const { sessionId, characterName, attributes, orixa } = data;
     if (!sessionId || !characterName || !attributes || !orixa) throw new functions.https.HttpsError('invalid-argument', 'Dados incompletos.');
 
@@ -103,10 +99,8 @@ exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
                 ordemDeTurnos: admin.firestore.FieldValue.arrayUnion(uid) 
             });
 
-            // MODIFICADO: Adicionado 'orixa' ao objeto do personagem
             const newCharacter = { name: characterName, attributes, orixa, uid, sessionId };
             transaction.set(sessionRef.collection('characters').doc(uid), newCharacter);
-            // MODIFICADO: Garante que 'orixa' é salvo na coleção principal de personagens
             transaction.set(db.collection('characters').doc(), { ...newCharacter, characterIdInSession: uid });
         });
         return { success: true };
