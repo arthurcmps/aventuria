@@ -4,7 +4,7 @@
  * - `generateMasterResponse` agora apenas valida a mensagem do jogador e passa o turno para a IA.
  * - `executeAITurn` agora analisa o contexto para decidir se reage a uma ação ou avança a história.
  * - `passarTurno` foi simplificado para apenas atualizar o turno, sem enviar mensagens.
- * - CORREÇÃO: `createAndJoinSession` e `joinSession` agora salvam os dados do Orixá.
+ * - CORREÇÃO: Adicionados logs para diagnosticar o problema de salvamento do Orixá.
  */
 
 const functions = require("firebase-functions");
@@ -42,6 +42,10 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
     }
     const { characterName, attributes, orixa } = data;
+
+    // ADICIONADO LOG DE DIAGNÓSTICO
+    console.log("createAndJoinSession: Dados do personagem recebidos:", JSON.stringify(data, null, 2));
+
     if (!characterName || !attributes || !orixa) {
         throw new functions.https.HttpsError('invalid-argument', 'Nome, atributos e orixá são obrigatórios.');
     }
@@ -84,6 +88,10 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
 exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
     const { sessionId, characterName, attributes, orixa } = data;
+
+    // ADICIONADO LOG DE DIAGNÓSTICO
+    console.log("joinSession: Dados do personagem recebidos:", JSON.stringify(data, null, 2));
+
     if (!sessionId || !characterName || !attributes || !orixa) throw new functions.https.HttpsError('invalid-argument', 'Dados incompletos.');
 
     const uid = context.auth.uid;
@@ -306,3 +314,4 @@ exports.declineInvite = regionalFunctions.https.onCall(async (data, context) => 
     await inviteRef.update({ status: 'declined' }); 
     return { success: true };
 });
+
