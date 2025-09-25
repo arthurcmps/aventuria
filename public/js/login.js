@@ -1,6 +1,5 @@
 import { auth } from './firebase.js';
 import {
-    onAuthStateChanged,
     signInWithEmailAndPassword,
     signInWithPopup,
     GoogleAuthProvider,
@@ -17,12 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const signupLink = document.getElementById('signup-link');
     const forgotPasswordLink = document.getElementById('forgot-password-link');
 
-    // Redireciona se o usuário já estiver logado
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            window.location.href = 'index.html';
-        }
-    });
+    // O onAuthStateChanged foi removido daqui para evitar o loop de redirecionamento.
+    // A página principal (index.html) agora é a única responsável por gerenciar
+    // o estado de autenticação e redirecionar para o login se necessário.
 
     // Limpa o erro ao digitar
     const clearError = () => { if (loginError.textContent) loginError.textContent = ''; };
@@ -41,11 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const password = passwordInput.value;
 
         signInWithEmailAndPassword(auth, email, password)
+            .then(() => {
+                // Redireciona para a página principal APÓS o login bem-sucedido
+                window.location.href = 'index.html';
+            })
             .catch((error) => {
                 switch (error.code) {
                     case 'auth/user-not-found':
                     case 'auth/wrong-password':
-                    case 'auth/invalid-credential': // Novo código de erro do Firebase
+                    case 'auth/invalid-credential':
                         displayError('E-mail ou senha inválidos.');
                         break;
                     case 'auth/invalid-email':
@@ -62,6 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGoogleSignIn.addEventListener('click', () => {
         const provider = new GoogleAuthProvider();
         signInWithPopup(auth, provider)
+            .then(() => {
+                // Redireciona para a página principal APÓS o login bem-sucedido
+                window.location.href = 'index.html';
+            })
             .catch((error) => {
                 console.error("Erro no login com Google:", error);
                 displayError('Não foi possível fazer login com o Google.');
@@ -86,7 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         createUserWithEmailAndPassword(auth, email, password)
             .then(() => {
+                // Informa o sucesso e redireciona
                 alert('Conta criada com sucesso! Você será redirecionado.');
+                window.location.href = 'index.html';
             })
             .catch((error) => {
                 switch (error.code) {
