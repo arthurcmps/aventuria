@@ -1,5 +1,9 @@
+
 /*
- *  public/js/script.js (VERSÃO RESPONSIVA CORRIGIDA)
+ *  public/js/script.js (VERSÃO COM CORREÇÃO DE AUTENTICAÇÃO)
+ *  - Adicionado um estado de "loading" para esperar a verificação inicial do Firebase.
+ *  - Isso previne o loop de redirecionamento que ocorria ao carregar a página.
+ *  - O conteúdo só é exibido após onAuthStateChanged dar a resposta definitiva.
  */
 
 // --- IMPORTS ---
@@ -13,6 +17,8 @@ import {
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- REFERÊNCIAS DO DOM ---
+    const pageContent = document.getElementById('page-content');
+    const loadingOverlay = document.getElementById('loading-overlay');
     const btnMenu = document.getElementById('btn-menu');
     const sidePanel = document.getElementById('side-panel');
     const username = document.getElementById('username');
@@ -70,6 +76,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const passarTurno = httpsCallable(functions, 'passarTurno');
 
     // --- GERENCIAMENTO DE UI ---
+    
+    // Mostra a tela de carregamento para esperar a autenticação
+    loadingOverlay.style.display = 'flex';
+    pageContent.style.display = 'none';
+
     const showView = (view) => {
         sessionSelectionOverlay.style.display = 'none';
         gameView.style.display = 'none';
@@ -292,7 +303,9 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
         gameView.classList.remove('in-game');
+
         if (user) {
+            // Se há um usuário, configura a UI para o estado logado
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
@@ -300,16 +313,15 @@ document.addEventListener('DOMContentLoaded', () => {
             showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
-            currentUser = null; currentCharacter = null; currentSessionId = null;
-            username.textContent = 'Visitante';
-            btnAuth.textContent = 'Login';
-            characterList.innerHTML = '';
-            invitesList.innerHTML = '';
-            notificationsSection.style.display = 'none';
-            noCharactersMessage.textContent = 'Faça login para ver ou criar personagens.';
-            noCharactersMessage.style.display = 'block';
-            showView(sessionSelectionOverlay);
+            // Se não há usuário, configura para o estado deslogado
+            currentUser = null;
+            // Efetivamente redireciona para a página de login
+            window.location.href = 'login.html';
         }
+
+        // Esconde o loading e mostra o conteúdo, agora que sabemos o estado
+        loadingOverlay.style.display = 'none';
+        pageContent.style.display = 'block';
     });
 
     // --- LISTENERS DE EVENTOS ---
@@ -329,10 +341,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnAuth.addEventListener('click', () => {
         if (currentUser) {
-            // Se o usuário está logado, o botão funciona como "Sair"
             signOut(auth).catch(err => console.error("Erro no logout:", err));
         } else {
-            // Se não há usuário, redireciona para a página de login
+            // Este caso não deve mais acontecer com a nova lógica, mas é um fallback
             window.location.href = 'login.html';
         }
     });
