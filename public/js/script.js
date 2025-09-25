@@ -143,7 +143,26 @@ document.addEventListener('DOMContentLoaded', () => {
         oya: {
             name: "Oyá",
             description: "A Orixá dos ventos, das tempestades e senhora dos espíritos dos mortos. Suas filhas são guerreiras valentes, audaciosas, passionais e de temperamento forte.",
-            habilidades: [""]
+            habilidades: ["Fúria da Tempestade: Capacidade de invocar ventos fortes ou raios.", "Senhora dos Eguns: Habilidade de comandar ou afugentar espíritos de mortos.", "Passo Veloz: Pode se mover com a velocidade de um vendaval."],
+            ewos: ["Não pode temer tempestades ou a morte.", "Não pode usar roupas de lã ou comer carne de carneiro.", "Deve ser leal em seus relacionamentos."]
+        },
+        oba: {
+            name: "Obá",
+            description: "Orixá guerreira das águas revoltas. Representa a força feminina que luta. Suas filhas são guerreiras, sérias, focadas e de pouca vaidade.",
+            habilidades: ["Força da Pororoca: Manifesta força física descomunal em momentos de fúria.", "Dança do Redemoinho: Técnica de luta giratória que a torna difícil de ser atingida.", "Coração de Pedra: Alta resistência a testes sociais de sedução ou controle emocional."],
+            ewos: ["Não pode comer caranguejo ou quiabo.", "Não pode demonstrar vaidade excessiva.", "Evita mostrar suas fragilidades, especialmente as amorosas"]
+        },
+        nana: {
+            name: "Nanã",
+            description: "A Orixá mais antiga, senhora da lama, dos pântanos e da morte. A avó sábia. Suas filhas são calmas, pacientes, sábias e por vezes ranzinzas.",
+            habilidades: ["Toque do Pântano: Capacidade de transformar o chão em lama.", "Sabedoria Ancestral: Pode acessar memórias de seus antepassados.", "Passagem Serena: Habilidade de acalmar espíritos atormentados."],
+            ewos: ["Não pode usar objetos de metal, especialmente ferro.", "Não pode agir com pressa ou impaciência.", "Deve evitar ambientes barulhentos."]
+        },
+        oxala: {
+            name: "Oxalá",
+            description: "O Orixá maior, criador do mundo e da humanidade. Representa a paz, a sabedoria e a pureza. Seus filhos são calmos, sábios, respeitados e agem como pacificadores.",
+            habilidades: ["Manto da Paz: Capacidade de criar uma aura de tranquilidade que impede combates.", "Toque Purificador: Habilidade de limpar venenos, maldições e impurezas.", "Palavra de Sabedoria: Suas palavras são carregadas de axé e podem inspirar ou convencer."],
+            ewos: ["Deve se vestir de branco, especialmente nas sextas-feiras.", "Não pode frequentar lugares sujos, barulhentos ou violentos.", "Não pode consumir bebidas alcoólicas, dendê e sal em excesso."]
         }
 
     };
