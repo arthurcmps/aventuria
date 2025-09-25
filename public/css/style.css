@@ -396,3 +396,156 @@ body {
 
     .overlay-content-box { padding: 20px; }
 }
+
+/* ----------------------------------
+ * Estilos do Modal de Criação de Personagem
+ * ---------------------------------- */
+.modal-content {
+    position: relative;
+    max-width: 550px; /* Largura ajustada */
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content h2 {
+    font-family: var(--font-display);
+    color: var(--accent-color);
+    font-size: 2.2em;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+#btn-close-char-creation {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 1.8em;
+    line-height: 1;
+    color: var(--font-color);
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+#btn-close-char-creation:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-family: var(--font-display);
+    font-size: 1.2em;
+    color: var(--accent-color);
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--primary-bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--font-color);
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+#points-distributor {
+    background-color: var(--primary-bg-color);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+#points-distributor h3 {
+    font-family: var(--font-display);
+    font-size: 1.4em;
+    margin: 0;
+}
+
+#points-distributor h3 span {
+    color: var(--accent-color);
+    font-size: 1.5em;
+}
+
+.attributes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.attribute-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--tertiary-bg-color);
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.attribute-item > span {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.attribute-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.attribute-controls .btn-attr {
+    background-color: var(--accent-color);
+    color: var(--primary-bg-color);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    line-height: 28px; /* Centraliza o +/- */
+    text-align: center;
+}
+
+.attribute-controls .btn-attr:hover {
+    background-color: var(--accent-hover-color);
+}
+
+.attribute-controls .btn-attr:disabled {
+    background-color: var(--border-color);
+    color: #888;
+    cursor: not-allowed;
+}
+
+.attribute-controls .attr-value {
+    font-size: 1.4em;
+    font-weight: bold;
+    min-width: 25px;
+    text-align: center;
+}
+
+#creation-loading-indicator {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(61, 47, 36, 0.9);
+    justify-content: center;
+    align-items: center;
+    color: var(--accent-color);
+    font-family: var(--font-display);
+    font-size: 1.8em;
+    z-index: 10;
+}
