@@ -1,9 +1,9 @@
 
 /*
- *  public/js/script.js (VERSÃO COM CORREÇÃO DE AUTENTICAÇÃO)
- *  - Adicionado um estado de "loading" para esperar a verificação inicial do Firebase.
- *  - Isso previne o loop de redirecionamento que ocorria ao carregar a página.
- *  - O conteúdo só é exibido após onAuthStateChanged dar a resposta definitiva.
+ *  public/js/script.js (VERSÃO COM NOVOS ATRIBUTOS)
+ *  - Atributos alterados para Ara, Ori, Emi.
+ *  - Pontos para distribuição alterados para 10, com base inicial de 1 em cada.
+ *  - Lógica de custo de pontos simplificada para 1 ponto por nível.
  */
 
 // --- IMPORTS ---
@@ -61,10 +61,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let partyUnsubscribe = null;
     let sessionUnsubscribe = null;
     const AI_UID = 'master-ai';
-    const attributeNames = ['Força', 'Destreza', 'Constituição', 'Inteligência', 'Sabedoria', 'Carisma'];
-    const attributeKeys = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+    
+    // ATRIBUTOS ATUALIZADOS
+    const attributeNames = ['Ara (Corpo)', 'Ori (Cabeça/Destino)', 'Emi (Espírito/Respiração)'];
+    const attributeKeys = ['ara', 'ori', 'emi'];
+    const oldAttributeKeys = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
+
     let attributes = {};
-    let pointsToDistribute = 27;
+    let pointsToDistribute = 10;
 
     // --- FUNÇÕES CLOUD CALLABLE ---
     const createAndJoinSession = httpsCallable(functions, 'createAndJoinSession');
@@ -196,7 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Erro ao carregar personagens:", error);
         }
     }
-
+    
+    // Atualizada para lidar com ambos os sistemas de atributos para compatibilidade
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
@@ -211,12 +217,26 @@ document.addEventListener('DOMContentLoaded', () => {
             
             characterSheetName.textContent = currentCharacter.name;
             characterSheetAttributes.innerHTML = '';
-            attributeKeys.forEach(key => {
-                const attrName = key.charAt(0).toUpperCase() + key.slice(1);
-                const li = document.createElement('li');
-                li.innerHTML = `<span class="attr-name">${attrName}</span> <span class="attr-value">${currentCharacter.attributes[key] || 10}</span>`;
-                characterSheetAttributes.appendChild(li);
-            });
+            
+            // Lógica para exibir os atributos corretos (novos ou antigos)
+            const charAttrs = currentCharacter.attributes;
+            const isNewSystem = charAttrs.hasOwnProperty('ara');
+
+            if (isNewSystem) {
+                attributeKeys.forEach((key, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="attr-name">${attributeNames[index]}</span> <span class="attr-value">${charAttrs[key] || 1}</span>`;
+                    characterSheetAttributes.appendChild(li);
+                });
+            } else {
+                 oldAttributeKeys.forEach(key => {
+                    const attrName = key.charAt(0).toUpperCase() + key.slice(1);
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="attr-name">${attrName}</span> <span class="attr-value">${charAttrs[key] || 10}</span>`;
+                    characterSheetAttributes.appendChild(li);
+                });
+            }
+
 
             showView(gameView);
             listenForSessionUpdates(sessionId);
@@ -305,7 +325,6 @@ document.addEventListener('DOMContentLoaded', () => {
         gameView.classList.remove('in-game');
 
         if (user) {
-            // Se há um usuário, configura a UI para o estado logado
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
@@ -313,13 +332,10 @@ document.addEventListener('DOMContentLoaded', () => {
             showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
-            // Se não há usuário, configura para o estado deslogado
             currentUser = null;
-            // Efetivamente redireciona para a página de login
             window.location.href = 'login.html';
         }
 
-        // Esconde o loading e mostra o conteúdo, agora que sabemos o estado
         loadingOverlay.style.display = 'none';
         pageContent.style.display = 'block';
     });
@@ -343,7 +359,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentUser) {
             signOut(auth).catch(err => console.error("Erro no logout:", err));
         } else {
-            // Este caso não deve mais acontecer com a nova lógica, mas é um fallback
             window.location.href = 'login.html';
         }
     });
@@ -381,12 +396,13 @@ document.addEventListener('DOMContentLoaded', () => {
             button.disabled = false;
         }
     });
-
+    
+    // ATUALIZADA - Reseta e abre o modal de criação com as novas regras
     function resetAndOpenCharacterCreationModal() {
         hideModal(inviteModal);
         charNameInput.value = '';
-        pointsToDistribute = 27;
-        attributes = { strength: 8, dexterity: 8, constitution: 8, intelligence: 8, wisdom: 8, charisma: 8 };
+        pointsToDistribute = 10;
+        attributes = { ara: 1, ori: 1, emi: 1 }; // Base de 1 ponto
         updateCreationUI();
         creationLoadingIndicator.style.display = 'none';
         btnSaveCharacter.style.display = 'block';
@@ -437,27 +453,28 @@ document.addEventListener('DOMContentLoaded', () => {
             charNameInput.disabled = false;
         }
     });
-
+    
+    // ATUALIZADA - UI de criação com novas regras
     function updateCreationUI() {
         pointsToDistributeSpan.textContent = pointsToDistribute;
         attributesGrid.innerHTML = '';
         attributeKeys.forEach((key, index) => {
             const value = attributes[key];
-            const cost = value < 13 ? 1 : 2;
             const div = document.createElement('div');
             div.className = 'attribute-item';
             div.innerHTML = `
                 <span>${attributeNames[index]}</span>
                 <div class="attribute-controls">
-                    <button class="btn-attr" data-attr="${key}" data-op="-" ${value <= 8 ? 'disabled' : ''}>-</button>
+                    <button class="btn-attr" data-attr="${key}" data-op="-" ${value <= 1 ? 'disabled' : ''}>-</button>
                     <span class="attr-value">${value}</span>
-                    <button class="btn-attr" data-attr="${key}" data-op="+" ${pointsToDistribute < cost || value >= 15 ? 'disabled' : ''}>+</button>
+                    <button class="btn-attr" data-attr="${key}" data-op="+" ${pointsToDistribute < 1 ? 'disabled' : ''}>+</button>
                 </div>
             `;
             attributesGrid.appendChild(div);
         });
     }
-
+    
+    // ATUALIZADA - Lógica de distribuição de pontos simplificada
     attributesGrid.addEventListener('click', (e) => {
         if (!e.target.matches('.btn-attr')) return;
         const button = e.target;
@@ -466,16 +483,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentValue = attributes[attrKey];
 
         if (operation === '+') {
-            const cost = currentValue < 13 ? 1 : 2;
-            if (pointsToDistribute >= cost && currentValue < 15) {
+            if (pointsToDistribute >= 1) {
                 attributes[attrKey]++;
-                pointsToDistribute -= cost;
+                pointsToDistribute--;
             }
         } else if (operation === '-') {
-            if (currentValue > 8) {
-                const costToRefund = currentValue <= 13 ? 1 : 2;
+            if (currentValue > 1) {
                 attributes[attrKey]--;
-                pointsToDistribute += costToRefund;
+                pointsToDistribute++;
             }
         }
         updateCreationUI();
