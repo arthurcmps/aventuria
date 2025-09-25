@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             habilidades: ["Visão do Inatingível: Capacidade de ver o futuro e o mundo espiritual com clareza.", "Manto de Neblina: Habilidade de criar uma névoa densa para se ocultar.", "Beleza Encantadora: Uma aura que acalma feras e inspira bondade."],
             ewos: ["Não pode se casar ou ter relações sexuais.", "Não pode frequentar lugares sujos ou tumultuados.", "Deve evitar o contato com os mortos."]
         },
-        logun-ede: {
+        logunede: {
             name: "Logun Edé",
             description: "O príncipe dos Orixás, filho de Oxóssi e Oxum. Une a astúcia do caçador com a beleza e o encanto do ouro. Seus filhos são belos, carismáticos, charmosos e adaptáveis.",
             habilidades: ["Caçador das Águas: Proficiência em combate tanto na mata quanto nos rios.", "Encanto do Príncipe: Carisma sobrenatural em negociações.", "Sorte Dupla: Sorte tanto na busca por fartura quanto na busca por riquezas."],
@@ -139,9 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
             description: "A Dama dos Rios, do Ouro e do Amor. Rege a água doce, a riqueza, a beleza e a diplomacia. Suas filhas são vaidosas, diplomáticas, estrategistas e sedutoras.",
             habilidades: ["Voz Encantadora: Bônus massivos em testes sociais.", "Visão do Futuro: Capacidade de usar búzios ou um espelho para ter vislumbres do futuro.", "Bênção da Riqueza: Sorte para encontrar recursos valiosos ou em negociações."],
             ewos: ["Não pode ser suja ou desleixada com sua aparência.", "Não pode agir com avareza.", "Proibida de comer feijão."]
+        },
+        oya: {
+            name: "Oyá",
+            description: "A Orixá dos ventos, das tempestades e senhora dos espíritos dos mortos. Suas filhas são guerreiras valentes, audaciosas, passionais e de temperamento forte.",
+            habilidades: [""]
         }
-
-
 
     };
 
