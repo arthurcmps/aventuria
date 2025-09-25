@@ -1,11 +1,11 @@
 /*
- * public/js/script.js (VERSÃO CORRIGIDA COM POP-UP)
+ * public/js/script.js (VERSÃO CORRIGIDA E COMPLETA)
  */
 
 // --- IMPORTS ---
 import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
-// --- ALTERAÇÃO 1: Adicionadas as funções de pop-up do Google ---
+// IMPORTAÇÕES CORRIGIDAS PARA INCLUIR AUTENTICAÇÃO POP-UP
 import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
   addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         partyList.innerHTML = '';
         characterSheetName.textContent = '';
         characterSheetAttributes.innerHTML = '';
-        gameView.classList.remove('in-game'); // Garante que a classe seja removida
+        gameView.classList.remove('in-game');
         showView(sessionSelectionOverlay);
         if (currentUser) {
             await loadUserCharacters(currentUser.uid);
@@ -143,7 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- LÓGICA PRINCIPAL ---
-
     async function loadPendingInvitesInternal() {
         if (!currentUser) return;
         try {
@@ -154,12 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('div');
                 card.className = 'invite-card'; 
                 card.dataset.inviteId = invite.id;
-                card.innerHTML = `
-                    <div class="invite-info"><p><strong>${invite.senderCharacterName}</strong> convidou você para a aventura <strong>${invite.sessionId.substring(0, 6)}</strong>!</p></div>
-                    <div class="invite-actions">
-                        <button class="btn btn-sm btn-accept">Aceitar</button>
-                        <button class="btn btn-sm btn-decline">Recusar</button>
-                    </div>`;
+                card.innerHTML = `<div class="invite-info"><p><strong>${invite.senderCharacterName}</strong> convidou você para a aventura <strong>${invite.sessionId.substring(0, 6)}</strong>!</p></div><div class="invite-actions"><button class="btn btn-sm btn-accept">Aceitar</button><button class="btn btn-sm btn-decline">Recusar</button></div>`;
                 invitesList.appendChild(card);
             });
         } catch (error) {
@@ -190,12 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
-
         try {
             const charQuery = query(collection(db, 'sessions', sessionId, 'characters'), where("uid", "==", currentUser.uid));
             const charSnapshot = await getDocs(charQuery);
             if (charSnapshot.empty) {
-                throw new Error("Você não tem um personagem nesta sessão. Aceite o convite e crie um.");
+                throw new Error("Você não tem um personagem nesta sessão.");
             }
             currentCharacter = { id: charSnapshot.docs[0].id, ...charSnapshot.docs[0].data() };
             
@@ -236,9 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const messageElement = document.createElement('div');
               messageElement.classList.add('message');
               const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
-              const text = msg.text
-                  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+              const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
               messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
               if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
               narration.appendChild(messageElement);
@@ -315,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LISTENERS DE EVENTOS ---
 
-    // --- ALTERAÇÃO 2: Adicionado o listener de clique para o botão de autenticação ---
+    // ***** CÓDIGO CRÍTICO ADICIONADO AQUI *****
     btnAuth.addEventListener('click', () => {
         if (currentUser) {
             // Se estiver logado, faz o logout
@@ -330,6 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         }
     });
+    // ***** FIM DO CÓDIGO CRÍTICO *****
 
     btnMenu.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -414,15 +406,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const joiningSessionId = sessionStorage.getItem('joiningSessionId');
-            let result;
             if (joiningSessionId) {
-                result = await joinSession({ sessionId: joiningSessionId, characterName: charName, attributes: attributes });
+                await joinSession({ sessionId: joiningSessionId, characterName: charName, attributes: attributes });
                 sessionStorage.removeItem('joiningSessionId');
                 hideModal(characterCreationModal);
                 await returnToSelectionScreen();
                 alert(`${charName} foi criado e adicionado à sessão!`);
             } else {
-                result = await createAndJoinSession({ characterName: charName, attributes: attributes });
+                const result = await createAndJoinSession({ characterName: charName, attributes: attributes });
                 await loadSession(result.data.sessionId);
                 hideModal(characterCreationModal);
             }
@@ -442,14 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cost = value < 13 ? 1 : 2;
             const div = document.createElement('div');
             div.className = 'attribute-item';
-            div.innerHTML = `
-                <span>${attributeNames[index]}</span>
-                <div class="attribute-controls">
-                    <button class="btn-attr" data-attr="${key}" data-op="-" ${value <= 8 ? 'disabled' : ''}>-</button>
-                    <span class="attr-value">${value}</span>
-                    <button class="btn-attr" data-attr="${key}" data-op="+" ${pointsToDistribute < cost || value >= 15 ? 'disabled' : ''}>+</button>
-                </div>
-            `;
+            div.innerHTML = `<span>${attributeNames[index]}</span><div class="attribute-controls"><button class="btn-attr" data-attr="${key}" data-op="-" ${value <= 8 ? 'disabled' : ''}>-</button><span class="attr-value">${value}</span><button class="btn-attr" data-attr="${key}" data-op="+" ${pointsToDistribute < cost || value >= 15 ? 'disabled' : ''}>+</button></div>`;
             attributesGrid.appendChild(div);
         });
     }
