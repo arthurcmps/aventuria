@@ -329,19 +329,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Em script.js
 
+/* SUBSTITUA O BLOCO ANTIGO POR ESTE NOVO BLOCO */
 btnAuth.addEventListener('click', () => {
-    // ESSA LINHA É NOSSO TESTE
-    console.log('Botão de login clicado!'); 
-
     if (currentUser) {
+        // Se o usuário está logado, o botão funciona como "Sair"
         signOut(auth).catch(err => console.error("Erro no logout:", err));
     } else {
+        // Se não há usuário, o botão abre o pop-up de login do Google
         const provider = new GoogleAuthProvider();
         signInWithPopup(auth, provider)
             .catch((error) => {
-                // Se houver um erro no pop-up, ele aparecerá aqui
+                // Se o usuário fechar o pop-up ou houver um erro, ele será mostrado no console.
                 console.error("Erro na autenticação com pop-up:", error);
-                alert("Falha no login. Verifique o console para mais detalhes.");
             });
     }
 });
