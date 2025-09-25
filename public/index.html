@@ -70,6 +70,7 @@
                      <div id="character-sheet" class="side-panel-section">
                         <h3 id="character-sheet-name"></h3>
                         <ul id="character-sheet-attributes"></ul>
+                        <!-- Orixá será exibido aqui pelo JS -->
                     </div>
                     <div id="party-management-panel" class="side-panel-section">
                         <h3>Grupo</h3>
@@ -115,6 +116,22 @@
                 <!-- Container do Acordeão de Atributos -->
                 <div id="attribute-accordion" class="attribute-accordion">
                     <!-- O conteúdo será gerado pelo JavaScript -->
+                </div>
+
+                <!-- SELEÇÃO DE ORIXÁ (NOVO) -->
+                <div class="form-group">
+                    <label for="orixa-select">Orixá:</label>
+                    <select id="orixa-select">
+                        <option value="">-- Escolha seu Orixá --</option>
+                    </select>
+                </div>
+                <div id="orixa-details-container" style="display: none;">
+                    <h4 id="orixa-name"></h4>
+                    <p id="orixa-description"></p>
+                    <h5>Habilidades</h5>
+                    <ul id="orixa-habilidades"></ul>
+                    <h5>Ewós (Tabus)</h5>
+                    <ul id="orixa-ewos"></ul>
                 </div>
 
                 <button id="btn-save-character" class="btn">Salvar e Iniciar</button>

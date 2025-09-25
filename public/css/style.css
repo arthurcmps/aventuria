@@ -1,4 +1,4 @@
-/* css/style.css - v3.4 - ATRIBUTOS COM SUB-PONTOS */
+/* css/style.css - v3.5 - SELEÇÃO DE ORIXÁ */
 
 /* ----------------------------------
  * Variáveis e Estilos Globais
@@ -208,7 +208,6 @@ body {
     border-bottom: 1px solid var(--border-color);
 }
 
-/* ESTILOS DA FICHA DE PERSONAGEM ATUALIZADOS */
 #character-sheet-attributes {
     list-style: none;
     padding: 0;
@@ -251,6 +250,43 @@ body {
     border-radius: 4px;
     min-width: 35px;
     text-align: center;
+}
+
+/* NOVO: Estilos da Ficha de Orixá */
+#character-sheet-orixa {
+    background-color: var(--primary-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+#character-sheet-orixa h4 {
+    font-family: var(--font-display);
+    color: var(--accent-color);
+    font-size: 1.4em;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+#character-sheet-orixa h5 {
+    font-family: var(--font-display);
+    font-size: 1.1em;
+    color: var(--font-color);
+    margin-top: 15px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid var(--tertiary-bg-color);
+    padding-bottom: 3px;
+}
+
+#character-sheet-orixa ul {
+    list-style: none;
+    padding: 0;
+    font-size: 0.9em;
+}
+
+#character-sheet-orixa ul li {
+    padding: 4px 0;
 }
 
 
@@ -485,7 +521,7 @@ body {
  * ---------------------------------- */
 .modal-content {
     position: relative;
-    max-width: 550px; /* Largura ajustada */
+    max-width: 650px; /* Largura aumentada para Orixá */
     max-height: 90vh;
     overflow-y: auto;
 }
@@ -530,7 +566,8 @@ body {
     color: var(--accent-color);
 }
 
-.form-group input[type="text"] {
+.form-group input[type="text"],
+.form-group select {
     width: 100%;
     padding: 12px;
     background-color: var(--primary-bg-color);
@@ -538,6 +575,7 @@ body {
     color: var(--font-color);
     border-radius: 4px;
     font-size: 1em;
+    font-family: var(--font-main);
 }
 
 #creation-loading-indicator {
@@ -552,6 +590,7 @@ body {
     font-size: 1.8em;
     z-index: 10;
 }
+
 
 /* ----------------------------------
  * Estilos da Criação de Personagem (Acordeão)
@@ -584,7 +623,6 @@ body {
     color: var(--accent-color);
 }
 
-/* NOVO: Contador de pontos por atributo */
 .attribute-accordion .points-counter {
     font-size: 1rem;
     font-weight: bold;
@@ -609,7 +647,6 @@ body {
     display: block;
 }
 
-/* NOVO: Lista de sub-atributos */
 .sub-attribute-list {
     list-style: none;
     padding: 0;
@@ -633,7 +670,6 @@ body {
     font-weight: bold;
 }
 
-/* Controles de + e - */
 .attribute-controls {
     display: flex;
     align-items: center;
@@ -655,4 +691,47 @@ body {
     font-weight: bold;
     min-width: 30px;
     text-align: center;
+}
+
+/* NOVO: Estilos para Detalhes do Orixá na Criação */
+#orixa-details-container {
+    background-color: var(--primary-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: left;
+}
+
+#orixa-details-container h4 {
+    font-family: var(--font-display);
+    font-size: 1.5em;
+    color: var(--accent-color);
+    margin-bottom: 10px;
+}
+
+#orixa-details-container h5 {
+    font-family: var(--font-display);
+    font-size: 1.2em;
+    color: var(--accent-color);
+    margin-top: 15px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid var(--tertiary-bg-color);
+    padding-bottom: 3px;
+}
+
+#orixa-details-container p {
+    font-size: 0.95em;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+#orixa-details-container ul {
+    list-style-position: inside;
+    padding-left: 5px;
+    font-size: 0.95em;
+}
+
+#orixa-details-container ul li {
+    margin-bottom: 5px;
 }

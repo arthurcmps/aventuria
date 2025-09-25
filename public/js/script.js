@@ -1,11 +1,10 @@
 /*
- *  public/js/script.js (v3.4 - ATRIBUTOS COM SUB-PONTOS)
- *  - Estrutura de dados `attributes` foi refeita para suportar sub-atributos.
- *  - `resetAndOpenCharacterCreationModal` agora inicializa os sub-atributos e os pontos por categoria.
- *  - `updateCreationUI` foi completamente reescrita para gerar a nova interface com contadores por categoria e controles de sub-atributos.
- *  - O listener de eventos do acordeão foi atualizado para manipular a lógica de distribuição de pontos dos sub-atributos.
- *  - `loadSession` foi atualizada para exibir a nova estrutura de atributos na ficha de personagem.
- *  - `btnSaveCharacter` agora valida se todos os pontos de todas as categorias foram distribuídos.
+ *  public/js/script.js (v3.5 - SELEÇÃO DE ORIXÁ)
+ *  - Adicionado `orixasData` para armazenar informações sobre os Orixás.
+ *  - `resetAndOpenCharacterCreationModal` agora popula o <select> de Orixás.
+ *  - Novo listener para `orixa-select` que exibe dinamicamente as informações do Orixá escolhido.
+ *  - `btnSaveCharacter` agora valida a seleção de um Orixá e salva a informação no personagem.
+ *  - `loadSession` foi atualizada para exibir os detalhes do Orixá do personagem na ficha do jogo.
  */
 
 // --- IMPORTS ---
@@ -39,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const partyList = document.getElementById('party-list');
     const btnInvitePlayer = document.getElementById('btn-invite-player');
     const characterSheetName = document.getElementById('character-sheet-name');
+    const characterSheet = document.getElementById('character-sheet');
     const characterSheetAttributes = document.getElementById('character-sheet-attributes');
     const diceRoller = document.getElementById('dice-roller');
     const characterCreationModal = document.getElementById('character-creation-modal');
@@ -53,6 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const turnStatus = document.getElementById('turn-status');
     const btnPassTurn = document.getElementById('btn-pass-turn');
     const attributeAccordion = document.getElementById('attribute-accordion');
+    const orixaSelect = document.getElementById('orixa-select');
+    const orixaDetailsContainer = document.getElementById('orixa-details-container');
+    const orixaName = document.getElementById('orixa-name');
+    const orixaDescription = document.getElementById('orixa-description');
+    const orixaHabilidades = document.getElementById('orixa-habilidades');
+    const orixaEwos = document.getElementById('orixa-ewos');
+
 
     // --- ESTADO DA APLICAÇÃO ---
     let currentUser = null;
@@ -63,41 +70,42 @@ document.addEventListener('DOMContentLoaded', () => {
     let sessionUnsubscribe = null;
     const AI_UID = 'master-ai';
     
-    // NOVA ESTRUTURA DE ATRIBUTOS
+    // ESTRUTURA DE ATRIBUTOS
     const attributeConfig = {
-        ara: {
-            name: 'Ara (Corpo)',
-            points: 16,
-            sub: {
-                forca: { name: 'Força', value: 1 },
-                vigor: { name: 'Vigor', value: 1 },
-                agilidade: { name: 'Agilidade', value: 1 },
-                saude: { name: 'Saúde', value: 1 },
-            }
+        ara: { name: 'Ara (Corpo)', points: 16, sub: { forca: { name: 'Força', value: 1 }, vigor: { name: 'Vigor', value: 1 }, agilidade: { name: 'Agilidade', value: 1 }, saude: { name: 'Saúde', value: 1 } } },
+        ori: { name: 'Orí (Cabeça/Destino)', points: 16, sub: { inteligencia: { name: 'Inteligência', value: 1 }, percepcao: { name: 'Percepção', value: 1 }, vontade: { name: 'Força de Vontade', value: 1 }, conexao: { name: 'Conexão com Orixá', value: 1 } } },
+        emi: { name: 'Emi (Espírito/Respiração)', points: 16, sub: { energia: { name: 'Energia Vital', value: 1 }, carisma: { name: 'Carisma', value: 1 }, inspirar: { name: 'Capacidade de Inspirar', value: 1 }, sorte: { name: 'Sorte', value: 1 } } }
+    };
+    let attributes = {};
+
+    // --- DADOS DOS ORIXÁS (NOVO) ---
+    const orixasData = {
+        exu: {
+            name: "Exu",
+            description: "O mensageiro, guardião das encruzilhadas e da comunicação. É o Orixá que abre e fecha os caminhos.",
+            habilidades: ["Comunicação Aprimorada (rolagens sociais com vantagem)", "Sentir Passagens Secretas"],
+            ewos: ["Não pode ignorar um pedido de ajuda", "Evita a cor branca"]
         },
-        ori: {
-            name: 'Orí (Cabeça/Destino)',
-            points: 16,
-            sub: {
-                inteligencia: { name: 'Inteligência', value: 1 },
-                percepcao: { name: 'Percepção', value: 1 },
-                vontade: { name: 'Força de Vontade', value: 1 },
-                conexao: { name: 'Conexão com Orixá', value: 1 },
-            }
+        ogum: {
+            name: "Ogum",
+            description: "O senhor da guerra, do ferro e da tecnologia. Desbravador que avança sem medo.",
+            habilidades: ["Maestria com Armas (dano extra com armas de metal)", "Forja Rápida (pode reparar itens de metal)"],
+            ewos: ["Não pode recusar um desafio para combate honrado", "Não come caracóis"]
         },
-        emi: {
-            name: 'Emi (Espírito/Respiração)',
-            points: 16,
-            sub: {
-                energia: { name: 'Energia Vital', value: 1 },
-                carisma: { name: 'Carisma', value: 1 },
-                inspirar: { name: 'Capacidade de Inspirar', value: 1 },
-                sorte: { name: 'Sorte', value: 1 },
-            }
+        oxossi: {
+            name: "Oxóssi",
+            description: "O caçador, rei das matas e da fartura. Conhecedor dos segredos da floresta e dos animais.",
+            habilidades: ["Rastreamento Infalível", "Mira Certeira (vantagem em ataques à distância)"],
+            ewos: ["Não caça por esporte", "Não come mel"]
+        },
+        xango: {
+            name: "Xangô",
+            description: "O rei da justiça, senhor dos raios, do trovão e do fogo. Imoderado e justo.",
+            habilidades: ["Senso de Justiça (percebe mentiras)", "Resistência ao Fogo"],
+            ewos: ["Não tolera injustiça", "Não come carne de carneiro"]
         }
     };
 
-    let attributes = {}; // Será populado em resetAndOpenCharacterCreationModal
 
     // --- FUNÇÕES CLOUD CALLABLE ---
     const createAndJoinSession = httpsCallable(functions, 'createAndJoinSession');
@@ -207,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const charElement = document.createElement('div');
                 charElement.className = 'character-card';
                 charElement.dataset.sessionId = character.sessionId;
-                charElement.innerHTML = `<h4>${character.name}</h4><p>Sessão: ${character.sessionId.substring(0, 6)}...</p>`;
+                charElement.innerHTML = `<h4>${character.name}</h4><p>${character.orixa.name || 'Sem Orixá'}</p>`;
                 characterList.appendChild(charElement);
             });
         } catch (error) {
@@ -215,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // ATUALIZADO PARA EXIBIR SUB-ATRIBUTOS
+    // ATUALIZADO PARA EXIBIR ORIXÁ NA FICHA
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
@@ -229,24 +237,36 @@ document.addEventListener('DOMContentLoaded', () => {
             
             characterSheetName.textContent = currentCharacter.name;
             characterSheetAttributes.innerHTML = '';
-            
-            const charAttrs = currentCharacter.attributes;
 
-            for (const mainAttrKey in charAttrs) {
-                const mainAttrData = charAttrs[mainAttrKey];
+            // Renderiza Atributos
+            for (const mainAttrKey in currentCharacter.attributes) {
+                const mainAttrData = currentCharacter.attributes[mainAttrKey];
                 const groupLi = document.createElement('li');
                 groupLi.className = 'main-attribute-group';
-
                 const subList = Object.keys(mainAttrData.sub).map(subAttrKey => {
                     const subAttr = mainAttrData.sub[subAttrKey];
                     return `<li><span class="attr-name">${subAttr.name}</span> <span class="attr-value">${subAttr.value}</span></li>`;
                 }).join('');
-
-                groupLi.innerHTML = `
-                    <div class="group-header">${mainAttrData.name}</div>
-                    <ul class="sub-attribute-list">${subList}</ul>
-                `;
+                groupLi.innerHTML = `<div class="group-header">${mainAttrData.name}</div><ul class="sub-attribute-list">${subList}</ul>`;
                 characterSheetAttributes.appendChild(groupLi);
+            }
+
+            // Renderiza Orixá (NOVO)
+            const oldOrixaSheet = document.getElementById('character-sheet-orixa');
+            if(oldOrixaSheet) oldOrixaSheet.remove();
+
+            if (currentCharacter.orixa) {
+                const orixa = currentCharacter.orixa;
+                const orixaSheetDiv = document.createElement('div');
+                orixaSheetDiv.id = 'character-sheet-orixa';
+                orixaSheetDiv.innerHTML = `
+                    <h4>${orixa.name}</h4>
+                    <h5>Habilidades</h5>
+                    <ul>${orixa.habilidades.map(h => `<li>${h}</li>`).join('')}</ul>
+                    <h5>Ewós</h5>
+                    <ul>${orixa.ewos.map(e => `<li>${e}</li>`).join('')}</ul>
+                `;
+                characterSheet.appendChild(orixaSheetDiv);
             }
 
             showView(gameView);
@@ -326,52 +346,31 @@ document.addEventListener('DOMContentLoaded', () => {
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
-            
-            showView(sessionSelectionOverlay); 
-            
+            showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
             window.location.href = 'login.html';
         }
-
         loadingOverlay.style.display = 'none';
         pageContent.style.display = 'block';
     });
 
     // --- LISTENERS DE EVENTOS ---
 
-    btnMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-        sidePanel.classList.toggle('open');
-    });
-
-    document.addEventListener('click', (e) => {
-        if (sidePanel.classList.contains('open') && !sidePanel.contains(e.target) && !btnMenu.contains(e.target)) {
-            sidePanel.classList.remove('open');
-        }
-    });
-
-    btnAuth.addEventListener('click', () => {
-        if (currentUser) signOut(auth);
-        else window.location.href = 'login.html';
-    });
-    
+    btnMenu.addEventListener('click', (e) => { e.stopPropagation(); sidePanel.classList.toggle('open'); });
+    document.addEventListener('click', (e) => { if (sidePanel.classList.contains('open') && !sidePanel.contains(e.target) && !btnMenu.contains(e.target)) { sidePanel.classList.remove('open'); } });
+    btnAuth.addEventListener('click', () => { if (currentUser) signOut(auth); else window.location.href = 'login.html'; });
     btnBackToSelection.addEventListener('click', returnToSelectionScreen);
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
     inputText.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); }});
     btnPassTurn.addEventListener('click', passTurn);
-
-    characterList.addEventListener('click', (e) => {
-        const card = e.target.closest('.character-card');
-        if (card) loadSession(card.dataset.sessionId);
-    });
+    characterList.addEventListener('click', (e) => { const card = e.target.closest('.character-card'); if (card) loadSession(card.dataset.sessionId); });
 
     invitesList.addEventListener('click', async (e) => {
         const button = e.target.closest('button');
         const card = e.target.closest('.invite-card');
         if (!button || !card) return;
-        
         button.disabled = true;
         try {
             if (button.classList.contains('btn-accept')) {
@@ -382,18 +381,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 await declineInvite({ inviteId: card.dataset.inviteId });
                 card.remove();
             }
-        } catch (error) {
-            alert(error.message);
-            button.disabled = false;
-        }
+        } catch (error) { alert(error.message); button.disabled = false; }
     });
     
-    // ATUALIZADO PARA NOVA ESTRUTURA
+    // ATUALIZADO PARA INCLUIR ORIXÁS
     function resetAndOpenCharacterCreationModal() {
         hideModal(inviteModal);
         charNameInput.value = '';
-        // Deep copy para evitar mutações no objeto de configuração original
         attributes = JSON.parse(JSON.stringify(attributeConfig));
+        
+        // Populando o seletor de Orixás (NOVO)
+        orixaSelect.innerHTML = '<option value="">-- Escolha seu Orixá --</option>';
+        for (const key in orixasData) {
+            orixaSelect.innerHTML += `<option value="${key}">${orixasData[key].name}</option>`;
+        }
+        orixaSelect.value = '';
+        orixaDetailsContainer.style.display = 'none';
+
         updateCreationUI();
         creationLoadingIndicator.style.display = 'none';
         btnSaveCharacter.style.display = 'block';
@@ -408,16 +412,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnCloseCharCreation.addEventListener('click', () => hideModal(characterCreationModal));
     
-    // ATUALIZADO PARA VALIDAR PONTOS POR CATEGORIA
+    // ATUALIZADO PARA INCLUIR ORIXÁ NA CRIAÇÃO
     btnSaveCharacter.addEventListener('click', async () => {
         if (charNameInput.value.trim().length < 3) return alert('O nome do personagem deve ter pelo menos 3 caracteres.');
-        
-        // Validar se todos os pontos foram distribuídos
         for (const key in attributes) {
-            if (attributes[key].points > 0) {
-                return alert(`Você ainda tem ${attributes[key].points} pontos para distribuir em ${attributes[key].name}!`);
-            }
+            if (attributes[key].points > 0) return alert(`Você ainda tem ${attributes[key].points} pontos para distribuir em ${attributes[key].name}!`);
         }
+        const selectedOrixaKey = orixaSelect.value;
+        if (!selectedOrixaKey) return alert('Você precisa escolher um Orixá!');
 
         creationLoadingIndicator.style.display = 'flex';
         btnSaveCharacter.style.display = 'none';
@@ -425,7 +427,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const joiningSessionId = sessionStorage.getItem('joiningSessionId');
-            const characterData = { characterName: charNameInput.value.trim(), attributes };
+            const characterData = {
+                characterName: charNameInput.value.trim(),
+                attributes: attributes,
+                orixa: orixasData[selectedOrixaKey] // Adiciona o objeto do Orixá
+            };
             
             if (joiningSessionId) {
                 await joinSession({ ...characterData, sessionId: joiningSessionId });
@@ -445,93 +451,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // COMPLETAMENTE REESCRITA para a nova interface de sub-atributos
+    // LÓGICA DE CRIAÇÃO DE ATRIBUTOS (SEM MUDANÇAS)
     function updateCreationUI() {
         attributeAccordion.innerHTML = '';
-
         for (const mainAttrKey in attributes) {
             const mainAttrData = attributes[mainAttrKey];
-            
             const subItemsHTML = Object.keys(mainAttrData.sub).map(subAttrKey => {
                 const subAttr = mainAttrData.sub[subAttrKey];
-                return `
-                    <li class="sub-attribute-item">
-                        <span class="sub-attr-name">${subAttr.name}</span>
-                        <div class="attribute-controls">
-                            <button class="btn btn-attr" data-op="-" data-main-key="${mainAttrKey}" data-sub-key="${subAttrKey}" ${subAttr.value <= 1 ? 'disabled' : ''}>-</button>
-                            <span class="attr-value">${subAttr.value}</span>
-                            <button class="btn btn-attr" data-op="+" data-main-key="${mainAttrKey}" data-sub-key="${subAttrKey}" ${mainAttrData.points <= 0 ? 'disabled' : ''}>+</button>
-                        </div>
-                    </li>
-                `;
+                return `<li class="sub-attribute-item"><span class="sub-attr-name">${subAttr.name}</span><div class="attribute-controls"><button class="btn btn-attr" data-op="-" data-main-key="${mainAttrKey}" data-sub-key="${subAttrKey}" ${subAttr.value <= 1 ? 'disabled' : ''}>-</button><span class="attr-value">${subAttr.value}</span><button class="btn btn-attr" data-op="+" data-main-key="${mainAttrKey}" data-sub-key="${subAttrKey}" ${mainAttrData.points <= 0 ? 'disabled' : ''}>+</button></div></li>`;
             }).join('');
-
             const itemDiv = document.createElement('div');
             itemDiv.className = 'attribute-item';
-            itemDiv.innerHTML = `
-                <div class="attribute-header" data-main-key="${mainAttrKey}">
-                    <span class="attribute-title">${mainAttrData.name}</span>
-                    <span class="points-counter">Pontos: <span class="points-left">${mainAttrData.points}</span></span>
-                </div>
-                <div class="attribute-details">
-                    <ul class="sub-attribute-list">
-                        ${subItemsHTML}
-                    </ul>
-                </div>
-            `;
+            itemDiv.innerHTML = `<div class="attribute-header" data-main-key="${mainAttrKey}"><span class="attribute-title">${mainAttrData.name}</span><span class="points-counter">Pontos: <span class="points-left">${mainAttrData.points}</span></span></div><div class="attribute-details"><ul class="sub-attribute-list">${subItemsHTML}</ul></div>`;
             attributeAccordion.appendChild(itemDiv);
         }
     }
     
-    // ATUALIZADO PARA MANIPULAR SUB-ATRIBUTOS
     attributeAccordion.addEventListener('click', (e) => {
         const header = e.target.closest('.attribute-header');
-        if (header) {
-            const details = header.nextElementSibling;
-            // Abrir o primeiro por padrão e fechar os outros
-            if (!details.classList.contains('open')) {
-                document.querySelectorAll('.attribute-details.open').forEach(el => el.classList.remove('open'));
-                details.classList.add('open');
-            }
-            return;
-        }
-
+        if (header) { const details = header.nextElementSibling; if (!details.classList.contains('open')) { document.querySelectorAll('.attribute-details.open').forEach(el => el.classList.remove('open')); details.classList.add('open'); } return; }
         const button = e.target.closest('.btn-attr');
         if (button) {
-            const mainKey = button.dataset.mainKey;
-            const subKey = button.dataset.subKey;
-            const op = button.dataset.op;
-            const mainAttr = attributes[mainKey];
-            const subAttr = mainAttr.sub[subKey];
-
-            if (op === '+' && mainAttr.points > 0) {
-                subAttr.value++;
-                mainAttr.points--;
-            } else if (op === '-' && subAttr.value > 1) {
-                subAttr.value--;
-                mainAttr.points++;
-            }
+            const mainKey = button.dataset.mainKey; const subKey = button.dataset.subKey; const op = button.dataset.op; const mainAttr = attributes[mainKey]; const subAttr = mainAttr.sub[subKey];
+            if (op === '+' && mainAttr.points > 0) { subAttr.value++; mainAttr.points--; } else if (op === '-' && subAttr.value > 1) { subAttr.value--; mainAttr.points++; }
             updateCreationUI();
-            // Reabrir o acordeão que estava sendo editado
             const activeHeader = attributeAccordion.querySelector(`.attribute-header[data-main-key="${mainKey}"]`);
             if(activeHeader) activeHeader.nextElementSibling.classList.add('open');
         }
     });
-    
-    btnInvitePlayer.addEventListener('click', () => {
-        if (!currentSessionId) return alert("Você precisa estar em uma sessão para convidar jogadores.");
-        inviteEmailInput.value = '';
-        showModal(inviteModal);
-    });
 
+    // NOVO LISTENER PARA SELEÇÃO DE ORIXÁ
+    orixaSelect.addEventListener('change', (e) => {
+        const selectedOrixaKey = e.target.value;
+        if (selectedOrixaKey && orixasData[selectedOrixaKey]) {
+            const data = orixasData[selectedOrixaKey];
+            orixaName.textContent = data.name;
+            orixaDescription.textContent = data.description;
+            orixaHabilidades.innerHTML = data.habilidades.map(h => `<li>${h}</li>`).join('');
+            orixaEwos.innerHTML = data.ewos.map(ew => `<li>${ew}</li>`).join('');
+            orixaDetailsContainer.style.display = 'block';
+        } else {
+            orixaDetailsContainer.style.display = 'none';
+        }
+    });
+    
+    btnInvitePlayer.addEventListener('click', () => { if (!currentSessionId) return alert("Você precisa estar em uma sessão para convidar jogadores."); inviteEmailInput.value = ''; showModal(inviteModal); });
     btnCancelInvite.addEventListener('click', () => hideModal(inviteModal));
 
     btnSendInvite.addEventListener('click', async () => {
         const email = inviteEmailInput.value.trim();
         if (!email.includes('@')) return alert('Por favor, insira um e-mail válido.');
-        
-        btnSendInvite.disabled = true;
-        btnSendInvite.textContent = 'Enviando...';
+        btnSendInvite.disabled = true; btnSendInvite.textContent = 'Enviando...';
         try {
             const result = await sendInvite({ email, sessionId: currentSessionId });
             alert(result.data.message);
@@ -539,8 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             alert(`Erro: ${error.message}`);
         } finally {
-            btnSendInvite.disabled = false;
-            btnSendInvite.textContent = 'Enviar Convite';
+            btnSendInvite.disabled = false; btnSendInvite.textContent = 'Enviar Convite';
         }
     });
 
