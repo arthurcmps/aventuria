@@ -1,11 +1,12 @@
 /*
- *  public/js/script.js (VERSÃO RESPONSIVA CORRIGIDA)
+ * public/js/script.js (VERSÃO CORRIGIDA COM POP-UP)
  */
 
 // --- IMPORTS ---
 import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
-import { onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+// --- ALTERAÇÃO 1: Adicionadas as funções de pop-up do Google ---
+import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
   addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
@@ -244,9 +245,9 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           narration.scrollTop = narration.scrollHeight;
       });
-  }
+    }
 
-  function listenForPartyChanges(sessionId) {
+    function listenForPartyChanges(sessionId) {
       const partyQuery = collection(db, 'sessions', sessionId, 'characters');
       partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
           partyList.innerHTML = '';
@@ -257,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
               }
           });
       });
-  }
+    }
 
     async function sendChatMessage(text) {
         if (!text.trim() || !currentSessionId || !currentCharacter) return;
@@ -314,6 +315,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LISTENERS DE EVENTOS ---
 
+    // --- ALTERAÇÃO 2: Adicionado o listener de clique para o botão de autenticação ---
+    btnAuth.addEventListener('click', () => {
+        if (currentUser) {
+            // Se estiver logado, faz o logout
+            signOut(auth).catch(err => console.error("Erro no logout:", err));
+        } else {
+            // Se NÃO estiver logado, abre o pop-up do Google
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider)
+                .catch((error) => {
+                    // Se o usuário fechar o pop-up ou houver um erro, ele será mostrado no console.
+                    console.error("Erro na autenticação com pop-up:", error);
+                });
+        }
+    });
+
     btnMenu.addEventListener('click', (e) => {
         e.stopPropagation();
         sidePanel.classList.toggle('open');
@@ -326,24 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sidePanel.classList.remove('open');
         }
     });
-
-// Em script.js
-
-/* SUBSTITUA O BLOCO ANTIGO POR ESTE NOVO BLOCO */
-btnAuth.addEventListener('click', () => {
-    if (currentUser) {
-        // Se o usuário está logado, o botão funciona como "Sair"
-        signOut(auth).catch(err => console.error("Erro no logout:", err));
-    } else {
-        // Se não há usuário, o botão abre o pop-up de login do Google
-        const provider = new GoogleAuthProvider();
-        signInWithPopup(auth, provider)
-            .catch((error) => {
-                // Se o usuário fechar o pop-up ou houver um erro, ele será mostrado no console.
-                console.error("Erro na autenticação com pop-up:", error);
-            });
-    }
-});
     
     btnBackToSelection.addEventListener('click', returnToSelectionScreen);
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
