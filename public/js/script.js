@@ -82,28 +82,67 @@ document.addEventListener('DOMContentLoaded', () => {
     const orixasData = {
         exu: {
             name: "Exu",
-            description: "O mensageiro, guardião das encruzilhadas e da comunicação. É o Orixá que abre e fecha os caminhos.",
-            habilidades: ["Comunicação Aprimorada (rolagens sociais com vantagem)", "Sentir Passagens Secretas"],
-            ewos: ["Não pode ignorar um pedido de ajuda", "Evita a cor branca"]
+            description: "O mensageiro, o guardião das encruzilhadas, aquele que abre e fecha os caminhos. Ele é a ponte entre os seres humanos e os Orixás. Seus filhos são comunicativos, inteligentes, astutos e imprevisíveis.",
+            habilidades: ["Senhor das Encruzilhadas: Habilidade de encontrar passagens, atalhos e soluções inesperadas.", "Ver a Verdade: Capacidade de perceber as verdadeiras intenções e mentiras.", "Elo de Comunicação: Facilidade sobrenatural para aprender idiomas e se comunicar."],
+            ewos: ["Não pode se recusar a entregar uma mensagem.", "Não pode passar por uma encruzilhada sem uma saudação.", "É proibido de se vestir de branco em certas tradições."]
         },
         ogum: {
             name: "Ogum",
-            description: "O senhor da guerra, do ferro e da tecnologia. Desbravador que avança sem medo.",
-            habilidades: ["Maestria com Armas (dano extra com armas de metal)", "Forja Rápida (pode reparar itens de metal)"],
-            ewos: ["Não pode recusar um desafio para combate honrado", "Não come caracóis"]
+            description: "O Ferreiro, O Guerreiro, O Desbravador. Rege o ferro, a tecnologia e as estradas. Seus filhos são impulsivos, diretos, protetores e pioneiros.",
+            habilidades: ["Maestria em Batalha: Bônus em combate com armas de metal.", "Forja Abençoada: Capacidade de criar ou consertar itens de metal com velocidade ou qualidade sobrenatural.", "Abrir Caminhos: Habilidade de superar obstáculos físicos ou burocráticos."],
+            ewos: ["Não pode ser injusto ou negar ajuda a quem pede proteção.", "Não pode deixar suas 'ferramentas' (armas) enferrujarem.", "Pode ser proibido de comer certos alimentos (ex: quiabo)."]
         },
         oxossi: {
             name: "Oxóssi",
-            description: "O caçador, rei das matas e da fartura. Conhecedor dos segredos da floresta e dos animais.",
-            habilidades: ["Rastreamento Infalível", "Mira Certeira (vantagem em ataques à distância)"],
-            ewos: ["Não caça por esporte", "Não come mel"]
+            description: "O caçador, o rei das matas, Orixá da fartura e do conhecimento. Seus filhos são curiosos, ágeis, observadores e provedores para sua comunidade.",
+            habilidades: ["Mira Certeira: Bônus excepcionais ao usar armas de longo alcance.", "Mestre das Matas: Habilidade de se mover silenciosamente pela selva e rastrear.", "Bênção da Fartura: Sorte para encontrar comida e recursos."],
+            ewos: ["Não pode caçar por esporte ou matar animais de forma cruel.", "Não pode negar comida a quem tem fome.", "Deve evitar o mel de abelha."]
+        },
+        ossain: {
+            name: "Ossain",
+            description: "O senhor das folhas sagradas, da cura e dos segredos da floresta. Seus filhos são reservados, estudiosos, pacientes e extremamente ligados à natureza.",
+            habilidades: ["Conhecimento Herbal: Capacidade de identificar qualquer planta e suas propriedades.", "Mestre da Cura: Habilidade de criar poções e rituais que curam ferimentos e doenças.", "Invocar a Floresta: Capacidade de pedir auxílio aos espíritos da mata."],
+            ewos: ["Não pode colher uma folha sem antes pedir licença.", "Não pode revelar os segredos das folhas a quem não for digno.", "Deve evitar fofocas e conversas frívolas."]
+        },
+        omolu: {
+            name: "Omolu",
+            description: "Omolu (ou Obaluaiê) é o senhor da terra, que rege a saúde e a doença. Seus filhos são sérios, introspectivos, resilientes e empáticos com a dor alheia",
+            habilidades: ["Resistência à Dor: Capacidade de suportar ferimentos e doenças.", "Mão que Cura, Mão que Fere: Habilidade de estancar doenças ou lançar pragas.", "Diálogo com os Espíritos: Capacidade de conversar com os espíritos dos mortos."],
+            ewos: ["Não pode ter medo da doença ou da morte.", "Deve sempre respeitar os mais velhos.", "Deve evitar a claridade excessiva do sol do meio-dia."]
+        },
+        oxumare: {
+            name: "Oxumaré",
+            description: "O Orixá do arco-íris e da serpente, representando o movimento, a riqueza e a renovação. Seus filhos são perseverantes, enigmáticos, adaptáveis e artísticos.",
+            habilidades: ["Caminho do Arco-Íris: Habilidade de se teletransportar entre dois pontos visíveis.", "Pele de Serpente: Capacidade de se regenerar de ferimentos.", "Bênção da Riqueza Cíclica: Grande sorte em negócios, com a condição de que a riqueza deve circular."],
+            ewos: ["Não pode matar serpentes.", "Deve evitar comidas que se arrastam no chão, como caranguejos.", "Não pode se prender a um único lugar, devendo abraçar a mudança."]
+        },
+        ewa: {
+            name: "Ewá",
+            description: "A Orixá da beleza, da vidência e dos horizontes. Suas filhas são extremamente sensíveis, sonhadoras, tímidas e com grande intuição.",
+            habilidades: ["Visão do Inatingível: Capacidade de ver o futuro e o mundo espiritual com clareza.", "Manto de Neblina: Habilidade de criar uma névoa densa para se ocultar.", "Beleza Encantadora: Uma aura que acalma feras e inspira bondade."],
+            ewos: ["Não pode se casar ou ter relações sexuais.", "Não pode frequentar lugares sujos ou tumultuados.", "Deve evitar o contato com os mortos."]
+        },
+        logun-ede: {
+            name: "Logun Edé",
+            description: "O príncipe dos Orixás, filho de Oxóssi e Oxum. Une a astúcia do caçador com a beleza e o encanto do ouro. Seus filhos são belos, carismáticos, charmosos e adaptáveis.",
+            habilidades: ["Caçador das Águas: Proficiência em combate tanto na mata quanto nos rios.", "Encanto do Príncipe: Carisma sobrenatural em negociações.", "Sorte Dupla: Sorte tanto na busca por fartura quanto na busca por riquezas."],
+            ewos: ["Não pode comer carne e peixe na mesma refeição.", "Deve evitar mentiras e traições.", "Não tolera grosseria e desorganização."]
         },
         xango: {
             name: "Xangô",
-            description: "O rei da justiça, senhor dos raios, do trovão e do fogo. Imoderado e justo.",
-            habilidades: ["Senso de Justiça (percebe mentiras)", "Resistência ao Fogo"],
-            ewos: ["Não tolera injustiça", "Não come carne de carneiro"]
+            description: "O Orixá da Justiça, dos raios, do trovão e do fogo. Seus filhos têm uma postura real e orgulhosa, são líderes natos, justos e carismáticos",
+            habilidades: ["Julgamento Real: Habilidade de perceber mentiras e injustiças.", "Fúria do Trovão: Capacidade de invocar poder elemental de raios ou fogo.", "Voz de Comando: Bônus em testes de Intimidação e Liderança."],
+            ewos: ["Não pode mentir, quebrar um juramento ou cometer injustiça.", "Não pode agir de forma covarde.", "Deve evitar quiabo e carne de carneiro."]
+        },
+        oxum: {
+            name: "Oxum",
+            description: "A Dama dos Rios, do Ouro e do Amor. Rege a água doce, a riqueza, a beleza e a diplomacia. Suas filhas são vaidosas, diplomáticas, estrategistas e sedutoras.",
+            habilidades: ["Voz Encantadora: Bônus massivos em testes sociais.", "Visão do Futuro: Capacidade de usar búzios ou um espelho para ter vislumbres do futuro.", "Bênção da Riqueza: Sorte para encontrar recursos valiosos ou em negociações."],
+            ewos: ["Não pode ser suja ou desleixada com sua aparência.", "Não pode agir com avareza.", "Proibida de comer feijão."]
         }
+
+
+
     };
 
 
