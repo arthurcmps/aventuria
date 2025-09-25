@@ -1,4 +1,4 @@
-/* css/style.css - v3.2 - REFINAMENTO DA BARRA LATERAL */
+/* css/style.css - v3.4 - ATRIBUTOS COM SUB-PONTOS */
 
 /* ----------------------------------
  * Variáveis e Estilos Globais
@@ -208,39 +208,51 @@ body {
     border-bottom: 1px solid var(--border-color);
 }
 
+/* ESTILOS DA FICHA DE PERSONAGEM ATUALIZADOS */
 #character-sheet-attributes {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-#character-sheet-attributes li {
+#character-sheet-attributes .main-attribute-group .group-header {
+    font-family: var(--font-display);
+    font-size: 1.3em;
+    color: var(--accent-color);
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+#character-sheet-attributes .sub-attribute-list {
+    list-style: none;
+    padding-left: 10px;
+}
+
+#character-sheet-attributes .sub-attribute-list li {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
+    padding: 6px 0;
     border-bottom: 1px solid var(--tertiary-bg-color);
 }
 
-#character-sheet-attributes li:last-child {
-    border-bottom: none;
-}
-
-#character-sheet-attributes .attr-name {
+#character-sheet-attributes .sub-attribute-list .attr-name {
     font-weight: bold;
-    letter-spacing: 0.5px;
+    font-size: 0.95em;
 }
 
-#character-sheet-attributes .attr-value {
-    font-family: var(--font-display);
-    font-size: 1.5em;
-    color: var(--accent-color);
+#character-sheet-attributes .sub-attribute-list .attr-value {
+    font-family: var(--font-main);
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--font-color);
     background-color: var(--primary-bg-color);
     padding: 2px 10px;
     border-radius: 4px;
-    min-width: 40px;
+    min-width: 35px;
     text-align: center;
 }
+
 
 #party-list {
     list-style: none;
@@ -528,86 +540,6 @@ body {
     font-size: 1em;
 }
 
-#points-distributor {
-    background-color: var(--primary-bg-color);
-    border: 1px solid var(--border-color);
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 6px;
-    text-align: center;
-}
-
-#points-distributor h3 {
-    font-family: var(--font-display);
-    font-size: 1.4em;
-    margin: 0;
-}
-
-#points-distributor h3 span {
-    color: var(--accent-color);
-    font-size: 1.5em;
-}
-
-.attributes-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-bottom: 25px;
-}
-
-.attribute-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--tertiary-bg-color);
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-}
-
-.attribute-item > span {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-.attribute-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.attribute-controls .btn-attr {
-    background-color: var(--accent-color);
-    color: var(--primary-bg-color);
-    border: none;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    font-size: 1.2em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    line-height: 28px; /* Centraliza o +/- */
-    text-align: center;
-}
-
-.attribute-controls .btn-attr:hover {
-    background-color: var(--accent-hover-color);
-}
-
-.attribute-controls .btn-attr:disabled {
-    background-color: var(--border-color);
-    color: #888;
-    cursor: not-allowed;
-}
-
-.attribute-controls .attr-value {
-    font-size: 1.4em;
-    font-weight: bold;
-    min-width: 25px;
-    text-align: center;
-}
-
 #creation-loading-indicator {
     display: none;
     position: absolute;
@@ -630,7 +562,7 @@ body {
     border-radius: 5px;
     margin-bottom: 10px;
     background-color: var(--secondary-bg-color);
-    overflow: hidden; /* Garante que os cantos arredondados funcionem */
+    overflow: hidden;
 }
 
 .attribute-accordion .attribute-header {
@@ -652,42 +584,53 @@ body {
     color: var(--accent-color);
 }
 
-.attribute-accordion .attribute-value-display {
-    font-size: 1.2rem;
+/* NOVO: Contador de pontos por atributo */
+.attribute-accordion .points-counter {
+    font-size: 1rem;
     font-weight: bold;
+    background-color: var(--primary-bg-color);
+    padding: 3px 8px;
+    border-radius: 5px;
 }
 
-/* Detalhes que abrem e fecham */
+.attribute-accordion .points-counter .points-left {
+    color: var(--accent-color);
+    font-size: 1.2em;
+}
+
 .attribute-accordion .attribute-details {
     padding: 15px;
-    display: none; /* Escondido por padrão */
+    display: none;
     border-top: 1px solid var(--border-color);
     background-color: var(--primary-bg-color);
 }
 
 .attribute-accordion .attribute-details.open {
-    display: block; /* Mostrado quando ativo */
+    display: block;
 }
 
-.attribute-accordion .sub-attributes,
-.attribute-accordion .usage-description {
-    margin-bottom: 15px;
+/* NOVO: Lista de sub-atributos */
+.sub-attribute-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
-.attribute-accordion h5 {
-    font-family: var(--font-display);
-    color: var(--accent-color);
-    margin-bottom: 8px;
-    font-size: 1.1rem;
+.sub-attribute-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 5px;
+    border-bottom: 1px solid var(--tertiary-bg-color);
 }
 
-.attribute-accordion ul {
-    list-style-type: none;
-    padding-left: 10px;
+.sub-attribute-item:last-child {
+    border-bottom: none;
 }
 
-.attribute-accordion li {
-    margin-bottom: 5px;
+.sub-attribute-item .sub-attr-name {
+    font-size: 1.1em;
+    font-weight: bold;
 }
 
 /* Controles de + e - */
@@ -695,21 +638,20 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    justify-content: center;
-    margin-top: 15px;
 }
 
 .attribute-controls .btn-attr {
-    width: 35px;
-    height: 35px;
-    font-size: 1.5rem;
+    width: 30px;
+    height: 30px;
+    font-size: 1.3rem;
     padding: 0;
-    line-height: 35px;
+    line-height: 30px;
     text-align: center;
+    border-radius: 50%;
 }
 
 .attribute-controls .attr-value {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     font-weight: bold;
     min-width: 30px;
     text-align: center;

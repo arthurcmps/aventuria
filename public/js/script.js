@@ -1,8 +1,11 @@
-
 /*
- *  public/js/script.js (VERSÃO COM CORREÇÃO DO BOTÃO 'CRIAR')
- *  - Corrigida a lógica em `onAuthStateChanged` para garantir que `currentUser` seja definido ANTES da chamada de `showView`.
- *  - Isso restaura a visibilidade do botão "Criar Novo Personagem" após o login.
+ *  public/js/script.js (v3.4 - ATRIBUTOS COM SUB-PONTOS)
+ *  - Estrutura de dados `attributes` foi refeita para suportar sub-atributos.
+ *  - `resetAndOpenCharacterCreationModal` agora inicializa os sub-atributos e os pontos por categoria.
+ *  - `updateCreationUI` foi completamente reescrita para gerar a nova interface com contadores por categoria e controles de sub-atributos.
+ *  - O listener de eventos do acordeão foi atualizado para manipular a lógica de distribuição de pontos dos sub-atributos.
+ *  - `loadSession` foi atualizada para exibir a nova estrutura de atributos na ficha de personagem.
+ *  - `btnSaveCharacter` agora valida se todos os pontos de todas as categorias foram distribuídos.
  */
 
 // --- IMPORTS ---
@@ -44,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCancelInvite = document.getElementById('btn-cancel-invite');
     const btnSendInvite = document.getElementById('btn-send-invite');
     const creationLoadingIndicator = document.getElementById('creation-loading-indicator');
-    const pointsToDistributeSpan = document.getElementById('points-to-distribute');
     const charNameInput = document.getElementById('char-name');
     const btnSaveCharacter = document.getElementById('btn-save-character');
     const inviteEmailInput = document.getElementById('invite-email');
@@ -61,26 +63,41 @@ document.addEventListener('DOMContentLoaded', () => {
     let sessionUnsubscribe = null;
     const AI_UID = 'master-ai';
     
-    const attributeNames = ['Ara (Corpo)', 'Ori (Cabeça/Destino)', 'Emi (Espírito/Respiração)'];
-    const attributeKeys = ['ara', 'ori', 'emi'];
-    const oldAttributeKeys = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-    const attributeDetails = {
+    // NOVA ESTRUTURA DE ATRIBUTOS
+    const attributeConfig = {
         ara: {
-            sub: ['Força', 'Vigor', 'Agilidade', 'Saúde'],
-            desc: 'Usado para: Combate físico, testes de resistência, corridas, etc.'
+            name: 'Ara (Corpo)',
+            points: 16,
+            sub: {
+                forca: { name: 'Força', value: 1 },
+                vigor: { name: 'Vigor', value: 1 },
+                agilidade: { name: 'Agilidade', value: 1 },
+                saude: { name: 'Saúde', value: 1 },
+            }
         },
         ori: {
-            sub: ['Inteligência', 'Percepção', 'Força de Vontade', 'Conexão com seu Orixá'],
-            desc: 'Usado para: Resistir a controle mental, realizar rituais, testes de conhecimento, interação social.'
+            name: 'Orí (Cabeça/Destino)',
+            points: 16,
+            sub: {
+                inteligencia: { name: 'Inteligência', value: 1 },
+                percepcao: { name: 'Percepção', value: 1 },
+                vontade: { name: 'Força de Vontade', value: 1 },
+                conexao: { name: 'Conexão com Orixá', value: 1 },
+            }
         },
         emi: {
-            sub: ['Energia Vital', 'Carisma', 'Capacidade de Inspirar', 'Sorte'],
-            desc: 'Usado para: Testes sociais (persuasão, intimidação) e como base para seus "Pontos de Axé".'
+            name: 'Emi (Espírito/Respiração)',
+            points: 16,
+            sub: {
+                energia: { name: 'Energia Vital', value: 1 },
+                carisma: { name: 'Carisma', value: 1 },
+                inspirar: { name: 'Capacidade de Inspirar', value: 1 },
+                sorte: { name: 'Sorte', value: 1 },
+            }
         }
     };
 
-    let attributes = {};
-    let pointsToDistribute = 10;
+    let attributes = {}; // Será populado em resetAndOpenCharacterCreationModal
 
     // --- FUNÇÕES CLOUD CALLABLE ---
     const createAndJoinSession = httpsCallable(functions, 'createAndJoinSession');
@@ -198,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // ATUALIZADO PARA EXIBIR SUB-ATRIBUTOS
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
@@ -213,16 +231,23 @@ document.addEventListener('DOMContentLoaded', () => {
             characterSheetAttributes.innerHTML = '';
             
             const charAttrs = currentCharacter.attributes;
-            const isNewSystem = 'ara' in charAttrs;
 
-            const keys = isNewSystem ? attributeKeys : oldAttributeKeys;
-            const names = isNewSystem ? attributeNames : oldAttributeKeys.map(k => k.charAt(0).toUpperCase() + k.slice(1));
+            for (const mainAttrKey in charAttrs) {
+                const mainAttrData = charAttrs[mainAttrKey];
+                const groupLi = document.createElement('li');
+                groupLi.className = 'main-attribute-group';
 
-            keys.forEach((key, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `<span class="attr-name">${names[index]}</span> <span class="attr-value">${charAttrs[key] || (isNewSystem ? 1 : 10)}</span>`;
-                characterSheetAttributes.appendChild(li);
-            });
+                const subList = Object.keys(mainAttrData.sub).map(subAttrKey => {
+                    const subAttr = mainAttrData.sub[subAttrKey];
+                    return `<li><span class="attr-name">${subAttr.name}</span> <span class="attr-value">${subAttr.value}</span></li>`;
+                }).join('');
+
+                groupLi.innerHTML = `
+                    <div class="group-header">${mainAttrData.name}</div>
+                    <ul class="sub-attribute-list">${subList}</ul>
+                `;
+                characterSheetAttributes.appendChild(groupLi);
+            }
 
             showView(gameView);
             const sessionRef = doc(db, "sessions", sessionId);
@@ -293,17 +318,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // CORREÇÃO APLICADA AQUI
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
         
         if (user) {
-            currentUser = user; // 1. DEFINIR o usuário
+            currentUser = user; 
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
             
-            showView(sessionSelectionOverlay); // 2. MOSTRAR a view (agora o botão aparece)
+            showView(sessionSelectionOverlay); 
             
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
@@ -364,11 +388,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // ATUALIZADO PARA NOVA ESTRUTURA
     function resetAndOpenCharacterCreationModal() {
         hideModal(inviteModal);
         charNameInput.value = '';
-        pointsToDistribute = 10;
-        attributes = { ara: 1, ori: 1, emi: 1 };
+        // Deep copy para evitar mutações no objeto de configuração original
+        attributes = JSON.parse(JSON.stringify(attributeConfig));
         updateCreationUI();
         creationLoadingIndicator.style.display = 'none';
         btnSaveCharacter.style.display = 'block';
@@ -383,9 +408,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnCloseCharCreation.addEventListener('click', () => hideModal(characterCreationModal));
     
+    // ATUALIZADO PARA VALIDAR PONTOS POR CATEGORIA
     btnSaveCharacter.addEventListener('click', async () => {
         if (charNameInput.value.trim().length < 3) return alert('O nome do personagem deve ter pelo menos 3 caracteres.');
-        if (pointsToDistribute > 0) return alert('Você ainda tem pontos para distribuir!');
+        
+        // Validar se todos os pontos foram distribuídos
+        for (const key in attributes) {
+            if (attributes[key].points > 0) {
+                return alert(`Você ainda tem ${attributes[key].points} pontos para distribuir em ${attributes[key].name}!`);
+            }
+        }
 
         creationLoadingIndicator.style.display = 'flex';
         btnSaveCharacter.style.display = 'none';
@@ -413,60 +445,76 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // COMPLETAMENTE REESCRITA para a nova interface de sub-atributos
     function updateCreationUI() {
-        pointsToDistributeSpan.textContent = pointsToDistribute;
         attributeAccordion.innerHTML = '';
-        attributeKeys.forEach((key, index) => {
-            const value = attributes[key];
-            const details = attributeDetails[key];
-            const subItems = details.sub.map(s => `<li>${s}</li>`).join('');
+
+        for (const mainAttrKey in attributes) {
+            const mainAttrData = attributes[mainAttrKey];
+            
+            const subItemsHTML = Object.keys(mainAttrData.sub).map(subAttrKey => {
+                const subAttr = mainAttrData.sub[subAttrKey];
+                return `
+                    <li class="sub-attribute-item">
+                        <span class="sub-attr-name">${subAttr.name}</span>
+                        <div class="attribute-controls">
+                            <button class="btn btn-attr" data-op="-" data-main-key="${mainAttrKey}" data-sub-key="${subAttrKey}" ${subAttr.value <= 1 ? 'disabled' : ''}>-</button>
+                            <span class="attr-value">${subAttr.value}</span>
+                            <button class="btn btn-attr" data-op="+" data-main-key="${mainAttrKey}" data-sub-key="${subAttrKey}" ${mainAttrData.points <= 0 ? 'disabled' : ''}>+</button>
+                        </div>
+                    </li>
+                `;
+            }).join('');
 
             const itemDiv = document.createElement('div');
             itemDiv.className = 'attribute-item';
             itemDiv.innerHTML = `
-                <div class="attribute-header" data-attr="${key}">
-                    <span class="attribute-title">${attributeNames[index]}</span>
-                    <span class="attribute-value-display">${value}</span>
+                <div class="attribute-header" data-main-key="${mainAttrKey}">
+                    <span class="attribute-title">${mainAttrData.name}</span>
+                    <span class="points-counter">Pontos: <span class="points-left">${mainAttrData.points}</span></span>
                 </div>
                 <div class="attribute-details">
-                    <div class="sub-attributes">
-                        <h5>Componentes:</h5>
-                        <ul>${subItems}</ul>
-                    </div>
-                    <div class="usage-description">
-                        <h5>Uso Principal:</h5>
-                        <p>${details.desc}</p>
-                    </div>
-                    <div class="attribute-controls">
-                        <button class="btn btn-attr" data-attr-op="-" data-attr-key="${key}" ${value <= 1 ? 'disabled' : ''}>-</button>
-                        <span class="attr-value">${value}</span>
-                        <button class="btn btn-attr" data-attr-op="+" data-attr-key="${key}" ${pointsToDistribute < 1 ? 'disabled' : ''}>+</button>
-                    </div>
+                    <ul class="sub-attribute-list">
+                        ${subItemsHTML}
+                    </ul>
                 </div>
             `;
             attributeAccordion.appendChild(itemDiv);
-        });
+        }
     }
     
+    // ATUALIZADO PARA MANIPULAR SUB-ATRIBUTOS
     attributeAccordion.addEventListener('click', (e) => {
         const header = e.target.closest('.attribute-header');
         if (header) {
-            header.nextElementSibling.classList.toggle('open');
+            const details = header.nextElementSibling;
+            // Abrir o primeiro por padrão e fechar os outros
+            if (!details.classList.contains('open')) {
+                document.querySelectorAll('.attribute-details.open').forEach(el => el.classList.remove('open'));
+                details.classList.add('open');
+            }
             return;
         }
 
         const button = e.target.closest('.btn-attr');
         if (button) {
-            const attrKey = button.dataset.attrKey;
-            const operation = button.dataset.attrOp;
-            if (operation === '+' && pointsToDistribute >= 1) {
-                attributes[attrKey]++;
-                pointsToDistribute--;
-            } else if (operation === '-' && attributes[attrKey] > 1) {
-                attributes[attrKey]--;
-                pointsToDistribute++;
+            const mainKey = button.dataset.mainKey;
+            const subKey = button.dataset.subKey;
+            const op = button.dataset.op;
+            const mainAttr = attributes[mainKey];
+            const subAttr = mainAttr.sub[subKey];
+
+            if (op === '+' && mainAttr.points > 0) {
+                subAttr.value++;
+                mainAttr.points--;
+            } else if (op === '-' && subAttr.value > 1) {
+                subAttr.value--;
+                mainAttr.points++;
             }
             updateCreationUI();
+            // Reabrir o acordeão que estava sendo editado
+            const activeHeader = attributeAccordion.querySelector(`.attribute-header[data-main-key="${mainKey}"]`);
+            if(activeHeader) activeHeader.nextElementSibling.classList.add('open');
         }
     });
     
