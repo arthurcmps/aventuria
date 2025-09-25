@@ -1,9 +1,9 @@
 
 /*
- *  public/js/script.js (VERSÃO COM NOVOS ATRIBUTOS)
- *  - Atributos alterados para Ara, Ori, Emi.
- *  - Pontos para distribuição alterados para 10, com base inicial de 1 em cada.
- *  - Lógica de custo de pontos simplificada para 1 ponto por nível.
+ *  public/js/script.js (VERSÃO COM INTERFACE ACORDEÃO)
+ *  - Adicionada estrutura de dados `attributeDetails` com sub-atributos e descrições.
+ *  - `updateCreationUI` foi reescrita para gerar um menu sanfona (acordeão).
+ *  - Adicionado um novo listener de eventos para o acordeão que controla a abertura/fechamento dos painéis e a distribuição de pontos.
  */
 
 // --- IMPORTS ---
@@ -47,11 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const creationLoadingIndicator = document.getElementById('creation-loading-indicator');
     const pointsToDistributeSpan = document.getElementById('points-to-distribute');
     const charNameInput = document.getElementById('char-name');
-    const attributesGrid = document.querySelector('.attributes-grid');
     const btnSaveCharacter = document.getElementById('btn-save-character');
     const inviteEmailInput = document.getElementById('invite-email');
     const turnStatus = document.getElementById('turn-status');
     const btnPassTurn = document.getElementById('btn-pass-turn');
+    const attributeAccordion = document.getElementById('attribute-accordion');
 
     // --- ESTADO DA APLICAÇÃO ---
     let currentUser = null;
@@ -62,11 +62,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let sessionUnsubscribe = null;
     const AI_UID = 'master-ai';
     
-    // ATRIBUTOS ATUALIZADOS
     const attributeNames = ['Ara (Corpo)', 'Ori (Cabeça/Destino)', 'Emi (Espírito/Respiração)'];
     const attributeKeys = ['ara', 'ori', 'emi'];
     const oldAttributeKeys = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-
+    const attributeDetails = {
+        ara: {
+            sub: ['Força', 'Vigor', 'Agilidade', 'Saúde'],
+            desc: 'Usado para: Combate físico, testes de resistência, corridas, etc.'
+        },
+        ori: {
+            sub: ['Inteligência', 'Percepção', 'Força de Vontade', 'Conexão com seu Orixá'],
+            desc: 'Usado para: Resistir a controle mental, realizar rituais, testes de conhecimento, interação social.'
+        },
+        emi: {
+            sub: ['Energia Vital', 'Carisma', 'Capacidade de Inspirar', 'Sorte'],
+            desc: 'Usado para: Testes sociais (persuasão, intimidação) e como base para seus "Pontos de Axé".'
+        }
+    };
 
     let attributes = {};
     let pointsToDistribute = 10;
@@ -82,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- GERENCIAMENTO DE UI ---
     
-    // Mostra a tela de carregamento para esperar a autenticação
     loadingOverlay.style.display = 'flex';
     pageContent.style.display = 'none';
 
@@ -90,15 +101,14 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionSelectionOverlay.style.display = 'none';
         gameView.style.display = 'none';
         gameView.classList.remove('in-game');
-
-        view.style.display = view === gameView ? 'grid' : 'flex';
-        const isInGame = view === gameView;
-        if (isInGame) {
+        if (view === gameView) {
+            gameView.style.display = 'grid';
             gameView.classList.add('in-game');
+        } else {
+            view.style.display = 'flex';
         }
-
-        btnBackToSelection.style.display = isInGame ? 'inline-block' : 'none';
-        btnCreateNewCharacter.style.display = !isInGame && currentUser ? 'inline-block' : 'none';
+        btnBackToSelection.style.display = view === gameView ? 'inline-block' : 'none';
+        btnCreateNewCharacter.style.display = view !== gameView && currentUser ? 'inline-block' : 'none';
     };
 
     const showModal = (modal) => { modal.style.display = 'flex'; };
@@ -108,9 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (messagesUnsubscribe) messagesUnsubscribe();
         if (partyUnsubscribe) partyUnsubscribe();
         if (sessionUnsubscribe) sessionUnsubscribe();
-        messagesUnsubscribe = null;
-        partyUnsubscribe = null;
-        sessionUnsubscribe = null;
     };
 
     const returnToSelectionScreen = async () => {
@@ -121,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
         partyList.innerHTML = '';
         characterSheetName.textContent = '';
         characterSheetAttributes.innerHTML = '';
-        gameView.classList.remove('in-game'); // Garante que a classe seja removida
         showView(sessionSelectionOverlay);
         if (currentUser) {
             await loadUserCharacters(currentUser.uid);
@@ -141,19 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isMyTurn) {
             turnStatus.textContent = "É o seu turno!";
             turnStatus.classList.add('my-turn');
-        } else if (turnoAtualUid === AI_UID) {
-            turnStatus.textContent = "O Mestre está agindo...";
-            turnStatus.classList.remove('my-turn');
         } else {
-            try {
-                const turnPlayerDocRef = doc(db, `sessions/${currentSessionId}/characters`, turnoAtualUid);
-                const turnPlayerDoc = await getDoc(turnPlayerDocRef);
-                const playerName = turnPlayerDoc.exists() ? turnPlayerDoc.data().name : "outro jogador";
-                turnStatus.textContent = `Aguardando o turno de ${playerName}...`;
-                turnStatus.classList.remove('my-turn');
-            } catch (e) {
-                turnStatus.textContent = "Aguardando outro jogador...";
-            }
+            turnStatus.classList.remove('my-turn');
+            const playerName = sessionData.personagens[turnoAtualUid]?.name || (turnoAtualUid === AI_UID ? "O Mestre" : "outro jogador");
+            turnStatus.textContent = `Aguardando o turno de ${playerName}...`;
         }
     };
 
@@ -184,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadUserCharacters(userId) {
         const charactersRef = collection(db, "characters");
-        const q = query(charactersRef, where("uid", "==", userId));
+        const q = query(charactersRef, where("uid", "==", userId), orderBy("createdAt", "desc"));
         try {
             const querySnapshot = await getDocs(q);
             characterList.innerHTML = '';
@@ -202,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Atualizada para lidar com ambos os sistemas de atributos para compatibilidade
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
@@ -210,36 +206,28 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const charQuery = query(collection(db, 'sessions', sessionId, 'characters'), where("uid", "==", currentUser.uid));
             const charSnapshot = await getDocs(charQuery);
-            if (charSnapshot.empty) {
-                throw new Error("Você não tem um personagem nesta sessão. Aceite o convite e crie um.");
-            }
+            if (charSnapshot.empty) throw new Error("Personagem não encontrado nesta sessão.");
+            
             currentCharacter = { id: charSnapshot.docs[0].id, ...charSnapshot.docs[0].data() };
             
             characterSheetName.textContent = currentCharacter.name;
             characterSheetAttributes.innerHTML = '';
             
-            // Lógica para exibir os atributos corretos (novos ou antigos)
             const charAttrs = currentCharacter.attributes;
-            const isNewSystem = charAttrs.hasOwnProperty('ara');
+            const isNewSystem = 'ara' in charAttrs;
 
-            if (isNewSystem) {
-                attributeKeys.forEach((key, index) => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span class="attr-name">${attributeNames[index]}</span> <span class="attr-value">${charAttrs[key] || 1}</span>`;
-                    characterSheetAttributes.appendChild(li);
-                });
-            } else {
-                 oldAttributeKeys.forEach(key => {
-                    const attrName = key.charAt(0).toUpperCase() + key.slice(1);
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span class="attr-name">${attrName}</span> <span class="attr-value">${charAttrs[key] || 10}</span>`;
-                    characterSheetAttributes.appendChild(li);
-                });
-            }
+            const keys = isNewSystem ? attributeKeys : oldAttributeKeys;
+            const names = isNewSystem ? attributeNames : oldAttributeKeys.map(k => k.charAt(0).toUpperCase() + k.slice(1));
 
+            keys.forEach((key, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="attr-name">${names[index]}</span> <span class="attr-value">${charAttrs[key] || (isNewSystem ? 1 : 10)}</span>`;
+                characterSheetAttributes.appendChild(li);
+            });
 
             showView(gameView);
-            listenForSessionUpdates(sessionId);
+            const sessionRef = doc(db, "sessions", sessionId);
+            sessionUnsubscribe = onSnapshot(sessionRef, (doc) => updateTurnUI(doc.data()));
             listenForMessages(sessionId);
             listenForPartyChanges(sessionId);
         } catch (error) {
@@ -249,14 +237,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function listenForSessionUpdates(sessionId) {
-        sessionUnsubscribe = onSnapshot(doc(db, "sessions", sessionId), (doc) => {
-            if (doc.exists()) {
-                updateTurnUI(doc.data());
-            }
-        });
-    }
-
     function listenForMessages(sessionId) {
       const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
       messagesUnsubscribe = onSnapshot(q, (snapshot) => {
@@ -264,36 +244,33 @@ document.addEventListener('DOMContentLoaded', () => {
           snapshot.docs.forEach(doc => {
               const msg = doc.data();
               const messageElement = document.createElement('div');
-              messageElement.classList.add('message');
+              messageElement.classList.add('message', msg.from === 'mestre' ? 'mestre-msg' : 'player-msg');
+              if(msg.isTurnoUpdate) messageElement.classList.add('system-message');
+
               const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
-              const text = msg.text
-                  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+              const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
               messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
-              if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
               narration.appendChild(messageElement);
           });
           narration.scrollTop = narration.scrollHeight;
       });
-  }
+    }
 
-  function listenForPartyChanges(sessionId) {
+    function listenForPartyChanges(sessionId) {
       const partyQuery = collection(db, 'sessions', sessionId, 'characters');
       partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
           partyList.innerHTML = '';
           snapshot.docs.forEach(doc => {
-              const character = doc.data();
-              if (character.uid !== AI_UID) {
-                 partyList.innerHTML += `<li>${character.name}</li>`;
+              if (doc.data().uid !== AI_UID) {
+                 partyList.innerHTML += `<li>${doc.data().name}</li>`;
               }
           });
       });
-  }
+    }
 
     async function sendChatMessage(text) {
         if (!text.trim() || !currentSessionId || !currentCharacter) return;
-        inputText.disabled = true;
-        btnSend.disabled = true;
+        inputText.disabled = true; btnSend.disabled = true;
         try {
             await addDoc(collection(db, 'sessions', currentSessionId, 'messages'), {
                 from: 'player', text, characterName: currentCharacter.name, uid: currentUser.uid, createdAt: serverTimestamp()
@@ -301,41 +278,35 @@ document.addEventListener('DOMContentLoaded', () => {
             inputText.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-            inputText.disabled = false; 
-            btnSend.disabled = false;
+        } finally {
+           // O estado do turno reabilitará se necessário
         }
     }
 
     async function passTurn() {
         if (!currentSessionId) return;
         btnPassTurn.disabled = true;
-        btnPassTurn.textContent = '...';
         try {
             await passarTurno({ sessionId: currentSessionId });
         } catch (error) {
             alert(error.message);
             btnPassTurn.disabled = false; 
-        } finally {
-            btnPassTurn.textContent = 'Passar Turno';
         }
     }
     
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
-        gameView.classList.remove('in-game');
-
+        showView(sessionSelectionOverlay); 
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
-            showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
             window.location.href = 'login.html';
         }
-
         loadingOverlay.style.display = 'none';
         pageContent.style.display = 'block';
     });
@@ -348,61 +319,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', (e) => {
-        const isClickInsidePanel = sidePanel.contains(e.target);
-        const isClickOnMenuButton = btnMenu.contains(e.target);
-        if (sidePanel.classList.contains('open') && !isClickInsidePanel && !isClickOnMenuButton) {
+        if (sidePanel.classList.contains('open') && !sidePanel.contains(e.target) && !btnMenu.contains(e.target)) {
             sidePanel.classList.remove('open');
         }
     });
 
     btnAuth.addEventListener('click', () => {
-        if (currentUser) {
-            signOut(auth).catch(err => console.error("Erro no logout:", err));
-        } else {
-            window.location.href = 'login.html';
-        }
+        if (currentUser) signOut(auth);
+        else window.location.href = 'login.html';
     });
     
     btnBackToSelection.addEventListener('click', returnToSelectionScreen);
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
-    inputText.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); }
-    });
+    inputText.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); }});
     btnPassTurn.addEventListener('click', passTurn);
 
     characterList.addEventListener('click', (e) => {
         const card = e.target.closest('.character-card');
-        if (card && card.dataset.sessionId) { loadSession(card.dataset.sessionId); }
+        if (card) loadSession(card.dataset.sessionId);
     });
 
     invitesList.addEventListener('click', async (e) => {
-        const button = e.target;
-        const card = button.closest('.invite-card');
-        if (!card) return;
-        const inviteId = card.dataset.inviteId;
+        const button = e.target.closest('button');
+        const card = e.target.closest('.invite-card');
+        if (!button || !card) return;
+        
         button.disabled = true;
         try {
             if (button.classList.contains('btn-accept')) {
-                const result = await acceptInvite({ inviteId });
+                const result = await acceptInvite({ inviteId: card.dataset.inviteId });
                 sessionStorage.setItem('joiningSessionId', result.data.sessionId);
                 resetAndOpenCharacterCreationModal();
             } else if (button.classList.contains('btn-decline')) {
-                await declineInvite({ inviteId });
+                await declineInvite({ inviteId: card.dataset.inviteId });
                 card.remove();
             }
         } catch (error) {
-            console.error("Erro ao responder convite:", error);
             alert(error.message);
             button.disabled = false;
         }
     });
     
-    // ATUALIZADA - Reseta e abre o modal de criação com as novas regras
     function resetAndOpenCharacterCreationModal() {
         hideModal(inviteModal);
         charNameInput.value = '';
         pointsToDistribute = 10;
-        attributes = { ara: 1, ori: 1, emi: 1 }; // Base de 1 ponto
+        attributes = { ara: 1, ori: 1, emi: 1 };
         updateCreationUI();
         creationLoadingIndicator.style.display = 'none';
         btnSaveCharacter.style.display = 'block';
@@ -418,15 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCloseCharCreation.addEventListener('click', () => hideModal(characterCreationModal));
     
     btnSaveCharacter.addEventListener('click', async () => {
-        const charName = charNameInput.value.trim();
-        if (charName.length < 3) {
-            alert('O nome do personagem deve ter pelo menos 3 caracteres.');
-            return;
-        }
-        if (pointsToDistribute > 0) {
-            alert('Você ainda tem pontos para distribuir!');
-            return;
-        }
+        if (charNameInput.value.trim().length < 3) return alert('O nome do personagem deve ter pelo menos 3 caracteres.');
+        if (pointsToDistribute > 0) return alert('Você ainda tem pontos para distribuir!');
 
         creationLoadingIndicator.style.display = 'flex';
         btnSaveCharacter.style.display = 'none';
@@ -434,18 +389,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const joiningSessionId = sessionStorage.getItem('joiningSessionId');
-            let result;
+            const characterData = { characterName: charNameInput.value.trim(), attributes };
+            
             if (joiningSessionId) {
-                result = await joinSession({ sessionId: joiningSessionId, characterName: charName, attributes: attributes });
+                await joinSession({ ...characterData, sessionId: joiningSessionId });
                 sessionStorage.removeItem('joiningSessionId');
-                hideModal(characterCreationModal);
+                alert(`${characterData.characterName} foi criado e adicionado à sessão!`);
                 await returnToSelectionScreen();
-                alert(`${charName} foi criado e adicionado à sessão!`);
             } else {
-                result = await createAndJoinSession({ characterName: charName, attributes: attributes });
+                const result = await createAndJoinSession(characterData);
                 await loadSession(result.data.sessionId);
-                hideModal(characterCreationModal);
             }
+            hideModal(characterCreationModal);
         } catch (error) {
             alert(`Erro: ${error.message}`);
             creationLoadingIndicator.style.display = 'none';
@@ -454,55 +409,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // ATUALIZADA - UI de criação com novas regras
     function updateCreationUI() {
         pointsToDistributeSpan.textContent = pointsToDistribute;
-        attributesGrid.innerHTML = '';
+        attributeAccordion.innerHTML = '';
         attributeKeys.forEach((key, index) => {
             const value = attributes[key];
-            const div = document.createElement('div');
-            div.className = 'attribute-item';
-            div.innerHTML = `
-                <span>${attributeNames[index]}</span>
-                <div class="attribute-controls">
-                    <button class="btn-attr" data-attr="${key}" data-op="-" ${value <= 1 ? 'disabled' : ''}>-</button>
-                    <span class="attr-value">${value}</span>
-                    <button class="btn-attr" data-attr="${key}" data-op="+" ${pointsToDistribute < 1 ? 'disabled' : ''}>+</button>
+            const details = attributeDetails[key];
+            const subItems = details.sub.map(s => `<li>${s}</li>`).join('');
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'attribute-item';
+            itemDiv.innerHTML = `
+                <div class="attribute-header" data-attr="${key}">
+                    <span class="attribute-title">${attributeNames[index]}</span>
+                    <span class="attribute-value-display">${value}</span>
+                </div>
+                <div class="attribute-details">
+                    <div class="sub-attributes">
+                        <h5>Componentes:</h5>
+                        <ul>${subItems}</ul>
+                    </div>
+                    <div class="usage-description">
+                        <h5>Uso Principal:</h5>
+                        <p>${details.desc}</p>
+                    </div>
+                    <div class="attribute-controls">
+                        <button class="btn btn-attr" data-attr-op="-" data-attr-key="${key}" ${value <= 1 ? 'disabled' : ''}>-</button>
+                        <span class="attr-value">${value}</span>
+                        <button class="btn btn-attr" data-attr-op="+" data-attr-key="${key}" ${pointsToDistribute < 1 ? 'disabled' : ''}>+</button>
+                    </div>
                 </div>
             `;
-            attributesGrid.appendChild(div);
+            attributeAccordion.appendChild(itemDiv);
         });
     }
     
-    // ATUALIZADA - Lógica de distribuição de pontos simplificada
-    attributesGrid.addEventListener('click', (e) => {
-        if (!e.target.matches('.btn-attr')) return;
-        const button = e.target;
-        const attrKey = button.dataset.attr;
-        const operation = button.dataset.op;
-        let currentValue = attributes[attrKey];
+    attributeAccordion.addEventListener('click', (e) => {
+        const header = e.target.closest('.attribute-header');
+        if (header) {
+            header.nextElementSibling.classList.toggle('open');
+            return;
+        }
 
-        if (operation === '+') {
-            if (pointsToDistribute >= 1) {
+        const button = e.target.closest('.btn-attr');
+        if (button) {
+            const attrKey = button.dataset.attrKey;
+            const operation = button.dataset.attrOp;
+            if (operation === '+' && pointsToDistribute >= 1) {
                 attributes[attrKey]++;
                 pointsToDistribute--;
-            }
-        } else if (operation === '-') {
-            if (currentValue > 1) {
+            } else if (operation === '-' && attributes[attrKey] > 1) {
                 attributes[attrKey]--;
                 pointsToDistribute++;
             }
+            updateCreationUI();
         }
-        updateCreationUI();
     });
     
-    updateCreationUI();
-
     btnInvitePlayer.addEventListener('click', () => {
-        if (!currentSessionId) {
-            alert("Você precisa estar em uma sessão para convidar jogadores.");
-            return;
-        }
+        if (!currentSessionId) return alert("Você precisa estar em uma sessão para convidar jogadores.");
         inviteEmailInput.value = '';
         showModal(inviteModal);
     });
@@ -511,10 +476,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnSendInvite.addEventListener('click', async () => {
         const email = inviteEmailInput.value.trim();
-        if (!email.includes('@')) {
-            alert('Por favor, insira um e-mail válido.');
-            return;
-        }
+        if (!email.includes('@')) return alert('Por favor, insira um e-mail válido.');
+        
         btnSendInvite.disabled = true;
         btnSendInvite.textContent = 'Enviando...';
         try {
@@ -530,12 +493,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     diceRoller.addEventListener('click', async e => {
-        if (e.target.matches('[data-d]')) {
-            if (!currentSessionId || !currentCharacter) return;
+        if (e.target.matches('[data-d]') && currentSessionId && currentCharacter) {
             const die = e.target.dataset.d;
             const roll = Math.floor(Math.random() * parseInt(die)) + 1;
-            const text = `rolou 1d${die} e tirou **${roll}**`;
-            await sendChatMessage(text);
+            await sendChatMessage(`rolou 1d${die} e tirou **${roll}**`);
         }
     });
 });

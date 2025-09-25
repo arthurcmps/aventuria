@@ -112,10 +112,15 @@
                     <label for="char-name">Nome:</label>
                     <input type="text" id="char-name" maxlength="50">
                 </div>
-                <div class="attributes-section">
-                    <h4>Atributos (Pontos: <span id="points-to-distribute">27</span>)</h4>
-                    <div class="attributes-grid"></div>
+                <div id="points-distributor">
+                    <h3>Pontos para distribuir: <span id="points-to-distribute">10</span></h3>
                 </div>
+                
+                <!-- Container do Acordeão de Atributos -->
+                <div id="attribute-accordion" class="attribute-accordion">
+                    <!-- O conteúdo será gerado pelo JavaScript -->
+                </div>
+
                 <button id="btn-save-character" class="btn">Salvar e Iniciar</button>
             </div>
         </div>

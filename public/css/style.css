@@ -620,3 +620,97 @@ body {
     font-size: 1.8em;
     z-index: 10;
 }
+
+/* ----------------------------------
+ * Estilos da Criação de Personagem (Acordeão)
+ * ---------------------------------- */
+
+.attribute-accordion .attribute-item {
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    margin-bottom: 10px;
+    background-color: var(--secondary-bg-color);
+    overflow: hidden; /* Garante que os cantos arredondados funcionem */
+}
+
+.attribute-accordion .attribute-header {
+    padding: 15px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--tertiary-bg-color);
+}
+
+.attribute-accordion .attribute-header:hover {
+    background-color: #614d3c;
+}
+
+.attribute-accordion .attribute-title {
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    color: var(--accent-color);
+}
+
+.attribute-accordion .attribute-value-display {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+/* Detalhes que abrem e fecham */
+.attribute-accordion .attribute-details {
+    padding: 15px;
+    display: none; /* Escondido por padrão */
+    border-top: 1px solid var(--border-color);
+    background-color: var(--primary-bg-color);
+}
+
+.attribute-accordion .attribute-details.open {
+    display: block; /* Mostrado quando ativo */
+}
+
+.attribute-accordion .sub-attributes,
+.attribute-accordion .usage-description {
+    margin-bottom: 15px;
+}
+
+.attribute-accordion h5 {
+    font-family: var(--font-display);
+    color: var(--accent-color);
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.attribute-accordion ul {
+    list-style-type: none;
+    padding-left: 10px;
+}
+
+.attribute-accordion li {
+    margin-bottom: 5px;
+}
+
+/* Controles de + e - */
+.attribute-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.attribute-controls .btn-attr {
+    width: 35px;
+    height: 35px;
+    font-size: 1.5rem;
+    padding: 0;
+    line-height: 35px;
+    text-align: center;
+}
+
+.attribute-controls .attr-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    min-width: 30px;
+    text-align: center;
+}
