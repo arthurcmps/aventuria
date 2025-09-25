@@ -1,7 +1,5 @@
 /*
- *  public/js/script.js (VERSÃO COM IA ATIVA)
- *  - REVISADO: `listenForPartyChanges` agora filtra a IA da lista de jogadores.
- *  - REVISADO: `updateTurnUI` agora mostra uma mensagem específica quando é o turno da IA.
+ *  public/js/script.js (VERSÃO RESPONSIVA CORRIGIDA)
  */
 
 // --- IMPORTS ---
@@ -15,6 +13,8 @@ import {
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- REFERÊNCIAS DO DOM ---
+    const btnMenu = document.getElementById('btn-menu');
+    const sidePanel = document.getElementById('side-panel');
     const username = document.getElementById('username');
     const btnAuth = document.getElementById('btn-auth');
     const btnBackToSelection = document.getElementById('btn-back-to-selection');
@@ -73,8 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const showView = (view) => {
         sessionSelectionOverlay.style.display = 'none';
         gameView.style.display = 'none';
+        gameView.classList.remove('in-game');
+
         view.style.display = view === gameView ? 'grid' : 'flex';
         const isInGame = view === gameView;
+        if (isInGame) {
+            gameView.classList.add('in-game');
+        }
+
         btnBackToSelection.style.display = isInGame ? 'inline-block' : 'none';
         btnCreateNewCharacter.style.display = !isInGame && currentUser ? 'inline-block' : 'none';
     };
@@ -99,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         partyList.innerHTML = '';
         characterSheetName.textContent = '';
         characterSheetAttributes.innerHTML = '';
+        gameView.classList.remove('in-game'); // Garante que a classe seja removida
         showView(sessionSelectionOverlay);
         if (currentUser) {
             await loadUserCharacters(currentUser.uid);
@@ -245,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
           partyList.innerHTML = '';
           snapshot.docs.forEach(doc => {
               const character = doc.data();
-              // Filtra a IA da lista de jogadores na UI
               if (character.uid !== AI_UID) {
                  partyList.innerHTML += `<li>${character.name}</li>`;
               }
@@ -255,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function sendChatMessage(text) {
         if (!text.trim() || !currentSessionId || !currentCharacter) return;
-        inputText.disabled = true; // Desabilita o input ao enviar
+        inputText.disabled = true;
         btnSend.disabled = true;
         try {
             await addDoc(collection(db, 'sessions', currentSessionId, 'messages'), {
@@ -264,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
             inputText.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-            // Reabilita se houver erro para o usuário tentar de novo
             inputText.disabled = false; 
             btnSend.disabled = false;
         }
@@ -278,16 +283,15 @@ document.addEventListener('DOMContentLoaded', () => {
             await passarTurno({ sessionId: currentSessionId });
         } catch (error) {
             alert(error.message);
-            // Se falhar, o turno não passou, então reabilita o botão
             btnPassTurn.disabled = false; 
         } finally {
-            // O estado do botão será gerenciado pelo updateTurnUI, então só resetamos o texto
             btnPassTurn.textContent = 'Passar Turno';
         }
     }
     
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
+        gameView.classList.remove('in-game');
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
@@ -309,11 +313,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- LISTENERS DE EVENTOS ---
+
+    btnMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sidePanel.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+        const isClickInsidePanel = sidePanel.contains(e.target);
+        const isClickOnMenuButton = btnMenu.contains(e.target);
+        if (sidePanel.classList.contains('open') && !isClickInsidePanel && !isClickOnMenuButton) {
+            sidePanel.classList.remove('open');
+        }
+    });
+
     btnAuth.addEventListener('click', () => {
         if (currentUser) {
+            // Se o usuário está logado, o botão funciona como "Sair"
             signOut(auth).catch(err => console.error("Erro no logout:", err));
         } else {
-            window.location.href = '/login.html';
+            // Se não há usuário, redireciona para a página de login
+            window.location.href = 'login.html';
         }
     });
     
@@ -333,10 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const button = e.target;
         const card = button.closest('.invite-card');
         if (!card) return;
-
         const inviteId = card.dataset.inviteId;
         button.disabled = true;
-        
         try {
             if (button.classList.contains('btn-accept')) {
                 const result = await acceptInvite({ inviteId });

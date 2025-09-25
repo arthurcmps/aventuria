@@ -1,25 +1,40 @@
-name: Deploy to Firebase on Push
+# .github/workflows/firebase-deploy.yml
+
+name: Deploy to Firebase Hosting
 
 on:
   push:
     branches:
       - main
-      - develop
+  pull_request:
 
 jobs:
-  build_and_deploy:
+  # Job para fazer deploy de um canal de preview a cada Pull Request
+  deploy_preview:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Dependencies
-        run: npm --prefix functions install
-
-      - name: Deploy to Firebase
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - uses: actions/checkout@v4
+      - name: Install Functions Dependencies
+        run: npm install --prefix functions
+      - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           projectId: aventuria-baeba
-          channelId: ${{ github.ref == 'refs/heads/develop' && 'develop' || '' }}
-          target: aventuria-baeba
+          channelId: '${{ github.head_ref }}'
+
+  # Job para fazer o deploy para o site principal (produção)
+  deploy_production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Functions Dependencies
+        run: npm install --prefix functions
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          projectId: aventuria-baeba
+          channelId: live

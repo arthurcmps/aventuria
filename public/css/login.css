@@ -1,4 +1,4 @@
-/* css/login.css - v1.1 - CORRIGIDO (remove background-image) */
+/* css/login.css - v2.0 - ESTILO PARA FORMULÁRIO MANUAL */
 
 /* ----------------------------------
  * Variáveis Globais (Consistente com style.css)
@@ -19,10 +19,6 @@
 /* ----------------------------------
  * Estilos Base
  * ---------------------------------- */
-body, .login-container {
-    background-color: var(--primary-bg-color);
-}
-
 body {
     font-family: var(--font-main);
     color: var(--font-color);
@@ -31,161 +27,157 @@ body {
     align-items: center;
     height: 100vh;
     margin: 0;
+    background-color: var(--primary-bg-color);
+    background-image: url('data:image/svg+xml,%3Csvg width="6" height="6" viewBox="0 0 6 6" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="%239C92AC" fill-opacity="0.1" fill-rule="evenodd"%3E%3Cpath d="M5 0h1L0 6V5zM6 5v1H5z"/%3E%3C/g%3E%3C/svg%3E');
 }
 
-/* ----------------------------------
- * Caixa de Login
- * ---------------------------------- */
 .login-container {
     display: flex;
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: 100%;
-    position: relative;
+    padding: 20px;
 }
 
-/* Camada de sobreposição escura (opcional, mas mantém o estilo) */
-.login-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(20, 15, 11, 0.4);
-}
-
+/* ----------------------------------
+ * Caixa de Login
+ * ---------------------------------- */
 .login-box {
     background-color: var(--secondary-bg-color);
     padding: 40px;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid var(--border-color);
     text-align: center;
-    width: 90%;
-    max-width: 450px;
+    width: 100%;
+    max-width: 400px;
     z-index: 1;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
 }
 
 .login-box h1 {
     font-family: var(--font-display);
     color: var(--accent-color);
-    font-size: 3.5em;
+    font-size: 3.2em;
     font-weight: 400;
     margin-bottom: 10px;
 }
 
 .login-box p {
     font-size: 1.1em;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
     color: var(--font-color);
     opacity: 0.9;
 }
 
 /* ----------------------------------
- * Estilização do FirebaseUI
+ * Formulário
  * ---------------------------------- */
-
-/* ----- Container Geral e Botões ----- */
-.firebaseui-container {
-    max-width: 100% !important;
+#login-form {
+    margin-bottom: 20px;
 }
 
-.firebaseui-card-content {
-    padding: 0 !important;
+.form-group {
+    margin-bottom: 15px;
 }
 
-.firebaseui-idp-list {
-    margin: 0 !important;
-}
-
-.firebaseui-idp-button {
-    background-color: var(--tertiary-bg-color) !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: 5px !important;
-    color: var(--font-color) !important;
-    font-family: var(--font-main) !important;
-    font-weight: 700 !important;
-    transition: background-color 0.3s ease !important;
-}
-
-.firebaseui-idp-button:hover {
-    background-color: #655040 !important;
-}
-
-.firebaseui-idp-icon-wrapper {
-    background-color: transparent !important;
-}
-
-/* ----- Formulário de E-mail ----- */
-.firebaseui-form-layout {
-    margin: 0 !important;
-}
-
-.firebaseui-input-layout {
-    margin: 0 !important;
-}
-
-.firebaseui-textfield.firebaseui-input-wrapper {
-    padding: 0 !important;
-}
-
-.firebaseui-input {
-    background-color: var(--tertiary-bg-color) !important;
-    color: var(--font-color) !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: 5px !important;
-    font-size: 1em !important;
-    height: 40px !important;
-}
-
-.firebaseui-label {
-    color: var(--font-color) !important;
-    opacity: 0.8;
-    font-family: var(--font-main) !important;
-}
-
-.firebaseui-button, .firebaseui-id-submit {
-    background-color: var(--accent-color) !important;
-    color: var(--primary-bg-color) !important;
-    font-family: var(--font-main) !important;
-    font-weight: 700 !important;
-    font-size: 1em !important;
-    border-radius: 5px !important;
-    margin-top: 15px !important;
-    padding: 12px 0 !important;
-    transition: background-color 0.3s ease !important;
-}
-
-.firebaseui-button:hover, .firebaseui-id-submit:hover {
-    background-color: var(--accent-hover-color) !important;
-}
-
-/* ----- Links e Textos Auxiliares ----- */
-.firebaseui-card-footer {
-    padding: 0 !important;
-    margin-top: 20px !important;
-}
-
-.firebaseui-link {
-    color: var(--accent-color) !important;
-    transition: color 0.3s ease !important;
-}
-
-.firebaseui-link:hover {
-    color: var(--accent-hover-color) !important;
-}
-
-.firebaseui-text-input-error {
-    color: var(--error-color) !important;
-    display: block; /* Garante que a mensagem seja sempre visível */
-    height: auto; /* Permite que a altura se ajuste ao texto */
-    padding-top: 5px;
-}
-
-/* ----- Loader ----- */
-#loader {
+input[type="email"], input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--tertiary-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
     color: var(--font-color);
-    margin-top: 20px;
+    font-family: var(--font-main);
+    font-size: 1em;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input[type="email"]:focus, input[type="password"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px rgba(229, 126, 34, 0.2);
+}
+
+.btn-login, .btn-google {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    font-family: var(--font-main);
+    text-transform: uppercase;
+}
+
+.btn-login {
+    background-color: var(--accent-color);
+    color: var(--primary-bg-color);
+}
+.btn-login:hover { background-color: var(--accent-hover-color); }
+
+.separator {
+    font-size: 0.9em;
+    color: var(--border-color);
+    text-transform: uppercase;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.separator::before, .separator::after {
+    content: '';
+    flex-grow: 1;
+    height: 1px;
+    background-color: var(--border-color);
+}
+
+.btn-google {
+    background-color: #FFFFFF;
+    color: #444444;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #DDDDDD;
+    text-transform: none;
+}
+.btn-google img { width: 18px; height: 18px; }
+.btn-google:hover { background-color: #f7f7f7; }
+
+.error-message {
+    color: var(--error-color);
+    font-weight: bold;
+    margin-top: 15px;
+    min-height: 1.2em;
+}
+
+.form-footer {
+    margin-top: 25px;
+    font-size: 0.9em;
+}
+
+.form-footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+.form-footer a:hover { color: var(--accent-hover-color); }
+.form-footer span { margin: 0 10px; color: var(--border-color); }
+
+
+/* ----------------------------------
+ * Responsividade
+ * ---------------------------------- */
+@media (max-width: 480px) {
+    .login-box {
+        padding: 25px;
+        border: none;
+        box-shadow: none;
+    }
+
+    .login-box h1 {
+        font-size: 2.8em;
+    }
 }
