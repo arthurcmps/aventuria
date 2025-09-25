@@ -1,9 +1,7 @@
 
 /*
- *  public/js/script.js (VERSÃO COM INTERFACE ACORDEÃO)
- *  - Adicionada estrutura de dados `attributeDetails` com sub-atributos e descrições.
- *  - `updateCreationUI` foi reescrita para gerar um menu sanfona (acordeão).
- *  - Adicionado um novo listener de eventos para o acordeão que controla a abertura/fechamento dos painéis e a distribuição de pontos.
+ *  public/js/script.js (VERSÃO COM CORREÇÃO DE ÍNDICE)
+ *  - Removido o `orderBy("createdAt")` da função `loadUserCharacters` para evitar o erro de índice ausente no Firestore.
  */
 
 // --- IMPORTS ---
@@ -181,7 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadUserCharacters(userId) {
         const charactersRef = collection(db, "characters");
-        const q = query(charactersRef, where("uid", "==", userId), orderBy("createdAt", "desc"));
+        // CORREÇÃO: Removido o orderBy para evitar erro de índice.
+        const q = query(charactersRef, where("uid", "==", userId));
         try {
             const querySnapshot = await getDocs(q);
             characterList.innerHTML = '';
