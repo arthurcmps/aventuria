@@ -1,10 +1,10 @@
 /*
- *  public/js/script.js (v3.5 - SELEÇÃO DE ORIXÁ)
- *  - Adicionado `orixasData` para armazenar informações sobre os Orixás.
- *  - `resetAndOpenCharacterCreationModal` agora popula o <select> de Orixás.
- *  - Novo listener para `orixa-select` que exibe dinamicamente as informações do Orixá escolhido.
- *  - `btnSaveCharacter` agora valida a seleção de um Orixá e salva a informação no personagem.
- *  - `loadSession` foi atualizada para exibir os detalhes do Orixá do personagem na ficha do jogo.
+ * public/js/script.js (v3.5 - SELEÇÃO DE ORIXÁ)
+ * - Adicionado `orixasData` para armazenar informações sobre os Orixás.
+ * - `resetAndOpenCharacterCreationModal` agora popula o <select> de Orixás.
+ * - Novo listener para `orixa-select` que exibe dinamicamente as informações do Orixá escolhido.
+ * - `btnSaveCharacter` agora valida a seleção de um Orixá e salva a informação no personagem.
+ * - `loadSession` foi atualizada para exibir os detalhes do Orixá do personagem na ficha do jogo.
  */
 
 // --- IMPORTS ---
@@ -276,7 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const charElement = document.createElement('div');
                 charElement.className = 'character-card';
                 charElement.dataset.sessionId = character.sessionId;
-                charElement.innerHTML = `<h4>${character.name}</h4><p>${character.orixa.name || 'Sem Orixá'}</p>`;
+                // CORREÇÃO APLICADA AQUI
+                charElement.innerHTML = `<h4>${character.name}</h4><p>${character.orixa?.name || 'Sem Orixá'}</p>`;
                 characterList.appendChild(charElement);
             });
         } catch (error) {
