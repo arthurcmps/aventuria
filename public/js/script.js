@@ -1,7 +1,8 @@
 
 /*
- *  public/js/script.js (VERSÃO COM CORREÇÃO DE ÍNDICE)
- *  - Removido o `orderBy("createdAt")` da função `loadUserCharacters` para evitar o erro de índice ausente no Firestore.
+ *  public/js/script.js (VERSÃO COM CORREÇÃO DO BOTÃO 'CRIAR')
+ *  - Corrigida a lógica em `onAuthStateChanged` para garantir que `currentUser` seja definido ANTES da chamada de `showView`.
+ *  - Isso restaura a visibilidade do botão "Criar Novo Personagem" após o login.
  */
 
 // --- IMPORTS ---
@@ -179,7 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadUserCharacters(userId) {
         const charactersRef = collection(db, "characters");
-        // CORREÇÃO: Removido o orderBy para evitar erro de índice.
         const q = query(charactersRef, where("uid", "==", userId));
         try {
             const querySnapshot = await getDocs(q);
@@ -293,19 +293,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // CORREÇÃO APLICADA AQUI
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
-        showView(sessionSelectionOverlay); 
+        
         if (user) {
-            currentUser = user;
+            currentUser = user; // 1. DEFINIR o usuário
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
+            
+            showView(sessionSelectionOverlay); // 2. MOSTRAR a view (agora o botão aparece)
+            
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
             window.location.href = 'login.html';
         }
+
         loadingOverlay.style.display = 'none';
         pageContent.style.display = 'block';
     });
