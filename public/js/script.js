@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const orixaDescription = document.getElementById('orixa-description');
     const orixaHabilidades = document.getElementById('orixa-habilidades');
     const orixaEwos = document.getElementById('orixa-ewos');
-    const deleteCharacterAndSession = httpsCallable(functions, 'deleteCharacterAndSession');
+    
 
     // --- ESTADO DA APLICAÇÃO ---
     let currentUser = null;
@@ -439,21 +439,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = e.target.closest('.character-card');
         if (!card) return;
     
-        // Verifica se o clique foi no botão de deletar
-        const deleteButton = e.target.closest('.btn-delete-character');
-        if (deleteButton) {
-            e.stopPropagation(); // Impede o evento de carregar a sessão
-            const characterId = card.dataset.characterId;
-            const sessionId = card.dataset.sessionId;
-            const characterName = card.querySelector('h4').textContent;
-    
-            // Pede confirmação ao usuário
-            if (confirm(`Tem certeza que deseja excluir o personagem "${characterName}" e toda a sua sessão? Esta ação não pode ser desfeita.`)) {
-                deleteCharacter(characterId, sessionId, card);
+        async function deleteCharacter(characterId, sessionId, cardElement) {
+            const deleteButton = cardElement.querySelector('.btn-delete-character');
+            try {
+                deleteButton.disabled = true; // Desabilita para evitar cliques duplos
+        
+                // Chama a função de backend
+                await deleteCharacterAndSession({ characterId, sessionId });
+        
+                alert('Personagem e sessão excluídos com sucesso.');
+                cardElement.remove(); // Remove o card da tela
+        
+                // Verifica se a lista de personagens ficou vazia
+                if (characterList.children.length === 0) {
+                    noCharactersMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error("Erro ao excluir personagem:", error);
+                alert(`Erro ao excluir: ${error.message}`);
+                deleteButton.disabled = false; // Reabilita em caso de erro
             }
-        } else {
-            // Comportamento original: carrega a sessão
-            loadSession(card.dataset.sessionId);
         }
     });
     
@@ -613,24 +618,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-async function deleteCharacter(characterId, sessionId, cardElement) {
-    const deleteButton = cardElement.querySelector('.btn-delete-character');
-    try {
-        deleteButton.disabled = true; // Desabilita para evitar cliques duplos
 
-        // Chama a função de backend
-        await deleteCharacterAndSession({ characterId, sessionId });
-
-        alert('Personagem e sessão excluídos com sucesso.');
-        cardElement.remove(); // Remove o card da tela
-
-        // Verifica se a lista de personagens ficou vazia
-        if (characterList.children.length === 0) {
-            noCharactersMessage.style.display = 'block';
-        }
-    } catch (error) {
-        console.error("Erro ao excluir personagem:", error);
-        alert(`Erro ao excluir: ${error.message}`);
-        deleteButton.disabled = false; // Reabilita em caso de erro
-    }
-}

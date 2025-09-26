@@ -13,6 +13,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { defineSecret } = require("firebase-functions/params");
 const deleteCharacterAndSession = httpsCallable(functions, 'deleteCharacterAndSession');
 
+
 // Inicialização
 try { admin.initializeApp(); } catch (e) { console.warn("Falha na inicialização do Admin SDK."); }
 
