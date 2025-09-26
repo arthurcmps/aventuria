@@ -319,7 +319,7 @@ exports.declineInvite = regionalFunctions.https.onCall(async (data, context) => 
  * Exclui um personagem e a sessão de jogo associada a ele.
  * Requer que o usuário esteja autenticado.
  */
-exports.deleteCharacterAndSession = functions.https.onCall(async (data, context) => {
+exports.deleteCharacterAndSession = regionalFunctions.https.onCall(async (data, context) => {
     // Verifica se o usuário está autenticado
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Você precisa estar logado para excluir um personagem.');
