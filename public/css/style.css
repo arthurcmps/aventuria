@@ -736,7 +736,7 @@ body {
     margin-bottom: 5px;
 }
 
-* Estilo do Botão de Excluir Personagem
+/* Estilo do Botão de Excluir Personagem
  * ---------------------------------- */
 
 /* Torna o card um container para o botão posicionado absolutamente */
@@ -798,11 +798,11 @@ body {
  * Sistema de Notificação (Toast)
  * ---------------------------------- */
 
- #notification-container {
+#notification-container {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 2000; /* Garante que fique acima de tudo */
+    z-index: 2000;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -819,21 +819,18 @@ body {
     min-width: 300px;
 }
 
-/* Estilo para sucesso (verde/laranja do tema) */
 .notification.success {
-    background-color: #d8c3a5; /* Um fundo claro que combina */
+    background-color: #d8c3a5;
     border-color: var(--accent-color);
     color: #3d2f24;
 }
 
-/* Estilo para erro (vermelho) */
 .notification.error {
-    background-color: #f2d7d5; /* Um fundo vermelho claro */
+    background-color: #f2d7d5;
     border-color: var(--error-color);
     color: #58180d;
 }
 
-/* Animações de entrada e saída */
 @keyframes slideIn {
     from {
         opacity: 0;
