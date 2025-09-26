@@ -176,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const declineInvite = httpsCallable(functions, 'declineInvite');
     const sendInvite = httpsCallable(functions, 'sendInvite');
     const passarTurno = httpsCallable(functions, 'passarTurno');
+    const deleteCharacterAndSession = httpsCallable(functions, 'deleteCharacterAndSession');
 
     // --- GERENCIAMENTO DE UI ---
     
@@ -435,21 +436,31 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
     inputText.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); }});
     btnPassTurn.addEventListener('click', passTurn);
-    characterList.addEventListener('click', (e) => {
-        const card = e.target.closest('.character-card');
-        if (!card) return;
+    characterList.addEventListener('click', async (e) => {
+        // Verifica se o elemento clicado foi o botão de deletar
+        if (e.target.closest('.btn-delete-character')) {
+            const card = e.target.closest('.character-card');
+            if (!card) return;
     
-        async function deleteCharacter(characterId, sessionId, cardElement) {
-            const deleteButton = cardElement.querySelector('.btn-delete-character');
+            const characterId = card.dataset.characterId;
+            const sessionId = card.dataset.sessionId;
+            const deleteButton = card.querySelector('.btn-delete-character');
+    
+            // Pede confirmação ao usuário
+            if (!confirm(`Tem certeza de que deseja excluir este personagem e toda a sua aventura? Esta ação não pode ser desfeita.`)) {
+                return;
+            }
+    
             try {
                 deleteButton.disabled = true; // Desabilita para evitar cliques duplos
-        
-                // Chama a função de backend
+                deleteButton.textContent = '...'; // Feedback visual
+    
+                // Chama a função de backend que você criou
                 await deleteCharacterAndSession({ characterId, sessionId });
-        
+    
                 alert('Personagem e sessão excluídos com sucesso.');
-                cardElement.remove(); // Remove o card da tela
-        
+                card.remove(); // Remove o card da tela
+    
                 // Verifica se a lista de personagens ficou vazia
                 if (characterList.children.length === 0) {
                     noCharactersMessage.style.display = 'block';
@@ -458,6 +469,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Erro ao excluir personagem:", error);
                 alert(`Erro ao excluir: ${error.message}`);
                 deleteButton.disabled = false; // Reabilita em caso de erro
+                deleteButton.textContent = '🗑️';
+            }
+        }
+        // Lógica para entrar na sessão (se o clique não foi no botão de deletar)
+        else {
+            const card = e.target.closest('.character-card');
+            if (card && card.dataset.sessionId) {
+                loadSession(card.dataset.sessionId);
             }
         }
     });

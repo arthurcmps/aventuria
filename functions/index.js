@@ -11,8 +11,6 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { defineSecret } = require("firebase-functions/params");
-const deleteCharacterAndSession = httpsCallable(functions, 'deleteCharacterAndSession');
-
 
 // Inicialização
 try { admin.initializeApp(); } catch (e) { console.warn("Falha na inicialização do Admin SDK."); }
@@ -317,28 +315,6 @@ exports.declineInvite = regionalFunctions.https.onCall(async (data, context) => 
     return { success: true };
 });
 
- async function deleteCharacter(characterId, sessionId, cardElement) {
-    const deleteButton = cardElement.querySelector('.btn-delete-character');
-    try {
-        deleteButton.disabled = true; // Desabilita para evitar cliques duplos
-
-        // Chama a função de backend
-        await deleteCharacterAndSession({ characterId, sessionId });
-
-        alert('Personagem e sessão excluídos com sucesso.');
-        cardElement.remove(); // Remove o card da tela
-
-        // Verifica se a lista de personagens ficou vazia
-        if (characterList.children.length === 0) {
-            noCharactersMessage.style.display = 'block';
-        }
-    } catch (error) {
-        console.error("Erro ao excluir personagem:", error);
-        alert(`Erro ao excluir: ${error.message}`);
-        deleteButton.disabled = false; // Reabilita em caso de erro
-    }
-}
-
 /**
  * Exclui um personagem e a sessão de jogo associada a ele.
  * Requer que o usuário esteja autenticado.
@@ -357,14 +333,10 @@ exports.deleteCharacterAndSession = functions.https.onCall(async (data, context)
     }
 
     const uid = context.auth.uid;
-    const db = getFirestore();
     const characterRef = db.collection('characters').doc(characterId);
     const sessionRef = db.collection('sessions').doc(sessionId);
 
     try {
-        // Inicia um batch de escrita para garantir que ambas as operações ocorram ou falhem juntas
-        const batch = db.batch();
-
         // 1. Verifica se o personagem pertence ao usuário que está fazendo a requisição
         const charDoc = await characterRef.get();
         if (!charDoc.exists || charDoc.data().uid !== uid) {
@@ -372,19 +344,13 @@ exports.deleteCharacterAndSession = functions.https.onCall(async (data, context)
         }
 
         // 2. Deleta o documento principal do personagem
-        batch.delete(characterRef);
+        await characterRef.delete();
 
         // 3. Deleta a sessão e todas as suas subcoleções (de forma recursiva)
-        // O Firebase CLI tem uma função para isso, mas em Cloud Functions,
-        // precisamos fazer manualmente ou usar uma extensão.
-        // Por simplicidade aqui, vamos deletar o documento da sessão.
-        // ATENÇÃO: Subcoleções como 'messages' e 'characters' dentro da sessão NÃO serão excluídas
-        // automaticamente com este método. Para uma limpeza completa, seria necessária uma função recursiva.
-        // No entanto, para o escopo do projeto, remover a referência principal já torna a sessão inacessível.
-        batch.delete(sessionRef);
+        await deleteCollection(db, `sessions/${sessionId}/messages`, 100);
+        await deleteCollection(db, `sessions/${sessionId}/characters`, 100);
+        await sessionRef.delete();
 
-        // Commita as operações do batch
-        await batch.commit();
 
         return { success: true, message: 'Personagem e sessão excluídos com sucesso.' };
 
@@ -397,3 +363,30 @@ exports.deleteCharacterAndSession = functions.https.onCall(async (data, context)
     }
 });
 
+async function deleteCollection(db, collectionPath, batchSize) {
+  const collectionRef = db.collection(collectionPath);
+  const query = collectionRef.orderBy('__name__').limit(batchSize);
+
+  return new Promise((resolve, reject) => {
+    deleteQueryBatch(db, query, resolve, reject);
+  });
+}
+
+async function deleteQueryBatch(db, query, resolve, reject) {
+  const snapshot = await query.get();
+
+  if (snapshot.size === 0) {
+    return resolve();
+  }
+
+  const batch = db.batch();
+  snapshot.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+
+  await batch.commit();
+
+  process.nextTick(() => {
+    deleteQueryBatch(db, query, resolve, reject);
+  });
+}
