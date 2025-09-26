@@ -12,7 +12,7 @@ import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {
-  addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where
+    addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const orixaDescription = document.getElementById('orixa-description');
     const orixaHabilidades = document.getElementById('orixa-habilidades');
     const orixaEwos = document.getElementById('orixa-ewos');
-    
+
 
     // --- ESTADO DA APLICAÇÃO ---
     let currentUser = null;
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let partyUnsubscribe = null;
     let sessionUnsubscribe = null;
     const AI_UID = 'master-ai';
-    
+
     // ESTRUTURA DE ATRIBUTOS
     const attributeConfig = {
         ara: { name: 'Ara (Corpo)', points: 16, sub: { forca: { name: 'Força', value: 1 }, vigor: { name: 'Vigor', value: 1 }, agilidade: { name: 'Agilidade', value: 1 }, saude: { name: 'Saúde', value: 1 } } },
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteCharacterAndSession = httpsCallable(functions, 'deleteCharacterAndSession');
 
     // --- GERENCIAMENTO DE UI ---
-    
+
     loadingOverlay.style.display = 'flex';
     pageContent.style.display = 'none';
 
@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showView(sessionSelectionOverlay);
         if (currentUser) {
             await loadUserCharacters(currentUser.uid);
-            await loadPendingInvitesInternal(); 
+            await loadPendingInvitesInternal();
         }
     };
 
@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sessionData || !currentUser || !currentSessionId) return;
         const turnoAtualUid = sessionData.turnoAtualUid;
         const isMyTurn = turnoAtualUid === currentUser.uid;
-        
+
         inputText.disabled = !isMyTurn;
         btnSend.disabled = !isMyTurn;
         btnPassTurn.disabled = !isMyTurn;
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             notificationsSection.style.display = result.data.length > 0 ? 'block' : 'none';
             result.data.forEach(invite => {
                 const card = document.createElement('div');
-                card.className = 'invite-card'; 
+                card.className = 'invite-card';
                 card.dataset.inviteId = invite.id;
                 card.innerHTML = `
                     <div class="invite-info"><p><strong>${invite.senderCharacterName}</strong> convidou você para a aventura <strong>${invite.sessionId.substring(0, 6)}</strong>!</p></div>
@@ -282,18 +282,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 charElement.innerHTML = `
                     <div class="character-card-info">
                         <h4>${character.name}</h4>
-                        <p>${character.orixa?.name || 'Sem Orixá'}</p>
-                    </div>
-                    <div class="character-card-actions">
-                        <button class="btn-delete-character">🗑️</button>
-                    </div>`;
+                         <p>${character.orixa?.name || 'Sem Orixá'}</p>
+                        <button class="btn-delete-character" title="Excluir Personagem">&times;</button>
+`;
                 characterList.appendChild(charElement);
             });
         } catch (error) {
             console.error("Erro ao carregar personagens:", error);
         }
-    }    
-    
+    }
+
     // ATUALIZADO PARA EXIBIR ORIXÁ NA FICHA
     async function loadSession(sessionId) {
         cleanupSessionListeners();
@@ -303,9 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const charQuery = query(collection(db, 'sessions', sessionId, 'characters'), where("uid", "==", currentUser.uid));
             const charSnapshot = await getDocs(charQuery);
             if (charSnapshot.empty) throw new Error("Personagem não encontrado nesta sessão.");
-            
+
             currentCharacter = { id: charSnapshot.docs[0].id, ...charSnapshot.docs[0].data() };
-            
+
             characterSheetName.textContent = currentCharacter.name;
             characterSheetAttributes.innerHTML = '';
 
@@ -324,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Renderiza Orixá (NOVO)
             const oldOrixaSheet = document.getElementById('character-sheet-orixa');
-            if(oldOrixaSheet) oldOrixaSheet.remove();
+            if (oldOrixaSheet) oldOrixaSheet.remove();
 
             if (currentCharacter.orixa) {
                 const orixa = currentCharacter.orixa;
@@ -353,34 +351,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function listenForMessages(sessionId) {
-      const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
-      messagesUnsubscribe = onSnapshot(q, (snapshot) => {
-          narration.innerHTML = '';
-          snapshot.docs.forEach(doc => {
-              const msg = doc.data();
-              const messageElement = document.createElement('div');
-              messageElement.classList.add('message', msg.from === 'mestre' ? 'mestre-msg' : 'player-msg');
-              if(msg.isTurnoUpdate) messageElement.classList.add('system-message');
+        const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
+        messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+            narration.innerHTML = '';
+            snapshot.docs.forEach(doc => {
+                const msg = doc.data();
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message', msg.from === 'mestre' ? 'mestre-msg' : 'player-msg');
+                if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
 
-              const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
-              const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
-              messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
-              narration.appendChild(messageElement);
-          });
-          narration.scrollTop = narration.scrollHeight;
-      });
+                const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
+                const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
+                messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
+                narration.appendChild(messageElement);
+            });
+            narration.scrollTop = narration.scrollHeight;
+        });
     }
 
     function listenForPartyChanges(sessionId) {
-      const partyQuery = collection(db, 'sessions', sessionId, 'characters');
-      partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
-          partyList.innerHTML = '';
-          snapshot.docs.forEach(doc => {
-              if (doc.data().uid !== AI_UID) {
-                 partyList.innerHTML += `<li>${doc.data().name}</li>`;
-              }
-          });
-      });
+        const partyQuery = collection(db, 'sessions', sessionId, 'characters');
+        partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
+            partyList.innerHTML = '';
+            snapshot.docs.forEach(doc => {
+                if (doc.data().uid !== AI_UID) {
+                    partyList.innerHTML += `<li>${doc.data().name}</li>`;
+                }
+            });
+        });
     }
 
     async function sendChatMessage(text) {
@@ -394,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
         } finally {
-           // O estado do turno reabilitará se necessário
+            // O estado do turno reabilitará se necessário
         }
     }
 
@@ -405,15 +403,15 @@ document.addEventListener('DOMContentLoaded', () => {
             await passarTurno({ sessionId: currentSessionId });
         } catch (error) {
             alert(error.message);
-            btnPassTurn.disabled = false; 
+            btnPassTurn.disabled = false;
         }
     }
-    
+
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
-        
+
         if (user) {
-            currentUser = user; 
+            currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
@@ -434,33 +432,33 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAuth.addEventListener('click', () => { if (currentUser) signOut(auth); else window.location.href = 'login.html'; });
     btnBackToSelection.addEventListener('click', returnToSelectionScreen);
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
-    inputText.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); }});
+    inputText.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); } });
     btnPassTurn.addEventListener('click', passTurn);
     characterList.addEventListener('click', async (e) => {
         // Verifica se o elemento clicado foi o botão de deletar
         if (e.target.closest('.btn-delete-character')) {
             const card = e.target.closest('.character-card');
             if (!card) return;
-    
+
             const characterId = card.dataset.characterId;
             const sessionId = card.dataset.sessionId;
             const deleteButton = card.querySelector('.btn-delete-character');
-    
+
             // Pede confirmação ao usuário
             if (!confirm(`Tem certeza de que deseja excluir este personagem e toda a sua aventura? Esta ação não pode ser desfeita.`)) {
                 return;
             }
-    
+
             try {
                 deleteButton.disabled = true; // Desabilita para evitar cliques duplos
                 deleteButton.textContent = '...'; // Feedback visual
-    
+
                 // Chama a função de backend que você criou
                 await deleteCharacterAndSession({ characterId, sessionId });
-    
+
                 alert('Personagem e sessão excluídos com sucesso.');
                 card.remove(); // Remove o card da tela
-    
+
                 // Verifica se a lista de personagens ficou vazia
                 if (characterList.children.length === 0) {
                     noCharactersMessage.style.display = 'block';
@@ -480,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-    
+
 
     invitesList.addEventListener('click', async (e) => {
         const button = e.target.closest('button');
@@ -498,13 +496,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) { alert(error.message); button.disabled = false; }
     });
-    
+
     // ATUALIZADO PARA INCLUIR ORIXÁS
     function resetAndOpenCharacterCreationModal() {
         hideModal(inviteModal);
         charNameInput.value = '';
         attributes = JSON.parse(JSON.stringify(attributeConfig));
-        
+
         // Populando o seletor de Orixás (NOVO)
         orixaSelect.innerHTML = '<option value="">-- Escolha seu Orixá --</option>';
         for (const key in orixasData) {
@@ -526,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     btnCloseCharCreation.addEventListener('click', () => hideModal(characterCreationModal));
-    
+
     // ATUALIZADO PARA INCLUIR ORIXÁ NA CRIAÇÃO
     btnSaveCharacter.addEventListener('click', async () => {
         if (charNameInput.value.trim().length < 3) return alert('O nome do personagem deve ter pelo menos 3 caracteres.');
@@ -547,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 attributes: attributes,
                 orixa: orixasData[selectedOrixaKey] // Adiciona o objeto do Orixá
             };
-            
+
             if (joiningSessionId) {
                 await joinSession({ ...characterData, sessionId: joiningSessionId });
                 sessionStorage.removeItem('joiningSessionId');
@@ -565,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
             charNameInput.disabled = false;
         }
     });
-    
+
     // LÓGICA DE CRIAÇÃO DE ATRIBUTOS (SEM MUDANÇAS)
     function updateCreationUI() {
         attributeAccordion.innerHTML = '';
@@ -581,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             attributeAccordion.appendChild(itemDiv);
         }
     }
-    
+
     attributeAccordion.addEventListener('click', (e) => {
         const header = e.target.closest('.attribute-header');
         if (header) { const details = header.nextElementSibling; if (!details.classList.contains('open')) { document.querySelectorAll('.attribute-details.open').forEach(el => el.classList.remove('open')); details.classList.add('open'); } return; }
@@ -591,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (op === '+' && mainAttr.points > 0) { subAttr.value++; mainAttr.points--; } else if (op === '-' && subAttr.value > 1) { subAttr.value--; mainAttr.points++; }
             updateCreationUI();
             const activeHeader = attributeAccordion.querySelector(`.attribute-header[data-main-key="${mainKey}"]`);
-            if(activeHeader) activeHeader.nextElementSibling.classList.add('open');
+            if (activeHeader) activeHeader.nextElementSibling.classList.add('open');
         }
     });
 
@@ -609,7 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
             orixaDetailsContainer.style.display = 'none';
         }
     });
-    
+
     btnInvitePlayer.addEventListener('click', () => { if (!currentSessionId) return alert("Você precisa estar em uma sessão para convidar jogadores."); inviteEmailInput.value = ''; showModal(inviteModal); });
     btnCancelInvite.addEventListener('click', () => hideModal(inviteModal));
 

@@ -735,3 +735,51 @@ body {
 #orixa-details-container ul li {
     margin-bottom: 5px;
 }
+
+* Estilo do Botão de Excluir Personagem
+ * ---------------------------------- */
+
+/* Torna o card um container para o botão posicionado absolutamente */
+.character-card {
+    position: relative; 
+}
+
+.btn-delete-character {
+    /* Posicionamento no canto superior direito */
+    position: absolute;
+    top: 8px;
+    right: 8px;
+
+    /* Estilo visual (pequeno círculo escuro) */
+    background-color: var(--primary-bg-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%; /* Círculo perfeito */
+    padding: 0;
+    
+    /* Centralização do 'X' */
+    font-size: 18px;
+    line-height: 24px;
+    text-align: center;
+    font-weight: bold;
+    
+    /* Efeitos e transições */
+    cursor: pointer;
+    opacity: 0; /* Escondido por padrão */
+    transform: scale(0.8);
+    transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+}
+
+/* Faz o botão aparecer quando o mouse está sobre o card */
+.character-card:hover .btn-delete-character {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Efeito de hover no próprio botão (fica vermelho) */
+.btn-delete-character:hover {
+    background-color: var(--error-color); /* Usa a cor de erro definida */
+    color: white;
+}
