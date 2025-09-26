@@ -458,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     // Chama a função de backend
                     await deleteCharacterAndSession({ characterId, sessionId });
-                    showNotification('Personagem e sessão excluídos com sucesso.', 'success');
+                    alert('Personagem e sessão excluídos com sucesso.');
                     card.remove(); // Remove o card da tela
     
                     if (characterList.children.length === 0) {
@@ -652,29 +652,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-/**
- * Exibe uma notificação flutuante na tela.
- * @param {string} message A mensagem a ser exibida.
- * @param {string} type O tipo de notificação ('success' ou 'error').
- */
-function showNotification(message, type = 'success') {
-    const container = document.getElementById('notification-container');
-    const notification = document.createElement('div');
-    
-    // Adiciona as classes CSS
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-
-    // Adiciona a notificação na tela
-    container.appendChild(notification);
-
-    // Remove a notificação após 5 segundos
-    setTimeout(() => {
-        // A animação 'slideOut' já está configurada para começar aos 4.7s e durar 0.3s.
-        // Após a animação terminar, removemos o elemento do DOM.
-        notification.addEventListener('animationend', () => {
-            notification.remove();
-        });
-    }, 5000);
-}
 
