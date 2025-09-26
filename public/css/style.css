@@ -3,7 +3,7 @@
 /* ----------------------------------
  * Variáveis e Estilos Globais
  * ---------------------------------- */
-:root {
+ :root {
     --primary-bg-color: #261e16;
     --secondary-bg-color: #3d2f24;
     --tertiary-bg-color: #524135;
@@ -438,10 +438,11 @@ body {
     transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-between; /* Alterado para espaçar o conteúdo e o botão */
     align-items: center;
     padding: 20px 15px;
     height: 140px;
+    position: relative; /* Necessário para o botão de excluir */
 }
 
 .character-card:hover {
@@ -739,48 +740,35 @@ body {
 /* Estilo do Botão de Excluir Personagem
  * ---------------------------------- */
 
-/* Torna o card um container para o botão posicionado absolutamente */
-.character-card {
-    position: relative; 
-}
-
 .btn-delete-character {
-    /* Posicionamento no canto superior direito */
     position: absolute;
     top: 8px;
     right: 8px;
-
-    /* Estilo visual (pequeno círculo escuro) */
     background-color: var(--primary-bg-color);
     color: var(--font-color);
     border: 1px solid var(--border-color);
     width: 26px;
     height: 26px;
-    border-radius: 50%; /* Círculo perfeito */
+    border-radius: 50%;
     padding: 0;
-    
-    /* Centralização do 'X' */
     font-size: 18px;
     line-height: 24px;
     text-align: center;
     font-weight: bold;
-    
-    /* Efeitos e transições */
     cursor: pointer;
-    opacity: 0; /* Escondido por padrão */
+    opacity: 0;
     transform: scale(0.8);
     transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+    z-index: 2; /* Garante que o botão fique sobre o conteúdo do card */
 }
 
-/* Faz o botão aparecer quando o mouse está sobre o card */
 .character-card:hover .btn-delete-character {
     opacity: 1;
     transform: scale(1);
 }
 
-/* Efeito de hover no próprio botão (fica vermelho) */
 .btn-delete-character:hover {
-    background-color: var(--error-color); /* Usa a cor de erro definida */
+    background-color: var(--error-color);
     color: white;
 }
 
@@ -806,17 +794,16 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: clamp(300px, 90%, 400px);
 }
 
 .notification {
     padding: 15px 20px;
     border-radius: 8px;
-    color: var(--primary-bg-color);
     font-weight: bold;
     box-shadow: 0 5px 20px rgba(0,0,0,0.5);
     border-left: 5px solid;
     animation: slideIn 0.3s ease forwards, slideOut 0.3s ease 4.7s forwards;
-    min-width: 300px;
 }
 
 .notification.success {

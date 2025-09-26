@@ -1,10 +1,8 @@
 /*
- * public/js/script.js (v3.5 - SELEÇÃO DE ORIXÁ)
- * - Adicionado `orixasData` para armazenar informações sobre os Orixás.
- * - `resetAndOpenCharacterCreationModal` agora popula o <select> de Orixás.
- * - Novo listener para `orixa-select` que exibe dinamicamente as informações do Orixá escolhido.
- * - `btnSaveCharacter` agora valida a seleção de um Orixá e salva a informação no personagem.
- * - `loadSession` foi atualizada para exibir os detalhes do Orixá do personagem na ficha do jogo.
+ * public/js/script.js (v3.6 - Notificações Personalizadas)
+ * - Adicionada a função `showNotification` para criar toasts de sucesso/erro.
+ * - Substituídos os `alert()` na função de exclusão de personagem pela nova `showNotification`.
+ * - Pequena melhoria visual no estado de "carregando" do botão de excluir.
  */
 
 // --- IMPORTS ---
@@ -186,6 +184,31 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingOverlay.style.display = 'flex';
     pageContent.style.display = 'none';
 
+    /**
+     * Exibe uma notificação estilo "toast" no canto da tela.
+     * @param {string} message A mensagem a ser exibida.
+     * @param {'success' | 'error'} type O tipo de notificação ('success' ou 'error').
+     */
+    const showNotification = (message, type = 'success') => {
+        const container = document.getElementById('notification-container');
+        if (!container) {
+            console.error('Notification container not found!');
+            return;
+        }
+
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+
+        container.appendChild(notification);
+
+        // A animação CSS já cuida do desaparecimento, mas removemos o elemento
+        // do DOM após a animação para manter o HTML limpo.
+        setTimeout(() => {
+            notification.remove();
+        }, 5000); // 5 segundos, igual à animação CSS
+    };
+
     const showView = (view) => {
         sessionSelectionOverlay.style.display = 'none';
         gameView.style.display = 'none';
@@ -279,15 +302,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const character = doc.data();
                 const charElement = document.createElement('div');
                 charElement.className = 'character-card';
-                // Adicionamos o ID do personagem aqui para facilitar a exclusão
                 charElement.dataset.characterId = doc.id;
                 charElement.dataset.sessionId = character.sessionId;
                 charElement.innerHTML = `
                     <div class="character-card-info">
                         <h4>${character.name}</h4>
                          <p>${character.orixa?.name || 'Sem Orixá'}</p>
-                        <button class="btn-delete-character" title="Excluir Personagem">&times;</button>
-`;
+                    </div>
+                    <button class="btn-delete-character" title="Excluir Personagem">&times;</button>
+                `;
                 characterList.appendChild(charElement);
             });
         } catch (error) {
@@ -295,7 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ATUALIZADO PARA EXIBIR ORIXÁ NA FICHA
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
@@ -310,7 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
             characterSheetName.textContent = currentCharacter.name;
             characterSheetAttributes.innerHTML = '';
 
-            // Renderiza Atributos
             for (const mainAttrKey in currentCharacter.attributes) {
                 const mainAttrData = currentCharacter.attributes[mainAttrKey];
                 const groupLi = document.createElement('li');
@@ -323,7 +344,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 characterSheetAttributes.appendChild(groupLi);
             }
 
-            // Renderiza Orixá (NOVO)
             const oldOrixaSheet = document.getElementById('character-sheet-orixa');
             if (oldOrixaSheet) oldOrixaSheet.remove();
 
@@ -348,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
             listenForPartyChanges(sessionId);
         } catch (error) {
             console.error("Erro ao carregar sessão:", error);
-            alert(error.message || "Não foi possível carregar a sessão.");
+            showNotification(error.message || "Não foi possível carregar a sessão.", "error");
             await returnToSelectionScreen();
         }
     }
@@ -394,8 +414,6 @@ document.addEventListener('DOMContentLoaded', () => {
             inputText.value = '';
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
-        } finally {
-            // O estado do turno reabilitará se necessário
         }
     }
 
@@ -405,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await passarTurno({ sessionId: currentSessionId });
         } catch (error) {
-            alert(error.message);
+            showNotification(error.message, "error");
             btnPassTurn.disabled = false;
         }
     }
@@ -437,65 +455,57 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
     inputText.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); } });
     btnPassTurn.addEventListener('click', passTurn);
+
     characterList.addEventListener('click', (e) => {
         const deleteButton = e.target.closest('.btn-delete-character');
         const card = e.target.closest('.character-card');
     
-        // --- LÓGICA DE EXCLUSÃO ---
         if (deleteButton && card) {
+            e.stopPropagation(); // Impede que o clique no botão de excluir também selecione o personagem
             const characterId = card.dataset.characterId;
             const sessionId = card.dataset.sessionId;
     
-            // Mostra o modal de confirmação personalizado
             showModal(confirmDeleteModal);
     
-            // Função para lidar com a exclusão real
             const handleConfirm = async () => {
                 hideModal(confirmDeleteModal);
                 deleteButton.disabled = true;
-                deleteButton.textContent = '...';
+                const originalContent = deleteButton.innerHTML;
+                deleteButton.innerHTML = '...';
     
                 try {
-                    // Chama a função de backend
                     await deleteCharacterAndSession({ characterId, sessionId });
-                    alert('Personagem e sessão excluídos com sucesso.');
-                    card.remove(); // Remove o card da tela
+                    // SUBSTITUÍDO: alert -> showNotification
+                    showNotification('Personagem e sessão excluídos com sucesso.', 'success');
+                    card.remove();
     
                     if (characterList.children.length === 0) {
                         noCharactersMessage.style.display = 'block';
                     }
                 } catch (error) {
                     console.error("Erro ao excluir personagem:", error);
-                    alert(`Erro ao excluir: ${error.message}`);
+                    // SUBSTITUÍDO: alert -> showNotification
+                    showNotification(`Erro ao excluir: ${error.message}`, 'error');
                     deleteButton.disabled = false;
-                    deleteButton.textContent = '×'; // Retorna ao 'x' em caso de erro
+                    deleteButton.innerHTML = originalContent;
                 }
             };
     
-            // Função para cancelar
             const handleCancel = () => {
                 hideModal(confirmDeleteModal);
+                // Remove os listeners para evitar execuções múltiplas
+                btnConfirmDelete.removeEventListener('click', handleConfirm);
+                btnCancelDelete.removeEventListener('click', handleCancel);
             };
     
-            // Adiciona os listeners aos botões do modal.
-            // O `{ once: true }` garante que o evento só será ouvido uma vez.
+            // Adiciona os listeners aos botões do modal uma única vez
             btnConfirmDelete.addEventListener('click', handleConfirm, { once: true });
             btnCancelDelete.addEventListener('click', handleCancel, { once: true });
     
-            // Se o usuário clicar fora do modal, também consideramos como cancelamento.
-            confirmDeleteModal.addEventListener('click', (event) => {
-                if (event.target === confirmDeleteModal) {
-                    handleCancel();
-                    btnConfirmDelete.removeEventListener('click', handleConfirm);
-                }
-            }, { once: true });
-    
-        // --- LÓGICA PARA ENTRAR NA SESSÃO ---
         } else if (card && card.dataset.sessionId) {
             loadSession(card.dataset.sessionId);
         }
     });
-
 
     invitesList.addEventListener('click', async (e) => {
         const button = e.target.closest('button');
@@ -511,16 +521,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 await declineInvite({ inviteId: card.dataset.inviteId });
                 card.remove();
             }
-        } catch (error) { alert(error.message); button.disabled = false; }
+        } catch (error) { 
+            showNotification(error.message, "error"); 
+            button.disabled = false; 
+        }
     });
 
-    // ATUALIZADO PARA INCLUIR ORIXÁS
     function resetAndOpenCharacterCreationModal() {
         hideModal(inviteModal);
         charNameInput.value = '';
         attributes = JSON.parse(JSON.stringify(attributeConfig));
 
-        // Populando o seletor de Orixás (NOVO)
         orixaSelect.innerHTML = '<option value="">-- Escolha seu Orixá --</option>';
         for (const key in orixasData) {
             orixaSelect.innerHTML += `<option value="${key}">${orixasData[key].name}</option>`;
@@ -542,14 +553,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnCloseCharCreation.addEventListener('click', () => hideModal(characterCreationModal));
 
-    // ATUALIZADO PARA INCLUIR ORIXÁ NA CRIAÇÃO
     btnSaveCharacter.addEventListener('click', async () => {
-        if (charNameInput.value.trim().length < 3) return alert('O nome do personagem deve ter pelo menos 3 caracteres.');
+        if (charNameInput.value.trim().length < 3) {
+            return showNotification('O nome do personagem deve ter pelo menos 3 caracteres.', 'error');
+        }
         for (const key in attributes) {
-            if (attributes[key].points > 0) return alert(`Você ainda tem ${attributes[key].points} pontos para distribuir em ${attributes[key].name}!`);
+            if (attributes[key].points > 0) {
+                return showNotification(`Você ainda tem ${attributes[key].points} pontos para distribuir em ${attributes[key].name}!`, 'error');
+            }
         }
         const selectedOrixaKey = orixaSelect.value;
-        if (!selectedOrixaKey) return alert('Você precisa escolher um Orixá!');
+        if (!selectedOrixaKey) {
+            return showNotification('Você precisa escolher um Orixá!', 'error');
+        }
 
         creationLoadingIndicator.style.display = 'flex';
         btnSaveCharacter.style.display = 'none';
@@ -560,13 +576,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const characterData = {
                 characterName: charNameInput.value.trim(),
                 attributes: attributes,
-                orixa: orixasData[selectedOrixaKey] // Adiciona o objeto do Orixá
+                orixa: orixasData[selectedOrixaKey]
             };
 
             if (joiningSessionId) {
                 await joinSession({ ...characterData, sessionId: joiningSessionId });
                 sessionStorage.removeItem('joiningSessionId');
-                alert(`${characterData.characterName} foi criado e adicionado à sessão!`);
+                showNotification(`${characterData.characterName} foi criado e adicionado à sessão!`, 'success');
                 await returnToSelectionScreen();
             } else {
                 const result = await createAndJoinSession(characterData);
@@ -574,14 +590,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             hideModal(characterCreationModal);
         } catch (error) {
-            alert(`Erro: ${error.message}`);
+            showNotification(`Erro: ${error.message}`, 'error');
             creationLoadingIndicator.style.display = 'none';
             btnSaveCharacter.style.display = 'block';
             charNameInput.disabled = false;
         }
     });
 
-    // LÓGICA DE CRIAÇÃO DE ATRIBUTOS (SEM MUDANÇAS)
     function updateCreationUI() {
         attributeAccordion.innerHTML = '';
         for (const mainAttrKey in attributes) {
@@ -610,7 +625,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // NOVO LISTENER PARA SELEÇÃO DE ORIXÁ
     orixaSelect.addEventListener('change', (e) => {
         const selectedOrixaKey = e.target.value;
         if (selectedOrixaKey && orixasData[selectedOrixaKey]) {
@@ -625,19 +639,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnInvitePlayer.addEventListener('click', () => { if (!currentSessionId) return alert("Você precisa estar em uma sessão para convidar jogadores."); inviteEmailInput.value = ''; showModal(inviteModal); });
+    btnInvitePlayer.addEventListener('click', () => { if (!currentSessionId) return showNotification("Você precisa estar em uma sessão para convidar jogadores.", "error"); inviteEmailInput.value = ''; showModal(inviteModal); });
     btnCancelInvite.addEventListener('click', () => hideModal(inviteModal));
 
     btnSendInvite.addEventListener('click', async () => {
         const email = inviteEmailInput.value.trim();
-        if (!email.includes('@')) return alert('Por favor, insira um e-mail válido.');
+        if (!email.includes('@')) return showNotification('Por favor, insira um e-mail válido.', "error");
         btnSendInvite.disabled = true; btnSendInvite.textContent = 'Enviando...';
         try {
             const result = await sendInvite({ email, sessionId: currentSessionId });
-            alert(result.data.message);
+            showNotification(result.data.message, "success");
             hideModal(inviteModal);
         } catch (error) {
-            alert(`Erro: ${error.message}`);
+            showNotification(`Erro: ${error.message}`, "error");
         } finally {
             btnSendInvite.disabled = false; btnSendInvite.textContent = 'Enviar Convite';
         }
@@ -651,5 +665,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-
