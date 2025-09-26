@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const orixaDescription = document.getElementById('orixa-description');
     const orixaHabilidades = document.getElementById('orixa-habilidades');
     const orixaEwos = document.getElementById('orixa-ewos');
-
+    const deleteCharacterAndSession = httpsCallable(functions, 'deleteCharacterAndSession');
 
     // --- ESTADO DA APLICAÇÃO ---
     let currentUser = null;
