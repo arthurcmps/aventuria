@@ -478,8 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
     
             // Adiciona os listeners aos botões do modal.
-            // O `{ once: true }` garante que o evento só será ouvido uma vez,
-            // evitando cliques múltiplos ou memory leaks.
+            // O `{ once: true }` garante que o evento só será ouvido uma vez.
             btnConfirmDelete.addEventListener('click', handleConfirm, { once: true });
             btnCancelDelete.addEventListener('click', handleCancel, { once: true });
     
@@ -487,7 +486,6 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmDeleteModal.addEventListener('click', (event) => {
                 if (event.target === confirmDeleteModal) {
                     handleCancel();
-                    // Precisamos remover o listener de confirmação para não ficar ativo
                     btnConfirmDelete.removeEventListener('click', handleConfirm);
                 }
             }, { once: true });
