@@ -59,6 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const orixaDescription = document.getElementById('orixa-description');
     const orixaHabilidades = document.getElementById('orixa-habilidades');
     const orixaEwos = document.getElementById('orixa-ewos');
+    const confirmDeleteModal = document.getElementById('confirm-delete-modal');
+    const btnConfirmDelete = document.getElementById('btn-confirm-delete');
+    const btnCancelDelete = document.getElementById('btn-cancel-delete');
 
 
     // --- ESTADO DA APLICAÇÃO ---
@@ -434,48 +437,64 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSend.addEventListener('click', () => sendChatMessage(inputText.value));
     inputText.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(inputText.value); } });
     btnPassTurn.addEventListener('click', passTurn);
-    characterList.addEventListener('click', async (e) => {
-        // Verifica se o elemento clicado foi o botão de deletar
-        if (e.target.closest('.btn-delete-character')) {
-            const card = e.target.closest('.character-card');
-            if (!card) return;
-
+    characterList.addEventListener('click', (e) => {
+        const deleteButton = e.target.closest('.btn-delete-character');
+        const card = e.target.closest('.character-card');
+    
+        // --- LÓGICA DE EXCLUSÃO ---
+        if (deleteButton && card) {
             const characterId = card.dataset.characterId;
             const sessionId = card.dataset.sessionId;
-            const deleteButton = card.querySelector('.btn-delete-character');
-
-            // Pede confirmação ao usuário
-            if (!confirm(`Tem certeza de que deseja excluir este personagem e toda a sua aventura? Esta ação não pode ser desfeita.`)) {
-                return;
-            }
-
-            try {
-                deleteButton.disabled = true; // Desabilita para evitar cliques duplos
-                deleteButton.textContent = '...'; // Feedback visual
-
-                // Chama a função de backend que você criou
-                await deleteCharacterAndSession({ characterId, sessionId });
-
-                alert('Personagem e sessão excluídos com sucesso.');
-                card.remove(); // Remove o card da tela
-
-                // Verifica se a lista de personagens ficou vazia
-                if (characterList.children.length === 0) {
-                    noCharactersMessage.style.display = 'block';
+    
+            // Mostra o modal de confirmação personalizado
+            showModal(confirmDeleteModal);
+    
+            // Função para lidar com a exclusão real
+            const handleConfirm = async () => {
+                hideModal(confirmDeleteModal);
+                deleteButton.disabled = true;
+                deleteButton.textContent = '...';
+    
+                try {
+                    // Chama a função de backend
+                    await deleteCharacterAndSession({ characterId, sessionId });
+                    alert('Personagem e sessão excluídos com sucesso.');
+                    card.remove(); // Remove o card da tela
+    
+                    if (characterList.children.length === 0) {
+                        noCharactersMessage.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error("Erro ao excluir personagem:", error);
+                    alert(`Erro ao excluir: ${error.message}`);
+                    deleteButton.disabled = false;
+                    deleteButton.textContent = '×'; // Retorna ao 'x' em caso de erro
                 }
-            } catch (error) {
-                console.error("Erro ao excluir personagem:", error);
-                alert(`Erro ao excluir: ${error.message}`);
-                deleteButton.disabled = false; // Reabilita em caso de erro
-                deleteButton.textContent = '🗑️';
-            }
-        }
-        // Lógica para entrar na sessão (se o clique não foi no botão de deletar)
-        else {
-            const card = e.target.closest('.character-card');
-            if (card && card.dataset.sessionId) {
-                loadSession(card.dataset.sessionId);
-            }
+            };
+    
+            // Função para cancelar
+            const handleCancel = () => {
+                hideModal(confirmDeleteModal);
+            };
+    
+            // Adiciona os listeners aos botões do modal.
+            // O `{ once: true }` garante que o evento só será ouvido uma vez,
+            // evitando cliques múltiplos ou memory leaks.
+            btnConfirmDelete.addEventListener('click', handleConfirm, { once: true });
+            btnCancelDelete.addEventListener('click', handleCancel, { once: true });
+    
+            // Se o usuário clicar fora do modal, também consideramos como cancelamento.
+            confirmDeleteModal.addEventListener('click', (event) => {
+                if (event.target === confirmDeleteModal) {
+                    handleCancel();
+                    // Precisamos remover o listener de confirmação para não ficar ativo
+                    btnConfirmDelete.removeEventListener('click', handleConfirm);
+                }
+            }, { once: true });
+    
+        // --- LÓGICA PARA ENTRAR NA SESSÃO ---
+        } else if (card && card.dataset.sessionId) {
+            loadSession(card.dataset.sessionId);
         }
     });
 

@@ -783,3 +783,13 @@ body {
     background-color: var(--error-color); /* Usa a cor de erro definida */
     color: white;
 }
+
+/* Estilo para botões de ação destrutiva/perigosa */
+.btn.btn-danger {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.btn.btn-danger:hover {
+    background-color: #e74c3c; /* Um vermelho um pouco mais claro no hover */
+}
