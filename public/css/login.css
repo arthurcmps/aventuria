@@ -246,3 +246,61 @@ input[type="email"]:focus, input[type="password"]:focus {
     width: 100%;
     margin-top: 10px;
 }
+
+/* ----------------------------------
+ * Sistema de Notificação (Toast)
+ * ---------------------------------- */
+
+ #notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: clamp(300px, 90%, 400px);
+}
+
+.notification {
+    padding: 15px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    border-left: 5px solid;
+    animation: slideIn 0.3s ease forwards, slideOut 0.3s ease 4.7s forwards;
+}
+
+.notification.success {
+    background-color: #d8c3a5;
+    border-color: var(--accent-color);
+    color: #3d2f24;
+}
+
+.notification.error {
+    background-color: #f2d7d5;
+    border-color: var(--error-color);
+    color: #58180d;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}

@@ -60,6 +60,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (resetError) resetError.textContent = '';
     };
 
+    const showNotification = (message, type = 'success') => {
+        const container = document.getElementById('notification-container');
+        if (!container) return; // Segurança caso o container não exista
+        
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        
+        container.appendChild(notification);
+
+        // Remove o elemento do DOM após a animação de saída
+        setTimeout(() => {
+            notification.remove();
+        }, 5000); // 5000ms = 5s (duração da notificação)
+    };
+
     // --- Event Listeners ---
 
     // Listener para o formulário de login principal
@@ -155,8 +171,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 ]);
 
                 // 3. Sucesso
-                alert('Conta criada com sucesso! Você será redirecionado.');
+                showNotification('Conta criada com sucesso! Redirecionando...', 'success');
+
+                // Adiciona um pequeno atraso antes de redirecionar para dar tempo de ler a notificação
+                setTimeout(() => {
                 window.location.href = 'index.html';
+                }, 2500); // Redireciona após 2.5 segundos
 
             } catch (error) {
                 let message = 'Erro ao criar a conta.';
