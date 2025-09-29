@@ -188,7 +188,8 @@ body {
     padding-top: 60px;
     border-radius: 0;
     border-right: 1px solid var(--border-color);
-    overflow-y: auto; /* <-- ADICIONE ESTA LINHA */
+    overflow-y: auto;
+    background-color: var(--secondary-bg-color);
 }
 
 .side-panel-section {
