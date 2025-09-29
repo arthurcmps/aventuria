@@ -46,10 +46,20 @@
             <h2>Criar Nova Conta</h2>
             <form id="signup-form">
                 <div class="form-group">
+                    <input type="text" id="signup-name" placeholder="Nome Completo" required>
+                </div>
+                <div class="form-group">
                     <input type="email" id="signup-email" placeholder="Email" required>
                 </div>
                 <div class="form-group">
                     <input type="password" id="signup-password" placeholder="Senha (mínimo 6 caracteres)" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="signup-password-confirm" placeholder="Confirme a Senha" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-dob" style="display: block; text-align: left; margin-bottom: 5px; opacity: 0.9;">Data de Nascimento</label>
+                    <input type="date" id="signup-dob" required style="width: 100%; padding: 12px; background-color: var(--tertiary-bg-color); border: 1px solid var(--border-color); border-radius: 5px; color: var(--font-color); font-family: var(--font-main); font-size: 1em;">
                 </div>
                 <button type="submit" class="btn-login">Criar Conta</button>
                 <p id="signup-error" class="error-message"></p>

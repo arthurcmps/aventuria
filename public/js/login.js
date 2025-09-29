@@ -1,11 +1,13 @@
-import { auth } from './firebase.js';
+import { auth, db } from './firebase.js'; // Importar 'db' do firestore
 import {
     signInWithEmailAndPassword,
     signInWithPopup,
     GoogleAuthProvider,
     createUserWithEmailAndPassword,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    updateProfile // Importar 'updateProfile'
 } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
+import { doc, setDoc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js'; // Importar 'doc' e 'setDoc'
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Referências dos Elementos do DOM ---
@@ -19,11 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const signupLink = document.getElementById('signup-link');
     const forgotPasswordLink = document.getElementById('forgot-password-link');
 
-    // Modal de Cadastro
+    // Modal de Cadastro (Atualizado)
     const signupModal = document.getElementById('signup-modal');
     const signupForm = document.getElementById('signup-form');
+    const signupNameInput = document.getElementById('signup-name');
     const signupEmailInput = document.getElementById('signup-email');
     const signupPasswordInput = document.getElementById('signup-password');
+    const signupPasswordConfirmInput = document.getElementById('signup-password-confirm');
+    const signupDobInput = document.getElementById('signup-dob');
     const signupError = document.getElementById('signup-error');
 
     // Modal de Recuperação de Senha
@@ -92,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // MODIFICADO: Links agora abrem os modais
+    // Links para abrir os modais
     if (signupLink) {
         signupLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -109,35 +114,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // NOVO: Listeners para os formulários dentro dos modais
+    // MODIFICADO: Listener para o formulário de cadastro com validação e salvamento de dados extras
     if (signupForm) {
-        signupForm.addEventListener('submit', (e) => {
+        signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             clearAllErrors();
+            const name = signupNameInput.value;
             const email = signupEmailInput.value;
             const password = signupPasswordInput.value;
+            const passwordConfirm = signupPasswordConfirmInput.value;
+            const dob = signupDobInput.value;
 
+            // Validação dos novos campos
+            if (!name || !email || !password || !passwordConfirm || !dob) {
+                return displayError('Por favor, preencha todos os campos.', signupError);
+            }
             if (password.length < 6) {
                 return displayError('A senha deve ter pelo menos 6 caracteres.', signupError);
             }
+            if (password !== passwordConfirm) {
+                return displayError('As senhas não coincidem.', signupError);
+            }
 
-            createUserWithEmailAndPassword(auth, email, password)
-                .then(() => {
-                    alert('Conta criada com sucesso! Você será redirecionado.');
-                    window.location.href = 'index.html';
-                })
-                .catch((error) => {
-                    let message = 'Erro ao criar a conta.';
-                    if (error.code === 'auth/email-already-in-use') {
-                        message = 'Este e-mail já está em uso.';
-                    } else if (error.code === 'auth/invalid-email') {
-                        message = 'O e-mail fornecido é inválido.';
-                    }
-                    displayError(message, signupError);
-                });
+            try {
+                // 1. Criar usuário no serviço de autenticação
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 2. Atualizar o perfil de autenticação e salvar dados no Firestore
+                // Estas duas ações rodam em paralelo para maior eficiência
+                await Promise.all([
+                    updateProfile(user, {
+                        displayName: name
+                    }),
+                    setDoc(doc(db, "users", user.uid), {
+                        fullName: name,
+                        dateOfBirth: dob,
+                        email: email
+                    })
+                ]);
+
+                // 3. Sucesso
+                alert('Conta criada com sucesso! Você será redirecionado.');
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                let message = 'Erro ao criar a conta.';
+                if (error.code === 'auth/email-already-in-use') {
+                    message = 'Este e-mail já está em uso.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'O e-mail fornecido é inválido.';
+                }
+                console.error("Erro ao criar conta:", error);
+                displayError(message, signupError);
+            }
         });
     }
 
+    // Listener para o formulário de recuperação de senha
     if (resetPasswordForm) {
         resetPasswordForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -159,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // NOVO: Listeners para fechar os modais
+    // Listeners para fechar os modais
     closeButtons.forEach(button => {
         button.addEventListener('click', () => {
             const modalId = button.getAttribute('data-target-modal');
@@ -167,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Fecha o modal se o usuário clicar no fundo (overlay)
     window.addEventListener('click', (e) => {
         if (e.target === signupModal) closeModal(signupModal);
         if (e.target === resetPasswordModal) closeModal(resetPasswordModal);
