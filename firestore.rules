@@ -4,97 +4,70 @@ service cloud.firestore {
   match /databases/{database}/documents {
   
     // =================================================================
-    // Regras Gerais
+    // Funções reutilizáveis para regras mais limpas
+    // =================================================================
+    function isSessionMember(sessionId) {
+      // Retorna true se o UID do usuário estiver na lista de membros da sessão.
+      // Custa apenas uma leitura, não importa quantas vezes a função é chamada na mesma avaliação.
+      return request.auth != null && request.auth.uid in get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs;
+    }
+
+    // =================================================================
+    // Regras das Coleções
     // =================================================================
     
-    // Nega leitura e escrita em toda a base por padrão.
+    // Nega tudo por padrão. Regras específicas abaixo irão sobrescrever isso.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
-    // Coleção: characters (Global)
-    // Permite que usuários autenticados leiam a lista global de 
-    // personagens para fins de busca ou exibição.
-    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
+    // Coleção global de Personagens
     match /characters/{charId} {
-        allow read: if request.auth != null;
-        allow write: if false; // Ninguém pode escrever diretamente aqui.
+      allow read: if request.auth != null;
+      allow write: if false;
     }
 
-    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
-    // Coleção: invites (REGRAS CORRIGIDAS E SEGURAS)
-    // Regras para convites de sessão.
-    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
+    // Coleção de Convites
     match /invites/{inviteId} {
-        // Leitura: O destinatário E o remetente podem ler o convite.
-        allow read: if request.auth != null && (request.auth.uid == resource.data.recipientUid || request.auth.uid == resource.data.senderId);
-        
-        // Criação: Qualquer usuário autenticado pode criar um convite (a lógica de validação está na Cloud Function).
-        allow create: if request.auth != null;
-        
-        // Atualização: Apenas o destinatário pode atualizar (aceitar/recusar).
-        allow update: if request.auth != null && request.auth.uid == resource.data.recipientUid;
-
-        // Exclusão: Ninguém pode excluir convites diretamente.
-        allow delete: if false;
+      allow read: if request.auth != null && (request.auth.uid == resource.data.recipientUid || request.auth.uid == resource.data.senderId);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == resource.data.recipientUid;
+      allow delete: if false;
     }
     
-    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
-    // Coleção: sessions
-    // Regras para as sessões de jogo.
-    // =_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=_=
+    // Coleção de Sessões
     match /sessions/{sessionId} {
-      // Permite leitura da sessão se o usuário for membro.
-      allow read: if request.auth != null && request.auth.uid in resource.data.memberUIDs;
-      
-      // Permite que o dono da sessão atualize a lista de membros (ex: ao aceitar convite).
-      // NOTA: A função 'acceptInvite' agora usa uma transação, mas essa regra ainda é um bom backup.
-      allow update: if request.auth != null && request.auth.uid == resource.data.owner;
+      // Leitura permitida apenas para membros da sessão.
+      allow read: if isSessionMember(sessionId);
 
-      // Ninguém pode criar ou deletar sessões diretamente por aqui.
+      // ATUALIZAÇÃO RESTRITA: Permite que o dono atualize APENAS campos específicos.
+      // Ex: Apenas a lista de membros e o turno atual podem ser alterados pelo dono.
+      allow update: if request.auth != null && request.auth.uid == resource.data.owner
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUIDs', 'turnoAtualUid']);
+
       allow create, delete: if false;
 
-      // =================================================================
-      // Sub-coleção: characters (dentro da sessão)
-      // =================================================================
+      // --- Sub-coleção: Personagens da Sessão ---
       match /characters/{charId} {
-        // Permite leitura se o usuário for membro da sessão.
-        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
-
-        // Permite escrita se for o próprio usuário criando/atualizando seu personagem.
-        allow write: if request.auth != null && request.auth.uid == charId;
+        allow read: if isSessionMember(sessionId);
+        
+        // CORRIGIDO: Agora, a escrita exige que o usuário seja membro da sessão.
+        allow write: if isSessionMember(sessionId) && request.auth.uid == charId;
       }
       
-      // =================================================================
-      // Sub-coleção: messages
-      // =================================================================
+      // --- Sub-coleção: Mensagens ---
       match /messages/{messageId} {
-        // Permite leitura se o usuário for membro da sessão.
-        allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
-
-        // Permite criação SE:
-        // 1. O usuário está logado e o UID da mensagem é o dele, OU
-        // 2. A mensagem está vindo do 'mestre' (nossa Cloud Function).
-        allow create: if (request.auth != null && request.auth.uid == request.resource.data.uid) || 
-                         (request.resource.data.from == 'mestre');
-
-        // Nega atualização e exclusão de mensagens.
+        allow read: if isSessionMember(sessionId);
+        allow create: if isSessionMember(sessionId) && 
+                         ((request.auth.uid == request.resource.data.uid) || (request.resource.data.from == 'mestre'));
         allow update, delete: if false;
       }
       
-      // =================================================================
-      // Sub-coleção: dice_rolls
-      // =================================================================
+      // --- Sub-coleção: Rolagens de Dados ---
       match /dice_rolls/{rollId} {
-          // Permite leitura se o usuário for membro da sessão.
-          allow read: if request.auth != null && get(/databases/$(database)/documents/sessions/$(sessionId)).data.memberUIDs.hasAny([request.auth.uid]);
-          
-          // Permite criar rolagens se o UID for o do próprio usuário.
-          allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-          
-          // Nega atualização e exclusão.
-          allow update, delete: if false;
+        allow read: if isSessionMember(sessionId);
+        allow create: if isSessionMember(sessionId) && request.auth.uid == request.resource.data.uid;
+        allow update, delete: if false;
       }
     }
   }
