@@ -330,18 +330,30 @@ document.addEventListener('DOMContentLoaded', () => {
             currentCharacter = { id: charSnapshot.docs[0].id, ...charSnapshot.docs[0].data() };
 
             characterSheetName.textContent = currentCharacter.name;
+            
+            // MODIFICADO: Cria a ficha de atributos como um acordeão.
             characterSheetAttributes.innerHTML = '';
+            characterSheetAttributes.className = 'attribute-accordion'; 
 
             for (const mainAttrKey in currentCharacter.attributes) {
                 const mainAttrData = currentCharacter.attributes[mainAttrKey];
-                const groupLi = document.createElement('li');
-                groupLi.className = 'main-attribute-group';
-                const subList = Object.keys(mainAttrData.sub).map(subAttrKey => {
+                
+                const subListHTML = Object.keys(mainAttrData.sub).map(subAttrKey => {
                     const subAttr = mainAttrData.sub[subAttrKey];
-                    return `<li><span class="attr-name">${subAttr.name}</span> <span class="attr-value">${subAttr.value}</span></li>`;
+                    return `<li class="sub-attribute-item"><span class="sub-attr-name">${subAttr.name}</span> <span class="attr-value">${subAttr.value}</span></li>`;
                 }).join('');
-                groupLi.innerHTML = `<div class="group-header">${mainAttrData.name}</div><ul class="sub-attribute-list">${subList}</ul>`;
-                characterSheetAttributes.appendChild(groupLi);
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'attribute-item';
+                itemDiv.innerHTML = `
+                    <div class="attribute-header">
+                        <span class="attribute-title">${mainAttrData.name}</span>
+                    </div>
+                    <div class="attribute-details">
+                        <ul class="sub-attribute-list">${subListHTML}</ul>
+                    </div>
+                `;
+                characterSheetAttributes.appendChild(itemDiv);
             }
 
             const oldOrixaSheet = document.getElementById('character-sheet-orixa');
@@ -392,14 +404,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // MODIFICADO: Cria a lista de membros do grupo como um acordeão.
     function listenForPartyChanges(sessionId) {
         const partyQuery = collection(db, 'sessions', sessionId, 'characters');
+        
+        if (partyUnsubscribe) partyUnsubscribe();
+
         partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
             partyList.innerHTML = '';
             snapshot.docs.forEach(doc => {
-                if (doc.data().uid !== AI_UID) {
-                    partyList.innerHTML += `<li>${doc.data().name}</li>`;
+                const character = doc.data();
+                if (character.uid === AI_UID || character.uid === currentUser.uid) return;
+
+                let attributesHTML = '';
+                for (const mainAttrKey in character.attributes) {
+                    const mainAttrData = character.attributes[mainAttrKey];
+                    attributesHTML += `<strong>${mainAttrData.name}:</strong><ul class="sub-attribute-list">`;
+                    for (const subAttrKey in mainAttrData.sub) {
+                        const subAttr = mainAttrData.sub[subAttrKey];
+                        attributesHTML += `<li><span class="sub-attr-name">${subAttr.name}</span><span class="attr-value">${subAttr.value}</span></li>`;
+                    }
+                    attributesHTML += `</ul>`;
                 }
+
+                const memberCard = document.createElement('li');
+                memberCard.className = 'party-member-card';
+                memberCard.innerHTML = `
+                    <div class="party-member-header">
+                        <span class="party-member-name">${character.name}</span>
+                        <span class="party-member-orixa">${character.orixa?.name || 'Sem Orixá'}</span>
+                    </div>
+                    <div class="party-member-details">
+                        ${attributesHTML}
+                    </div>
+                `;
+                partyList.appendChild(memberCard);
             });
         });
     }
@@ -429,20 +468,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     onAuthStateChanged(auth, async (user) => {
-        const profileLink = document.getElementById('profile-link');
         cleanupSessionListeners();
 
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
-            if (profileLink) profileLink.style.display = 'inline';
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
             showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
-            if (profileLink) profileLink.style.display = 'none';
             window.location.href = 'login.html';
         }
         loadingOverlay.style.display = 'none';
@@ -464,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = e.target.closest('.character-card');
     
         if (deleteButton && card) {
-            e.stopPropagation(); // Impede que o clique no botão de excluir também selecione o personagem
+            e.stopPropagation(); 
             const characterId = card.dataset.characterId;
             const sessionId = card.dataset.sessionId;
     
@@ -478,7 +514,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
                 try {
                     await deleteCharacterAndSession({ characterId, sessionId });
-                    // SUBSTITUÍDO: alert -> showNotification
                     showNotification('Personagem e sessão excluídos com sucesso.', 'success');
                     card.remove();
     
@@ -487,7 +522,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } catch (error) {
                     console.error("Erro ao excluir personagem:", error);
-                    // SUBSTITUÍDO: alert -> showNotification
                     showNotification(`Erro ao excluir: ${error.message}`, 'error');
                     deleteButton.disabled = false;
                     deleteButton.innerHTML = originalContent;
@@ -496,12 +530,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
             const handleCancel = () => {
                 hideModal(confirmDeleteModal);
-                // Remove os listeners para evitar execuções múltiplas
                 btnConfirmDelete.removeEventListener('click', handleConfirm);
                 btnCancelDelete.removeEventListener('click', handleCancel);
             };
     
-            // Adiciona os listeners aos botões do modal uma única vez
             btnConfirmDelete.addEventListener('click', handleConfirm, { once: true });
             btnCancelDelete.addEventListener('click', handleCancel, { once: true });
     
@@ -665,6 +697,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const die = e.target.dataset.d;
             const roll = Math.floor(Math.random() * parseInt(die)) + 1;
             await sendChatMessage(`rolou 1d${die} e tirou **${roll}**`);
+        }
+    });
+    
+    // Listeners para os novos acordeões do Side Panel
+    characterSheetAttributes.addEventListener('click', (e) => {
+        const header = e.target.closest('.attribute-header');
+        if (header) {
+            const details = header.nextElementSibling;
+            details.classList.toggle('open');
+        }
+    });
+
+    partyList.addEventListener('click', (e) => {
+        const header = e.target.closest('.party-member-header');
+        if (header) {
+            const details = header.nextElementSibling;
+            details.classList.toggle('open');
         }
     });
 });
