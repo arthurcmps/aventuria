@@ -177,11 +177,18 @@ body {
 /* ----------------------------------
  * Painel Lateral (Direita)
  * ---------------------------------- */
-#side-panel {
-    background-color: var(--secondary-bg-color);
-    border-radius: 8px;
-    padding: 20px;
-    height: fit-content;
+ #side-panel {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100%;
+    z-index: 20;
+    transition: left 0.3s ease;
+    padding-top: 60px;
+    border-radius: 0;
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto; /* <-- ADICIONE ESTA LINHA */
 }
 
 .side-panel-section {
