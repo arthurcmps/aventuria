@@ -80,7 +80,7 @@ body {
     margin-bottom: 15px;
 }
 
-input[type="email"], input[type="password"] {
+input[type="email"], input[type="password"], input[type="text"], input[type="date"] {
     width: 100%;
     padding: 12px;
     background-color: var(--tertiary-bg-color);
