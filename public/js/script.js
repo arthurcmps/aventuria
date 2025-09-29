@@ -469,16 +469,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
-
+    
+        // ADICIONE ESTA LINHA PARA PEGAR A REFERÊNCIA DO LINK
+        const profileLink = document.getElementById('profile-link');
+    
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
+            
+            // ADICIONE ESTA LINHA PARA EXIBIR O LINK
+            if (profileLink) profileLink.style.display = 'inline';
+    
             showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
+            
+            // ADICIONE ESTA LINHA PARA GARANTIR QUE O LINK FIQUE ESCONDIDO AO SAIR
+            if (profileLink) profileLink.style.display = 'none';
+    
             window.location.href = 'login.html';
         }
         loadingOverlay.style.display = 'none';
