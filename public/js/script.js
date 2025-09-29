@@ -429,17 +429,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     onAuthStateChanged(auth, async (user) => {
+        const profileLink = document.getElementById('profile-link');
         cleanupSessionListeners();
 
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
+            if (profileLink) profileLink.style.display = 'inline';
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
             showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
+            if (profileLink) profileLink.style.display = 'none';
             window.location.href = 'login.html';
         }
         loadingOverlay.style.display = 'none';

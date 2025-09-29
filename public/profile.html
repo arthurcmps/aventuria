@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil - Aventuria</title>
+    <link rel="stylesheet" href="css/style.css"> 
+    <link rel="stylesheet" href="css/profile.css">
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="notification-container"></div>
+    <div id="loading-overlay" style="display: flex;"></div>
+
+    <div id="page-content" style="display: none;">
+        <div class="container">
+            <header class="header">
+                <div class="header-left">
+                    <a href="index.html" class="btn btn-sm">← Voltar para o Jogo</a>
+                </div>
+                <div class="header-actions">
+                    <span id="username" style="margin-right: 15px;"></span>
+                    <button id="btn-auth" class="btn btn-sm">Sair</button>
+                </div>
+            </header>
+
+            <main class="profile-container">
+                <div class="profile-box">
+                    <h2>Meu Perfil</h2>
+                    <form id="profile-form">
+                        <div class="form-group">
+                            <label for="profile-name">Nome Completo</label>
+                            <input type="text" id="profile-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-email">Email</label>
+                            <input type="email" id="profile-email" disabled>
+                            <small>O e-mail não pode ser alterado.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-dob">Data de Nascimento</label>
+                            <input type="date" id="profile-dob" required>
+                        </div>
+                        <button type="submit" id="btn-save-profile" class="btn">Salvar Alterações</button>
+                    </form>
+
+                    <div class="separator"></div>
+
+                    <div class="password-reset-section">
+                        <h3>Segurança</h3>
+                        <button id="btn-reset-password" class="btn btn-secondary">Enviar e-mail para alterar a senha</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script type="module" src="js/profile.js"></script>
+</body>
+</html>
