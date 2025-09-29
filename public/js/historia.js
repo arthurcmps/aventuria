@@ -1,29 +1,33 @@
 const historia = {
   titulo: "O Silêncio do Rio",
-  introducao: "Uma campanha sobre como o progresso não pode existir esquecendo-se do passado e desrespeitando a natureza, por menor que ela pareça.",
+  introducao: "Uma campanha sobre como o progresso não pode existir esquecendo-se do passado e desrespeitando a natureza, por menor que ela pareça.", // vírgula aqui
+
   capitulos: [
-    {
-      titulo: "Ato 1: O Sussurro da Seca",
-      narrativa: "A jornada se inicia na aldeia de Meji, que está sofrendo com uma misteriosa seca espiritual onde as oferendas aos Orixás já não funcionam. A líder da aldeia, Yarin, incumbe os jogadores de viajar até o Oráculo do Baobá Sagrado para desvendar a causa do desequilíbrio.",
-      plot_twist: "Durante a jornada, os jogadores encontram uma figura enigmática em uma encruzilhada que é, na verdade, Exu disfarçado, testando o caráter do grupo com uma escolha de caminhos.",
+    { 
+      titulo: "Ato 1: O Sussurro da Seca", 
+      narrativa: "A jornada se inicia na aldeia de Meji, que sofre com uma seca espiritual. A líder Yarin incumbe os jogadores de viajar até o Oráculo do Baobá Sagrado para descobrir a causa do desequilíbrio. Antes de partirem, são confrontados por Obaro, um ancião pragmático que defende a prosperidade que as 'novas práticas' trouxeram à aldeia e vê a missão como um retorno a um passado de dificuldades.", // vírgula aqui
+      plot_twist: "Em uma encruzilhada, uma figura enigmática (Exu disfarçado) oferece uma escolha de caminhos que não apenas testa o caráter do grupo, mas define as pistas que encontrarão no futuro.", // vírgula aqui
       side_quests: [
         {
           titulo: "O Ferreiro Desacreditado",
-          descricao: "O grupo encontra Kael, um devoto de Ogum, cuja forja esfriou e perdeu seu axé.",
-          recompensa: "Um Filho de Ogum no grupo pode reconsagrar a forja, recebendo Axé como bênção."
+          descricao: "O grupo encontra Kael, um devoto de Ogum, cuja forja esfriou. Ele revela que sua família ajudou a construir uma grande barragem no rio, uma geração atrás, e desde então sente uma fraqueza espiritual que o impede de criar.", // vírgula aqui
+          recompensa: "Um Filho de Ogum pode reconsagrar a forja, ganhando Axé e a primeira pista sobre a 'ferida' no rio." // SEM vírgula aqui (última propriedade do objeto side_quest)
         }
       ]
     },
-    {
-      titulo: "Ato 2: A Revelação e a Falsa Pista",
-      narrativa: "Ao chegarem ao Baobá Sagrado, o Oráculo revela que a seca é o 'silêncio' de Oxum, que está triste. Os jogadores devem seguir para o Templo Dourado, no Grande Rio, para entender o motivo. No caminho, encontram as águas do rio turvas e um santuário de Oxum vandalizado.",
-      plot_twist: "No santuário vandalizado, uma evidência forjada — um Oxé, o machado de Xangô — foi deixada para incriminar falsamente seus devotos, criando a ilusão de um conflito entre Orixás."
+
+    { 
+      titulo: "Ato 2: A Revelação e a Falsa Pista", 
+      narrativa: "O Oráculo revela que a seca é o 'silêncio' de Oxum, que está triste por uma ferida no Grande Rio. Seguindo para o rio, os jogadores encontram suas águas turvas e sem vida, e um santuário de Oxum vandalizado. A descoberta do Oxé de Xangô no local os coloca diante de um dilema: eles irão agir com fúria e acusar os devotos de Xangô, arriscando um conflito, ou investigarão com cautela?", // vírgula aqui
+      plot_twist: "O Oxé de Xangô é uma evidência forjada, deixada no local para testar a sabedoria e o senso de justiça dos jogadores, criando um falso conflito." // SEM vírgula aqui (última propriedade)
     },
-    {
-      titulo: "Ato 3: O Coração da Ferida",
-      narrativa: "Após confrontarem os devotos de Xangô, que negam a acusação, Exu reaparece e revela a verdadeira causa do problema: um afluente do Grande Rio foi represado e esquecido, e a dor do espírito desse riacho envenenou as águas. No clímax, na barragem, o espírito se manifesta não como um inimigo a ser combatido, mas como uma ferida a ser curada.",
-      plot_twist: "O verdadeiro 'vilão' da história não é uma criatura ou pessoa, mas o esquecimento e o desrespeito do próprio povo, que negligenciou uma parte da natureza e de sua história."
-    }
-  ],
-  conclusao: "Após quebrarem a barragem e acalmarem o espírito do riacho com promessas de reparação, o Axé da terra é restaurado. Os jogadores retornam como heróis, não por derrotar um monstro, mas por restaurar o equilíbrio e relembrar a todos a importância de respeitar o passado e a natureza."
+
+    { 
+      titulo: "Ato 3: O Coração da Ferida", // vírgula aqui
+      narrativa: "Após lidarem com as consequências de sua abordagem aos devotos de Xangô, Exu reaparece e revela a verdade: a causa é um afluente do rio que foi represado e esquecido. Na barragem, o espírito do riacho se manifesta como uma força de dor. Ele não ataca, mas projeta na mente dos jogadores ilusões da vida vibrante que existia antes, agora substituída por imagens de solidão e esquecimento. A solução não é lutar, mas curar a ferida.", // vírgula aqui
+      plot_twist: "O verdadeiro 'vilão' não é uma criatura ou pessoa, mas o esquecimento coletivo do povo. A barragem, que um dia foi vista como progresso, tornou-se a causa do desequilíbrio espiritual que agora ameaça a todos." // SEM vírgula aqui (última propriedade)
+    } 
+  ], 
+
+  conclusao: "Com a barragem rompida por um Filho de Ogum, o espírito acalmado pela diplomacia de uma Filha de Oxum, e a justiça garantida por um juramento de um Filho de Xangô, o Axé da terra é restaurado. Os jogadores são aclamados como heróis por restaurarem o equilíbrio e ensinarem uma lição sobre respeito ao passado e à natureza." // SEM vírgula aqui (última propriedade do objeto 'historia')
 };
