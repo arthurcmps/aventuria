@@ -40,8 +40,39 @@
         </div>
     </div>
 
-    <!-- Script da Aplicação -->
-    <!-- O login.js agora importa o firebase.js, que cuida da inicialização -->
+    <div id="signup-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" data-target-modal="signup-modal">&times;</button>
+            <h2>Criar Nova Conta</h2>
+            <form id="signup-form">
+                <div class="form-group">
+                    <input type="email" id="signup-email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="signup-password" placeholder="Senha (mínimo 6 caracteres)" required>
+                </div>
+                <button type="submit" class="btn-login">Criar Conta</button>
+                <p id="signup-error" class="error-message"></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="reset-password-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" data-target-modal="reset-password-modal">&times;</button>
+            <h2>Recuperar Senha</h2>
+            <form id="reset-password-form">
+                <p style="margin-bottom: 15px; opacity: 0.9;">Digite seu e-mail e enviaremos um link para você redefinir sua senha.</p>
+                <div class="form-group">
+                    <input type="email" id="reset-email" placeholder="Email" required>
+                </div>
+                <button type="submit" class="btn-login">Enviar E-mail</button>
+                <p id="reset-error" class="error-message"></p>
+            </form>
+        </div>
+    </div>
+
+
     <script type="module" src="js/login.js"></script>
 </body>
 </html>
