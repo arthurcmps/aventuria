@@ -582,3 +582,21 @@ body {
 .notification.error { background-color: #f2d7d5; border-color: var(--error-color); color: #58180d; }
 @keyframes slideIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
 @keyframes slideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+
+@media (min-width: 769px) {
+    #game-view {
+        /* Garante que o grid definido em .main-content seja aplicado */
+        display: grid;
+    }
+
+    #side-panel {
+        position: relative; /* Remove o 'position: fixed' */
+        left: auto;         /* Reseta a posição 'left' */
+        width: auto;        /* Deixa o grid controlar a largura */
+        height: auto;       /* Deixa o conteúdo controlar a altura */
+        z-index: 1;         /* Reseta o z-index */
+        padding-top: 0;     /* Remove o padding extra que era para o menu fixo */
+        border-right: none; /* A borda não é mais necessária no lado direito */
+        /* A transição 'transition' não é mais necessária aqui */
+    }
+}
