@@ -3,6 +3,7 @@
  * - `systemInstruction` foi simplificada para definir apenas a persona da IA.
  * - O contexto da história (ato atual) agora é passado dinamicamente na chamada `sendMessage`,
  *   junto com a instrução para a IA reagir, resolvendo a causa raiz do erro.
+ * - Adicionando um comentário para forçar a reimplantação com o runtime correto.
  */
 
 const functions = require("firebase-functions");
