@@ -104,7 +104,7 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
             // CORREÇÃO: A instrução de sistema é passada aqui
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction });
+            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash', systemInstruction });
             // CORREÇÃO: O chat é iniciado apenas com o histórico
             const chat = model.startChat({ history });
 
