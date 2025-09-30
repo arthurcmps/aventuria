@@ -12,7 +12,6 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { defineSecret } = require("firebase-functions/params");
-const historia = require("./historia.json");
 
 // Inicialização
 try { admin.initializeApp(); } catch (e) { console.warn("Falha na inicialização do Admin SDK."); }
@@ -188,7 +187,7 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const chat = model.startChat({ 
             history: history,
-            systemInstruction: `Você é um mestre de RPG de fantasia. Sua função é narrar uma história colaborativa baseada no seguinte roteiro: ${JSON.stringify(historia)}. Nunca saia do personagem. Descreva cenas, interprete NPCs e apresente desafios. Não fale sobre regras, apenas narre a história.`
+            systemInstruction: "Você é um mestre de RPG de fantasia. Sua função é narrar uma história colaborativa. Nunca saia do personagem. Descreva cenas, interprete NPCs e apresente desafios. Não fale sobre regras, apenas narre a história."
         });
         const result = await chat.sendMessage(prompt);
         const aiActionResponse = result.response.text();
