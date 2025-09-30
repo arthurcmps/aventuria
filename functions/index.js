@@ -3,7 +3,7 @@
  * - `systemInstruction` foi simplificada para definir apenas a persona da IA.
  * - O contexto da história (ato atual) agora é passado dinamicamente na chamada `sendMessage`,
  *   junto com a instrução para a IA reagir, resolvendo a causa raiz do erro.
- * - Adicionando um comentário para forçar a reimplantação com o runtime correto.
+ * - Corrigindo a forma como a systemInstruction é passada para a API do Gemini.
  */
 
 const functions = require("firebase-functions");
@@ -111,8 +111,10 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
             const prompt = `CONTEXTO DA AVENTURA: ${atoAtual.titulo}. ${atoAtual.narrativa_inicio}. Com base no histórico da conversa e neste contexto, reaja à última ação do jogador e continue a história.`;
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            const chat = model.startChat({ history, systemInstruction });
+            // CORREÇÃO: A instrução de sistema é passada aqui
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction });
+            // CORREÇÃO: O chat é iniciado apenas com o histórico
+            const chat = model.startChat({ history });
 
             const result = await chat.sendMessage(prompt);
             const aiActionResponse = result.response.text();
