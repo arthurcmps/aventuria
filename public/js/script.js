@@ -249,19 +249,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateTurnUI = async (sessionData) => {
         if (!sessionData || !currentUser || !currentSessionId) return;
+    
         const turnoAtualUid = sessionData.turnoAtualUid;
         const isMyTurn = turnoAtualUid === currentUser.uid;
-
+    
         inputText.disabled = !isMyTurn;
         btnSend.disabled = !isMyTurn;
         btnPassTurn.disabled = !isMyTurn;
-
+    
         if (isMyTurn) {
             turnStatus.textContent = "É o seu turno!";
             turnStatus.classList.add('my-turn');
         } else {
             turnStatus.classList.remove('my-turn');
-            const playerName = sessionData.personagens[turnoAtualUid]?.name || (turnoAtualUid === AI_UID ? "O Mestre" : "outro jogador");
+            
+            // --- LÓGICA CORRIGIDA ---
+            // Simplesmente verificamos se o turno é da IA. 
+            // Se não for, exibimos "outro jogador", pois carregar o nome exato aqui é complexo e desnecessário.
+            const playerName = (turnoAtualUid === AI_UID) ? "O Mestre" : "outro jogador";
+            
             turnStatus.textContent = `Aguardando o turno de ${playerName}...`;
         }
     };
