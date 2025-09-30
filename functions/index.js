@@ -149,24 +149,21 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
     const newMessage = snapshot.data();
     const sessionId = context.params.sessionId;
 
-    // 1. Ignorar mensagens que não são de jogadores (da própria IA ou do sistema)
     if (newMessage.from === 'mestre' || newMessage.isTurnoUpdate) {
         return null;
     }
     
-    // Deletar a mensagem especial de início para não poluir o histórico
     if (newMessage.text === '__START_ADVENTURE__') {
         await snapshot.ref.delete(); 
     }
 
     const sessionRef = db.collection('sessions').doc(sessionId);
-    const lastPlayerUid = newMessage.uid; // Guarda quem foi o último a agir
+    const lastPlayerUid = newMessage.uid; 
     
     try {
-        // 2. "Bloquear" o turno para a IA, mostrando que ela está processando
+        console.log(`[handlePlayerAction - ${sessionId}] - Turno do jogador ${lastPlayerUid} recebido. Passando turno para a IA.`);
         await sessionRef.update({ turnoAtualUid: AI_UID });
 
-        // 3. Coletar o histórico e os dados dos personagens
         const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt', 'desc').limit(20).get();
         const history = historySnapshot.docs.reverse().map(doc => {
             const data = doc.data();
@@ -178,9 +175,13 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
         const playerCharacters = charactersSnapshot.docs.map(d => d.data()).filter(c => c.uid !== AI_UID);
         const characterNames = playerCharacters.map(c => c.name).join(', ');
         
-        // 4. Montar o prompt e chamar a API da Gemini
         const prompt = `Você é o Mestre de um jogo de RPG de fantasia. Os jogadores são: ${characterNames}. Reaja à última ação no histórico da conversa e avance a história. Seja criativo, narre a cena e mantenha a aventura em movimento.`;
         
+        // --- LOG DE DIAGNÓSTICO ADICIONADO ---
+        console.log(`[handlePlayerAction - ${sessionId}] - Preparando para chamar a API do Gemini.`);
+        console.log(`[handlePlayerAction - ${sessionId}] - Histórico enviado:`, JSON.stringify(history, null, 2));
+        console.log(`[handlePlayerAction - ${sessionId}] - Prompt final: ${prompt}`);
+
         const genAI = new GoogleGenerativeAI(geminiApiKey.value());
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const chat = model.startChat({ 
@@ -190,7 +191,8 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
         const result = await chat.sendMessage(prompt);
         const aiActionResponse = result.response.text();
 
-        // 5. Salvar a resposta da IA no chat
+        console.log(`[handlePlayerAction - ${sessionId}] - Resposta da IA recebida com sucesso.`);
+
         await sessionRef.collection('messages').add({
             from: 'mestre',
             characterName: 'Mestre',
@@ -198,14 +200,12 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
         
-        // 6. Calcular e passar o turno para o próximo jogador
         const sessionData = (await sessionRef.get()).data();
-        const ordem = sessionData.ordemDeTurnos.filter(uid => uid !== AI_UID); // Pega só os jogadores
+        const ordem = sessionData.ordemDeTurnos.filter(uid => uid !== AI_UID);
         const ultimoIndice = ordem.indexOf(lastPlayerUid);
         const proximoIndice = (ultimoIndice + 1) % ordem.length;
         const proximoUid = ordem[proximoIndice];
         
-        // 7. Liberar o "bloqueio", passando o turno para o próximo jogador
         await sessionRef.update({ turnoAtualUid: proximoUid });
         
         const proximoChar = playerCharacters.find(c => c.uid === proximoUid);
@@ -218,8 +218,12 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
         return null;
 
     } catch (error) {
-        console.error("Erro em handlePlayerAction:", error);
-        // Em caso de erro, devolve o turno para o jogador que iniciou a ação
+        // --- LOG DE DIAGNÓSTICO MELHORADO ---
+        console.error(`[handlePlayerAction - ${sessionId}] - ERRO CRÍTICO no bloco try/catch.`);
+        console.error(`[handlePlayerAction - ${sessionId}] - Mensagem do Erro: ${error.message}`);
+        console.error(`[handlePlayerAction - ${sessionId}] - Stack do Erro: ${error.stack}`);
+        console.error(`[handlePlayerAction - ${sessionId}] - Objeto de Erro Completo:`, JSON.stringify(error, null, 2));
+
         await sessionRef.collection('messages').add({
             from: 'mestre', text: '(O Mestre parece confuso por um momento. Por favor, tente sua ação novamente.)',
             createdAt: admin.firestore.FieldValue.serverTimestamp()
