@@ -1,11 +1,3 @@
-/*
- * functions/index.js (VERSÃO COM LÓGICA DE ESTADO DE HISTÓRIA REVISTA)
- * - `systemInstruction` foi simplificada para definir apenas a persona da IA.
- * - O contexto da história (ato atual) agora é passado dinamicamente na chamada `sendMessage`,
- *   junto com a instrução para a IA reagir, resolvendo a causa raiz do erro.
- * - Corrigindo a forma como a systemInstruction é passada para a API do Gemini.
- */
-
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
