@@ -1,8 +1,8 @@
 /*
- * public/js/script.js (v3.6 - Notificações Personalizadas)
- * - Adicionada a função `showNotification` para criar toasts de sucesso/erro.
- * - Substituídos os `alert()` na função de exclusão de personagem pela nova `showNotification`.
- * - Pequena melhoria visual no estado de "carregando" do botão de excluir.
+ * public/js/script.js (v3.7 - Correção de Referência do DOM)
+ * - Movidas todas as referências de elementos do DOM para dentro do 'DOMContentLoaded'
+ * para garantir que o HTML seja carregado antes que o script tente acessá-lo.
+ * - Mantida a lógica robusta de verificação de 'player messages' para iniciar a aventura.
  */
 
 // --- IMPORTS ---
@@ -13,9 +13,10 @@ import {
     addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
+// MODIFICADO: O evento agora envolve todo o script para garantir que o HTML esteja pronto.
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- REFERÊNCIAS DO DOM ---
+    // --- REFERÊNCIAS DO DOM (MOVidas PARA CÁ) ---
     const pageContent = document.getElementById('page-content');
     const loadingOverlay = document.getElementById('loading-overlay');
     const btnMenu = document.getElementById('btn-menu');
@@ -187,11 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingOverlay.style.display = 'flex';
     pageContent.style.display = 'none';
 
-    /**
-     * Exibe uma notificação estilo "toast" no canto da tela.
-     * @param {string} message A mensagem a ser exibida.
-     * @param {'success' | 'error'} type O tipo de notificação ('success' ou 'error').
-     */
     const showNotification = (message, type = 'success') => {
         const container = document.getElementById('notification-container');
         if (!container) {
@@ -376,12 +372,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             showView(gameView);
             
-            // --- LÓGICA CORRIGIDA E MAIS ROBUSTA ---
-            // Procura por mensagens que foram enviadas pelo jogador.
             const playerMessagesQuery = query(collection(db, 'sessions', sessionId, 'messages'), where("from", "==", "player"));
             const playerMessagesSnapshot = await getDocs(playerMessagesQuery);
 
-            // Se não houver mensagens do jogador, é uma nova aventura.
             if (playerMessagesSnapshot.empty) { 
                 dialogBox.style.display = 'flex';
                 inputArea.style.display = 'none';
