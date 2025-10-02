@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
     
-        // ADICIONE ESTA LINHA PARA PEGAR A REFERÊNCIA DO LINK
+        // LÓGICA DO BOTÃO "MEU PERFIL" IMPLEMENTADA AQUI
         const profileLink = document.getElementById('profile-link');
     
         if (user) {
@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
             
-            // ADICIONE ESTA LINHA PARA EXIBIR O LINK
+            // EXIBE O LINK QUANDO O USUÁRIO ESTÁ LOGADO
             if (profileLink) profileLink.style.display = 'inline';
     
             showView(sessionSelectionOverlay);
@@ -493,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             currentUser = null;
             
-            // ADICIONE ESTA LINHA PARA GARANTIR QUE O LINK FIQUE ESCONDIDO AO SAIR
+            // ESCONDE O LINK QUANDO O USUÁRIO NÃO ESTÁ LOGADO
             if (profileLink) profileLink.style.display = 'none';
     
             window.location.href = 'login.html';
