@@ -60,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmDeleteModal = document.getElementById('confirm-delete-modal');
     const btnConfirmDelete = document.getElementById('btn-confirm-delete');
     const btnCancelDelete = document.getElementById('btn-cancel-delete');
+    // --- NOVO: Referências para o botão de início e área de input ---
+    const btnStartAdventure = document.getElementById('btn-start-adventure');
+    const inputArea = document.getElementById('input-area');
 
 
     // --- ESTADO DA APLICAÇÃO ---
@@ -324,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- MODIFICADO: Função loadSession agora controla o botão de início ---
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
@@ -337,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             characterSheetName.textContent = currentCharacter.name;
             
-            // MODIFICADO: Cria a ficha de atributos como um acordeão.
             characterSheetAttributes.innerHTML = '';
             characterSheetAttributes.className = 'attribute-accordion'; 
 
@@ -379,6 +382,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 characterSheet.appendChild(orixaSheetDiv);
             }
 
+            // --- NOVO: Lógica para verificar se é uma nova aventura ---
+            const messagesQuery = query(collection(db, 'sessions', sessionId, 'messages'));
+            const messagesSnapshot = await getDocs(messagesQuery);
+
+            if (messagesSnapshot.size <= 1) { // Considera 0 ou 1 (caso haja uma msg de sistema)
+                btnStartAdventure.style.display = 'block';
+                inputArea.style.display = 'none';
+            } else {
+                btnStartAdventure.style.display = 'none';
+                inputArea.style.display = 'flex';
+            }
+            // --- FIM DA NOVA LÓGICA ---
+
             showView(gameView);
             const sessionRef = doc(db, "sessions", sessionId);
             sessionUnsubscribe = onSnapshot(sessionRef, (doc) => updateTurnUI(doc.data()));
@@ -410,7 +426,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // MODIFICADO: Cria a lista de membros do grupo como um acordeão.
     function listenForPartyChanges(sessionId) {
         const partyQuery = collection(db, 'sessions', sessionId, 'characters');
         
@@ -476,7 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
     
-        // LÓGICA DO BOTÃO "MEU PERFIL" IMPLEMENTADA AQUI
         const profileLink = document.getElementById('profile-link');
     
         if (user) {
@@ -485,7 +499,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
             
-            // EXIBE O LINK QUANDO O USUÁRIO ESTÁ LOGADO
             if (profileLink) profileLink.style.display = 'inline';
     
             showView(sessionSelectionOverlay);
@@ -493,7 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             currentUser = null;
             
-            // ESCONDE O LINK QUANDO O USUÁRIO NÃO ESTÁ LOGADO
             if (profileLink) profileLink.style.display = 'none';
     
             window.location.href = 'login.html';
@@ -503,6 +515,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- LISTENERS DE EVENTOS ---
+
+    // --- NOVO: Evento de clique para o botão de iniciar aventura ---
+    if (btnStartAdventure) {
+        btnStartAdventure.addEventListener('click', async () => {
+            btnStartAdventure.disabled = true;
+            btnStartAdventure.textContent = 'Iniciando...';
+    
+            // Envia uma mensagem especial para o chat para triggar a IA
+            await sendChatMessage("Começar a aventura.");
+    
+            // Esconde o botão e mostra a área de input normal
+            btnStartAdventure.style.display = 'none';
+            inputArea.style.display = 'flex';
+        });
+    }
 
     btnMenu.addEventListener('click', (e) => { e.stopPropagation(); sidePanel.classList.toggle('open'); });
     document.addEventListener('click', (e) => { if (sidePanel.classList.contains('open') && !sidePanel.contains(e.target) && !btnMenu.contains(e.target)) { sidePanel.classList.remove('open'); } });
