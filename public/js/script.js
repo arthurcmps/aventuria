@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmDeleteModal = document.getElementById('confirm-delete-modal');
     const btnConfirmDelete = document.getElementById('btn-confirm-delete');
     const btnCancelDelete = document.getElementById('btn-cancel-delete');
-    // --- MODIFICADO: Novas referências para os elementos da tela de jogo ---
     const dialogBox = document.getElementById('dialog-box');
     const btnStartAdventure = document.getElementById('btn-start-adventure');
     const inputArea = document.getElementById('input-area');
@@ -206,11 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         container.appendChild(notification);
 
-        // A animação CSS já cuida do desaparecimento, mas removemos o elemento
-        // do DOM após a animação para manter o HTML limpo.
         setTimeout(() => {
             notification.remove();
-        }, 5000); // 5 segundos, igual à animação CSS
+        }, 5000);
     };
 
     const showView = (view) => {
@@ -266,12 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             turnStatus.classList.add('my-turn');
         } else {
             turnStatus.classList.remove('my-turn');
-            
-            // --- LÓGICA CORRIGIDA ---
-            // Simplesmente verificamos se o turno é da IA. 
-            // Se não for, exibimos "outro jogador", pois carregar o nome exato aqui é complexo e desnecessário.
             const playerName = (turnoAtualUid === AI_UID) ? "O Mestre" : "outro jogador";
-            
             turnStatus.textContent = `Aguardando o turno de ${playerName}...`;
         }
     };
@@ -327,8 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Erro ao carregar personagens:", error);
         }
     }
-
-    // --- MODIFICADO: Função loadSession agora controla o botão de início e o listener de mensagens ---
+    
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
@@ -385,17 +376,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             showView(gameView);
             
-            const messagesQuery = query(collection(db, 'sessions', sessionId, 'messages'));
-            const messagesSnapshot = await getDocs(messagesQuery);
+            // --- LÓGICA CORRIGIDA E MAIS ROBUSTA ---
+            // Procura por mensagens que foram enviadas pelo jogador.
+            const playerMessagesQuery = query(collection(db, 'sessions', sessionId, 'messages'), where("from", "==", "player"));
+            const playerMessagesSnapshot = await getDocs(playerMessagesQuery);
 
-            if (messagesSnapshot.size <= 1) { 
-                dialogBox.style.display = 'flex'; // Mostra o container do botão
+            // Se não houver mensagens do jogador, é uma nova aventura.
+            if (playerMessagesSnapshot.empty) { 
+                dialogBox.style.display = 'flex';
                 inputArea.style.display = 'none';
-                // Não inicia o listener de mensagens ainda
             } else {
                 dialogBox.style.display = 'none';
                 inputArea.style.display = 'flex';
-                listenForMessages(sessionId); // Inicia o listener para jogos existentes
+                listenForMessages(sessionId);
             }
 
             const sessionRef = doc(db, "sessions", sessionId);
@@ -518,20 +511,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LISTENERS DE EVENTOS ---
 
-    // --- MODIFICADO: Evento de clique para o botão de iniciar aventura ---
     if (btnStartAdventure) {
         btnStartAdventure.addEventListener('click', async () => {
             btnStartAdventure.disabled = true;
             btnStartAdventure.textContent = 'Iniciando...';
     
-            // Esconde o container do botão e mostra a área de input normal
             dialogBox.style.display = 'none';
             inputArea.style.display = 'flex';
             
-            // Envia a primeira mensagem para o chat para triggar a IA
             await sendChatMessage("Começar a aventura.");
 
-            // AGORA inicia o listener de mensagens
             listenForMessages(currentSessionId);
         });
     }
@@ -749,7 +738,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Listeners para os novos acordeões do Side Panel
     characterSheetAttributes.addEventListener('click', (e) => {
         const header = e.target.closest('.attribute-header');
         if (header) {
