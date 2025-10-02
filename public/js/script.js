@@ -60,7 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmDeleteModal = document.getElementById('confirm-delete-modal');
     const btnConfirmDelete = document.getElementById('btn-confirm-delete');
     const btnCancelDelete = document.getElementById('btn-cancel-delete');
-    // --- NOVO: Referências para o botão de início e área de input ---
+    // --- MODIFICADO: Novas referências para os elementos da tela de jogo ---
+    const dialogBox = document.getElementById('dialog-box');
     const btnStartAdventure = document.getElementById('btn-start-adventure');
     const inputArea = document.getElementById('input-area');
 
@@ -327,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- MODIFICADO: Função loadSession agora controla o botão de início ---
+    // --- MODIFICADO: Função loadSession agora controla o botão de início e o listener de mensagens ---
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
@@ -381,25 +382,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 characterSheet.appendChild(orixaSheetDiv);
             }
-
-            // --- NOVO: Lógica para verificar se é uma nova aventura ---
+            
+            showView(gameView);
+            
             const messagesQuery = query(collection(db, 'sessions', sessionId, 'messages'));
             const messagesSnapshot = await getDocs(messagesQuery);
 
-            if (messagesSnapshot.size <= 1) { // Considera 0 ou 1 (caso haja uma msg de sistema)
-                btnStartAdventure.style.display = 'block';
+            if (messagesSnapshot.size <= 1) { 
+                dialogBox.style.display = 'flex'; // Mostra o container do botão
                 inputArea.style.display = 'none';
+                // Não inicia o listener de mensagens ainda
             } else {
-                btnStartAdventure.style.display = 'none';
+                dialogBox.style.display = 'none';
                 inputArea.style.display = 'flex';
+                listenForMessages(sessionId); // Inicia o listener para jogos existentes
             }
-            // --- FIM DA NOVA LÓGICA ---
 
-            showView(gameView);
             const sessionRef = doc(db, "sessions", sessionId);
             sessionUnsubscribe = onSnapshot(sessionRef, (doc) => updateTurnUI(doc.data()));
-            listenForMessages(sessionId);
             listenForPartyChanges(sessionId);
+
         } catch (error) {
             console.error("Erro ao carregar sessão:", error);
             showNotification(error.message || "Não foi possível carregar a sessão.", "error");
@@ -516,18 +518,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LISTENERS DE EVENTOS ---
 
-    // --- NOVO: Evento de clique para o botão de iniciar aventura ---
+    // --- MODIFICADO: Evento de clique para o botão de iniciar aventura ---
     if (btnStartAdventure) {
         btnStartAdventure.addEventListener('click', async () => {
             btnStartAdventure.disabled = true;
             btnStartAdventure.textContent = 'Iniciando...';
     
-            // Envia uma mensagem especial para o chat para triggar a IA
-            await sendChatMessage("Começar a aventura.");
-    
-            // Esconde o botão e mostra a área de input normal
-            btnStartAdventure.style.display = 'none';
+            // Esconde o container do botão e mostra a área de input normal
+            dialogBox.style.display = 'none';
             inputArea.style.display = 'flex';
+            
+            // Envia a primeira mensagem para o chat para triggar a IA
+            await sendChatMessage("Começar a aventura.");
+
+            // AGORA inicia o listener de mensagens
+            listenForMessages(currentSessionId);
         });
     }
 
