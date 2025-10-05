@@ -58,42 +58,63 @@ exports.handlePlayerAction = onDocumentCreated(
                 throw new HttpsError('not-found', `Personagem do jogador com UID ${lastPlayerUid} não encontrado.`);
             }
             
+            // 1. Construir histórico de chat estruturado
             const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt', 'desc').limit(30).get();
             const chatHistory = historySnapshot.docs
                 .filter(doc => !doc.data().isTurnoUpdate && doc.id !== messageId)
-                .reverse()
+                .reverse() // Do mais antigo para o mais novo
                 .map(doc => {
                     const data = doc.data();
-                    const author = data.from === 'mestre' ? "Mestre" : data.characterName || "Jogador";
-                    return `${author}: ${data.text}`;
-                }).join('\n');
+                    const role = data.from === 'mestre' ? 'model' : 'user';
+                    const text = (role === 'user' && data.characterName) 
+                        ? `${data.characterName}: ${data.text}`
+                        : data.text;
+                    return { role, parts: [{ text }] };
+                });
 
-            const estadoHistoria = sessionData.estadoDaHistoria || 'ato1';
-            const atoAtual = historia.atos[estadoHistoria];
+            // 2. Garantir que o histórico comece com uma mensagem de 'user'
+            const firstUserIndex = chatHistory.findIndex(msg => msg.role === 'user');
+            if (firstUserIndex > 0) {
+                chatHistory.splice(0, firstUserIndex);
+            } else if (firstUserIndex === -1 && chatHistory.length > 0) {
+                chatHistory.length = 0; // Limpar se não houver mensagens de usuário
+            }
 
-            const promptParts = [
-                "### PERSONA ###",
-                "Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura de fantasia épica para um grupo de jogadores. Sua responsabilidade é descrever o mundo, interpretar personagens não-jogadores (NPCs), apresentar desafios e reagir às ações dos jogadores de forma criativa e coerente. Mantenha um tom narrativo e imersivo. Nunca saia do personagem.",
-                "### CONTEXTO DA AVENTURA ###",
-                `Título do Ato: ${atoAtual.titulo}`,
-                `Cenário: ${atoAtual.narrativa_inicio}`,
-                "### PERSONAGEM DO JOGADOR ATUAL ###",
-                `Nome: ${playerCharacter.name}`,
-                `Orixá: ${playerCharacter.orixa.name} - ${playerCharacter.orixa.description}`,
-                "### HISTÓRICO DA CONVERSA (DO MAIS ANTIGO AO MAIS NOVO) ###",
-                chatHistory || "Ainda não há histórico. Esta é a primeira interação.",
-                "### AÇÃO DO JOGADOR ###",
-                `${playerCharacter.name}: ${newMessage.text}`,
-                "### SUA TAREFA ###",
-                "Com base em todo o contexto fornecido, narre o resultado da ação do jogador. Descreva a cena, as consequências e, se apropriado, apresente um novo desafio ou uma interação com um NPC. Termine sua narração de forma a dar espaço para o próximo jogador agir."
-            ];
-            
-            const fullPrompt = promptParts.join('\n\n');
+            // 3. Definir a persona da IA (Instrução do Sistema)
+            const systemInstruction = "Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura de fantasia épica, baseado na cultura e cosmologia dos Orixás, para um grupo de jogadores. Sua responsabilidade é descrever o mundo, interpretar personagens não-jogadores (NPCs), apresentar desafios e reagir às ações dos jogadores de forma criativa e coerente. Mantenha um tom narrativo e imersivo. Nunca saia do personagem.";
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            const model = genAI.getGenerativeModel({
+                model: "gemini-1.0-pro",
+                systemInstruction: systemInstruction,
+            });
+
+            // 4. Iniciar o chat com o histórico limpo
+            const chat = model.startChat({
+                history: chatHistory,
+            });
             
-            const result = await model.generateContent(fullPrompt);
+            // 5. Construir o prompt para a rodada atual
+            const estadoHistoria = sessionData.estadoDaHistoria || 'ato1';
+            const atoAtual = historia.atos[estadoHistoria];
+            const promptForCurrentTurn = `
+### CONTEXTO DA AVENTURA ###
+Título do Ato: ${atoAtual.titulo}
+Cenário: ${atoAtual.narrativa_inicio}
+
+### PERSONAGEM DO JOGADOR ATUAL ###
+Nome: ${playerCharacter.name}
+Orixá: ${playerCharacter.orixa.name} - ${playerCharacter.orixa.description}
+
+### AÇÃO DO JOGADOR ###
+${playerCharacter.name}: ${newMessage.text}
+
+### SUA TAREFA ###
+Com base no histórico da conversa e no contexto acima, narre o resultado da ação do jogador. Descreva a cena, as consequências e, se apropriado, apresente um novo desafio ou uma interação com um NPC. Termine sua narração de forma a dar espaço para o próximo jogador agir.
+`;
+
+            // 6. Enviar a mensagem e obter a resposta
+            const result = await chat.sendMessage(promptForCurrentTurn);
             const aiResponse = result.response.text();
             
             if (!aiResponse || aiResponse.trim() === '') {
