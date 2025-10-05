@@ -69,27 +69,32 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
     }
 });
 
-
 exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey], timeoutSeconds: 120 }).firestore
     .document('sessions/{sessionId}/messages/{messageId}')
     .onCreate(async (snapshot, context) => {
         const newMessage = snapshot.data();
         const sessionId = context.params.sessionId;
 
-        // Ignora mensagens do mestre ou de atualização de turno
-        if (newMessage.from === 'mestre' || newMessage.isTurnoUpdate) return null;
+        if (newMessage.from === 'mestre' || newMessage.isTurnoUpdate) {
+            return null;
+        }
 
-        // Deleta a mensagem inicial que dispara a aventura
-        if (newMessage.text === '__START_ADVENTURE__') await snapshot.ref.delete();
-
+        const isStartOfAdventure = newMessage.text === '__START_ADVENTURE__';
         const sessionRef = db.collection('sessions').doc(sessionId);
         const lastPlayerUid = newMessage.uid;
+        
+        if (isStartOfAdventure) {
+            await snapshot.ref.delete();
+        }
 
         try {
-            // Passa o turno para a IA processar
             await sessionRef.update({ turnoAtualUid: AI_UID });
 
             const sessionDoc = await sessionRef.get();
+            if (!sessionDoc.exists) {
+                console.error(`Sessão ${sessionId} não encontrada.`);
+                return null;
+            }
             const sessionData = sessionDoc.data();
             const estadoHistoria = sessionData.estadoDaHistoria || 'ato1';
             const atoAtual = historia.atos[estadoHistoria];
@@ -98,54 +103,53 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
                 throw new Error(`Estado da história inválido: ${estadoHistoria}`);
             }
 
-            // Busca o histórico de mensagens para dar contexto à IA
             const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt', 'desc').limit(20).get();
             const history = historySnapshot.docs.reverse().map(doc => {
                 const data = doc.data();
-                if (data.isTurnoUpdate) return null; // Filtra mensagens de "É o turno de..."
+                if (data.isTurnoUpdate) return null;
                 return {
                     role: data.from === 'mestre' ? 'model' : 'user',
-                    parts: [{ text: `(${data.characterName}) ${data.text}` }]
+                    parts: [{ text: `(${data.characterName || 'Jogador'}) ${data.text}` }]
                 };
             }).filter(Boolean);
 
-            // Define a personalidade da IA e o prompt da ação atual
+            const userActionPrompt = isStartOfAdventure
+                ? `A aventura está começando agora. Descreva a cena de abertura para o personagem ${newMessage.characterName}.`
+                : newMessage.text;
+
             const systemInstruction = `Você é um mestre de RPG de fantasia narrando uma aventura colaborativa. Nunca saia do personagem. Descreva cenas, interprete NPCs, apresente desafios. Não fale sobre regras, apenas narre a história.`;
-            const prompt = `CONTEXTO DA AVENTURA: ${atoAtual.titulo}. ${atoAtual.narrativa_inicio}. Com base no histórico da conversa e neste contexto, reaja à última ação do jogador e continue a história.`;
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-            
-            // --- CÓDIGO CORRIGIDO AQUI ---
-            // A systemInstruction é passada diretamente na inicialização do modelo.
             const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash', systemInstruction });
             
             const chat = model.startChat({ history });
+            const result = await chat.sendMessage(userActionPrompt);
+            const aiResponseText = result.response.text();
 
-            const result = await chat.sendMessage(prompt);
-            const aiActionResponse = result.response.text();
+            if (!aiResponseText || aiResponseText.trim() === '') {
+                throw new Error("A resposta da IA está vazia.");
+            }
 
-            // Adiciona a resposta da IA no chat
             await sessionRef.collection('messages').add({
                 from: 'mestre',
                 characterName: 'Mestre',
-                text: aiActionResponse,
+                text: aiResponseText,
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // Lógica para determinar o próximo jogador a jogar
             const ordem = sessionData.ordemDeTurnos.filter(uid => uid !== AI_UID);
-            const ultimoIndice = ordem.indexOf(lastPlayerUid);
-            const proximoIndice = (ultimoIndice + 1) % ordem.length;
-            const proximoUid = ordem[proximoIndice];
+            let proximoUid = lastPlayerUid;
+            if (ordem.length > 0) {
+                const ultimoIndice = ordem.indexOf(lastPlayerUid);
+                const proximoIndice = (ultimoIndice + 1) % ordem.length;
+                proximoUid = ordem[proximoIndice];
+            }
 
-            // Atualiza o turno no banco de dados
             await sessionRef.update({ turnoAtualUid: proximoUid });
-
-            const charactersSnapshot = await sessionRef.collection('characters').get();
-            const playerCharacters = charactersSnapshot.docs.map(d => d.data());
-            const proximoChar = playerCharacters.find(c => c.uid === proximoUid);
             
-            // Adiciona uma mensagem informativa sobre de quem é o turno
+            const charactersSnapshot = await sessionRef.collection('characters').get();
+            const proximoChar = charactersSnapshot.docs.map(d => d.data()).find(c => c.uid === proximoUid);
+
             if (proximoChar) {
                 await sessionRef.collection('messages').add({
                     from: 'mestre',
@@ -154,11 +158,11 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
                     isTurnoUpdate: true
                 });
             }
+
             return null;
 
         } catch (error) {
             console.error(`[handlePlayerAction - ${sessionId}] - ERRO CRÍTICO`, error);
-            // Em caso de erro, envia uma mensagem padrão e devolve o turno ao jogador
             await sessionRef.collection('messages').add({
                 from: 'mestre',
                 text: '(O Mestre parece confuso por um momento. Por favor, tente sua ação novamente.)',
@@ -168,8 +172,6 @@ exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey]
             return null;
         }
     });
-
-// --- Funções não modificadas (passarTurno, joinSession, convites, etc.) ---
 
 exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
