@@ -1,39 +1,161 @@
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { defineSecret } = require("firebase-functions/params");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const historia = require("./historia.json");
 
 // Inicialização
-try { admin.initializeApp(); } catch (e) { console.warn("Falha na inicialização do Admin SDK."); }
+try { admin.initializeApp(); } catch (e) { console.log("admin.initializeApp() falhou, provavelmente já foi inicializado."); }
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const db = admin.firestore();
-const regionalFunctions = functions.region('southamerica-east1');
 
-// --- CONSTANTES --
 const AI_UID = 'master-ai';
+const REGION = 'southamerica-east1';
 
-// --- FUNÇÕES DE CICLO DE VIDA DE USUÁRIO ---
-exports.onUserCreate = regionalFunctions.auth.user().onCreate(async (user) => {
-    if (user.displayName || !user.email) return null;
+// --- LÓGICA DO JOGO (V2) ---
+exports.handlePlayerAction = onDocumentCreated(
+    {
+        document: 'sessions/{sessionId}/messages/{messageId}',
+        region: REGION,
+        secrets: [geminiApiKey],
+        timeoutSeconds: 180,
+        memory: "1GB"
+    },
+    async (event) => {
+        const snapshot = event.data;
+        if (!snapshot) {
+            console.log("Nenhum dado associado ao evento. Saindo.");
+            return;
+        }
+        const newMessage = snapshot.data();
+        const { sessionId, messageId } = event.params;
+
+        if (newMessage.from === 'mestre' || newMessage.isTurnoUpdate) {
+            return;
+        }
+        
+        const sessionRef = db.collection('sessions').doc(sessionId);
+        const lastPlayerUid = newMessage.uid;
+
+        if (newMessage.text === '__START_ADVENTURE__') {
+            await snapshot.ref.delete();
+        }
+
+        try {
+            await sessionRef.update({ turnoAtualUid: AI_UID });
+
+            const sessionDoc = await sessionRef.get();
+            const sessionData = sessionDoc.data();
+            
+            const charactersSnapshot = await sessionRef.collection('characters').get();
+            const allCharacters = charactersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const playerCharacter = allCharacters.find(c => c.uid === lastPlayerUid);
+
+            if (!playerCharacter) {
+                throw new HttpsError('not-found', `Personagem do jogador com UID ${lastPlayerUid} não encontrado.`);
+            }
+            
+            const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt', 'desc').limit(30).get();
+            const chatHistory = historySnapshot.docs
+                .filter(doc => !doc.data().isTurnoUpdate && doc.id !== messageId)
+                .reverse()
+                .map(doc => {
+                    const data = doc.data();
+                    const author = data.from === 'mestre' ? "Mestre" : data.characterName || "Jogador";
+                    return `${author}: ${data.text}`;
+                }).join('\n');
+
+            const estadoHistoria = sessionData.estadoDaHistoria || 'ato1';
+            const atoAtual = historia.atos[estadoHistoria];
+
+            const promptParts = [
+                "### PERSONA ###",
+                "Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura de fantasia épica para um grupo de jogadores. Sua responsabilidade é descrever o mundo, interpretar personagens não-jogadores (NPCs), apresentar desafios e reagir às ações dos jogadores de forma criativa e coerente. Mantenha um tom narrativo e imersivo. Nunca saia do personagem.",
+                "### CONTEXTO DA AVENTURA ###",
+                `Título do Ato: ${atoAtual.titulo}`,
+                `Cenário: ${atoAtual.narrativa_inicio}`,
+                "### PERSONAGEM DO JOGADOR ATUAL ###",
+                `Nome: ${playerCharacter.name}`,
+                `Orixá: ${playerCharacter.orixa.name} - ${playerCharacter.orixa.description}`,
+                "### HISTÓRICO DA CONVERSA (DO MAIS ANTIGO AO MAIS NOVO) ###",
+                chatHistory || "Ainda não há histórico. Esta é a primeira interação.",
+                "### AÇÃO DO JOGADOR ###",
+                `${playerCharacter.name}: ${newMessage.text}`,
+                "### SUA TAREFA ###",
+                "Com base em todo o contexto fornecido, narre o resultado da ação do jogador. Descreva a cena, as consequências e, se apropriado, apresente um novo desafio ou uma interação com um NPC. Termine sua narração de forma a dar espaço para o próximo jogador agir."
+            ];
+            
+            const fullPrompt = promptParts.join('\n\n');
+
+            const genAI = new GoogleGenerativeAI(geminiApiKey.value());
+            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            
+            const result = await model.generateContent(fullPrompt);
+            const aiResponse = result.response.text();
+            
+            if (!aiResponse || aiResponse.trim() === '') {
+                 throw new Error("A API Gemini retornou uma resposta vazia.");
+            }
+
+            await sessionRef.collection('messages').add({
+                from: 'mestre',
+                characterName: 'Mestre',
+                text: aiResponse,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            const playerUIDs = sessionData.ordemDeTurnos.filter(uid => uid !== AI_UID);
+            const lastPlayerIndex = playerUIDs.indexOf(lastPlayerUid);
+            const nextPlayerIndex = (lastPlayerIndex + 1) % playerUIDs.length;
+            const nextPlayerUid = playerUIDs[nextPlayerIndex];
+
+            await sessionRef.update({ turnoAtualUid: nextPlayerUid });
+
+            const nextPlayerCharacter = allCharacters.find(c => c.uid === nextPlayerUid);
+            if (nextPlayerCharacter) {
+                await sessionRef.collection('messages').add({
+                    from: 'mestre',
+                    text: `É o turno de ${nextPlayerCharacter.name}.`,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    isTurnoUpdate: true
+                });
+            }
+        } catch (error) {
+            console.error(`[handlePlayerAction - ${sessionId}] - ERRO CRÍTICO:`, error);
+            await sessionRef.update({ turnoAtualUid: lastPlayerUid });
+            await sessionRef.collection('messages').add({
+                from: 'mestre',
+                text: '(O Mestre parece confuso por um momento. Houve um erro no fluxo do universo. Por favor, tente sua ação novamente.)',
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    });
+
+// --- FUNÇÕES DE CICLO DE VIDA DE USUÁRIO (V1) ---
+exports.onUserCreate = functions.region(REGION).auth.user().onCreate(async (user) => {
+    if (user.displayName || !user.email) {
+        console.log(`Usuário ${user.uid} já possui um displayName ou não tem e-mail. Ignorando.`);
+        return;
+    }
     const newDisplayName = user.email.split('@')[0];
     try {
         await admin.auth().updateUser(user.uid, { displayName: newDisplayName });
+        console.log(`DisplayName atualizado para ${newDisplayName} para o usuário ${user.uid}.`);
     } catch (error) {
         console.error(`Falha ao atualizar o displayName para o usuário ${user.uid}:`, error);
     }
-    return null;
 });
 
-// --- FUNÇÕES DE SESSÃO E JOGO ---
+// --- FUNÇÕES DE SESSÃO E JOGO (V2) ---
+exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
+    const { characterName, attributes, orixa } = request.data;
+    if (!characterName || !attributes || !orixa) throw new HttpsError('invalid-argument', 'Dados do personagem incompletos.');
 
-exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    const { characterName, attributes, orixa } = data;
-    if (!characterName || !attributes || !orixa) throw new functions.https.HttpsError('invalid-argument', 'Dados do personagem incompletos.');
-
-    const uid = context.auth.uid;
+    const uid = request.auth.uid;
     try {
         const sessionRef = await db.collection("sessions").add({
             owner: uid,
@@ -62,127 +184,22 @@ exports.createAndJoinSession = regionalFunctions.https.onCall(async (data, conte
         });
 
         return { success: true, sessionId: sessionRef.id };
-
     } catch (error) {
         console.error("Erro em createAndJoinSession:", error);
-        throw new functions.https.HttpsError('internal', 'Não foi possível criar a sessão.');
+        throw new HttpsError('internal', 'Não foi possível criar a sessão.', error);
     }
 });
 
-exports.handlePlayerAction = regionalFunctions.runWith({ secrets: [geminiApiKey], timeoutSeconds: 120 }).firestore
-    .document('sessions/{sessionId}/messages/{messageId}')
-    .onCreate(async (snapshot, context) => {
-        const newMessage = snapshot.data();
-        const sessionId = context.params.sessionId;
-
-        if (newMessage.from === 'mestre' || newMessage.isTurnoUpdate) {
-            return null;
-        }
-
-        const isStartOfAdventure = newMessage.text === '__START_ADVENTURE__';
-        const sessionRef = db.collection('sessions').doc(sessionId);
-        const lastPlayerUid = newMessage.uid;
-        
-        if (isStartOfAdventure) {
-            await snapshot.ref.delete();
-        }
-
-        try {
-            await sessionRef.update({ turnoAtualUid: AI_UID });
-
-            const sessionDoc = await sessionRef.get();
-            if (!sessionDoc.exists) {
-                console.error(`Sessão ${sessionId} não encontrada.`);
-                return null;
-            }
-            const sessionData = sessionDoc.data();
-            const estadoHistoria = sessionData.estadoDaHistoria || 'ato1';
-            const atoAtual = historia.atos[estadoHistoria];
-
-            if (!atoAtual) {
-                throw new Error(`Estado da história inválido: ${estadoHistoria}`);
-            }
-
-            const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt', 'desc').limit(20).get();
-            const history = historySnapshot.docs.reverse().map(doc => {
-                const data = doc.data();
-                if (data.isTurnoUpdate) return null;
-                return {
-                    role: data.from === 'mestre' ? 'model' : 'user',
-                    parts: [{ text: `(${data.characterName || 'Jogador'}) ${data.text}` }]
-                };
-            }).filter(Boolean);
-
-            const userActionPrompt = isStartOfAdventure
-                ? `A aventura está começando agora. Descreva a cena de abertura para o personagem ${newMessage.characterName}.`
-                : newMessage.text;
-
-            const systemInstruction = `Você é um mestre de RPG de fantasia narrando uma aventura colaborativa. Nunca saia do personagem. Descreva cenas, interprete NPCs, apresente desafios. Não fale sobre regras, apenas narre a história.`;
-
-            const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash', systemInstruction });
-            
-            const chat = model.startChat({ history });
-            const result = await chat.sendMessage(userActionPrompt);
-            const aiResponseText = result.response.text();
-
-            if (!aiResponseText || aiResponseText.trim() === '') {
-                throw new Error("A resposta da IA está vazia.");
-            }
-
-            await sessionRef.collection('messages').add({
-                from: 'mestre',
-                characterName: 'Mestre',
-                text: aiResponseText,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-
-            const ordem = sessionData.ordemDeTurnos.filter(uid => uid !== AI_UID);
-            let proximoUid = lastPlayerUid;
-            if (ordem.length > 0) {
-                const ultimoIndice = ordem.indexOf(lastPlayerUid);
-                const proximoIndice = (ultimoIndice + 1) % ordem.length;
-                proximoUid = ordem[proximoIndice];
-            }
-
-            await sessionRef.update({ turnoAtualUid: proximoUid });
-            
-            const charactersSnapshot = await sessionRef.collection('characters').get();
-            const proximoChar = charactersSnapshot.docs.map(d => d.data()).find(c => c.uid === proximoUid);
-
-            if (proximoChar) {
-                await sessionRef.collection('messages').add({
-                    from: 'mestre',
-                    text: `É o turno de ${proximoChar.name}.`,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                    isTurnoUpdate: true
-                });
-            }
-
-            return null;
-
-        } catch (error) {
-            console.error(`[handlePlayerAction - ${sessionId}] - ERRO CRÍTICO`, error);
-            await sessionRef.collection('messages').add({
-                from: 'mestre',
-                text: '(O Mestre parece confuso por um momento. Por favor, tente sua ação novamente.)',
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-            await sessionRef.update({ turnoAtualUid: lastPlayerUid });
-            return null;
-        }
-    });
-
-exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    const { sessionId, characterName, attributes, orixa } = data;
-    if (!sessionId || !characterName || !attributes || !orixa) throw new functions.https.HttpsError('invalid-argument', 'Dados incompletos.');
-    const uid = context.auth.uid;
+exports.joinSession = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
+    const { sessionId, characterName, attributes, orixa } = request.data;
+    if (!sessionId || !characterName || !attributes || !orixa) throw new HttpsError('invalid-argument', 'Dados incompletos.');
+    const uid = request.auth.uid;
     const sessionRef = db.collection('sessions').doc(sessionId);
     try {
         await db.runTransaction(async (transaction) => {
             const sessionDoc = await transaction.get(sessionRef);
-            if (!sessionDoc.exists) throw new functions.https.HttpsError('not-found', 'Sessão não encontrada.');
+            if (!sessionDoc.exists) throw new HttpsError('not-found', 'Sessão não encontrada.');
             transaction.update(sessionRef, { memberUIDs: admin.firestore.FieldValue.arrayUnion(uid), ordemDeTurnos: admin.firestore.FieldValue.arrayUnion(uid) });
             const newCharacter = { name: characterName, attributes, orixa, uid, sessionId };
             transaction.set(sessionRef.collection('characters').doc(uid), newCharacter);
@@ -191,92 +208,100 @@ exports.joinSession = regionalFunctions.https.onCall(async (data, context) => {
         return { success: true };
     } catch (error) {
         console.error(`Erro ao entrar na sessão ${sessionId}:`, error);
-        throw new functions.https.HttpsError('internal', 'Não foi possível entrar na sessão.');
+        throw new HttpsError('internal', 'Não foi possível entrar na sessão.', error);
     }
 });
 
-exports.passarTurno = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    const { sessionId } = data;
-    if (!sessionId) throw new functions.https.HttpsError('invalid-argument', 'ID da sessão obrigatório.');
-    const uid = context.auth.uid;
+exports.passarTurno = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
+    const { sessionId } = request.data;
+    if (!sessionId) throw new HttpsError('invalid-argument', 'ID da sessão obrigatório.');
+    const uid = request.auth.uid;
     const sessionRef = db.collection('sessions').doc(sessionId);
     const sessionDoc = await sessionRef.get();
-    if (!sessionDoc.exists) throw new functions.https.HttpsError('not-found', 'Sessão não encontrada.');
+    if (!sessionDoc.exists) throw new HttpsError('not-found', 'Sessão não encontrada.');
     const sessionData = sessionDoc.data();
-    if (sessionData.turnoAtualUid !== uid) throw new functions.https.HttpsError('permission-denied', 'Não é seu turno.');
-    await sessionRef.update({ turnoAtualUid: AI_UID }); 
-    return { success: true, proximoTurno: AI_UID };
+    if (sessionData.turnoAtualUid !== uid) throw new HttpsError('permission-denied', 'Não é seu turno.');
+    
+    await sessionRef.collection('messages').add({
+        from: 'player',
+        text: '*Passa o turno para o Mestre*',
+        characterName: 'Sistema',
+        uid: uid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    return { success: true };
 });
 
-exports.sendInvite = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    const { email, sessionId } = data; 
-    if (!email || !sessionId) throw new functions.https.HttpsError('invalid-argument', 'Dados incompletos.');
-    const senderUid = context.auth.uid; 
+exports.sendInvite = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
+    const { email, sessionId } = request.data; 
+    if (!email || !sessionId) throw new HttpsError('invalid-argument', 'Dados incompletos.');
+    const senderUid = request.auth.uid; 
     try {
         const recipientUser = await admin.auth().getUserByEmail(email);
-        if (senderUid === recipientUser.uid) throw new functions.https.HttpsError('invalid-argument', 'Você não pode convidar a si mesmo.');
+        if (senderUid === recipientUser.uid) throw new HttpsError('invalid-argument', 'Você não pode convidar a si mesmo.');
         const sessionDoc = await db.collection('sessions').doc(sessionId).get();
-        if (!sessionDoc.exists || sessionDoc.data().memberUIDs?.includes(recipientUser.uid)) throw new functions.https.HttpsError('already-exists', 'Usuário já está na sessão.');
+        if (!sessionDoc.exists || sessionDoc.data().memberUIDs?.includes(recipientUser.uid)) throw new HttpsError('already-exists', 'Usuário já está na sessão.');
         const charDoc = await sessionDoc.ref.collection('characters').doc(senderUid).get();
-        if (!charDoc.exists) throw new functions.https.HttpsError('not-found', 'Seu personagem não foi encontrado.');
+        if (!charDoc.exists) throw new HttpsError('not-found', 'Seu personagem não foi encontrado.');
         await db.collection('invites').add({
             senderId: senderUid, senderCharacterName: charDoc.data().name, recipientEmail: email,
             recipientUid: recipientUser.uid, sessionId: sessionId, status: 'pending', createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
         return { success: true, message: `Convite enviado para ${email}.` };
     } catch (error) {
-        if (error.code === 'auth/user-not-found') throw new functions.https.HttpsError('not-found', `Usuário com e-mail ${email} não encontrado.`);
-        throw new functions.https.HttpsError('internal', 'Erro ao enviar convite.');
+        if (error.code === 'auth/user-not-found') throw new HttpsError('not-found', `Usuário com e-mail ${email} não encontrado.`);
+        throw new HttpsError('internal', 'Erro ao enviar convite.', error);
     }
 });
 
-exports.getPendingInvites = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    const snapshot = await db.collection('invites').where('recipientUid', '==', context.auth.uid).where('status', '==', 'pending').get();
+exports.getPendingInvites = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
+    const snapshot = await db.collection('invites').where('recipientUid', '==', request.auth.uid).where('status', '==', 'pending').get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 });
 
-exports.acceptInvite = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    const { inviteId } = data;
-    if (!inviteId) throw new functions.https.HttpsError('invalid-argument', 'ID do convite obrigatório.');
+exports.acceptInvite = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
+    const { inviteId } = request.data;
+    if (!inviteId) throw new HttpsError('invalid-argument', 'ID do convite obrigatório.');
     const inviteRef = db.collection('invites').doc(inviteId);
     try {
         const { sessionId } = await db.runTransaction(async (t) => {
             const inviteDoc = await t.get(inviteRef);
-            if (!inviteDoc.exists || inviteDoc.data().recipientUid !== context.auth.uid) throw new functions.https.HttpsError('permission-denied', 'Convite inválido.');
+            if (!inviteDoc.exists || inviteDoc.data().recipientUid !== request.auth.uid) throw new HttpsError('permission-denied', 'Convite inválido.');
             t.update(inviteRef, { status: 'accepted' });
             return { sessionId: inviteDoc.data().sessionId };
         });
         return { success: true, sessionId };
     } catch (error) {
-        throw new functions.https.HttpsError('internal', 'Erro ao aceitar convite.');
+        throw new HttpsError('internal', 'Erro ao aceitar convite.', error);
     }
 });
 
-exports.declineInvite = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Autenticação necessária.');
-    const { inviteId } = data;
-    if (!inviteId) throw new functions.https.HttpsError('invalid-argument', 'ID do convite obrigatório.');
+exports.declineInvite = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
+    const { inviteId } = request.data;
+    if (!inviteId) throw new HttpsError('invalid-argument', 'ID do convite obrigatório.');
     const inviteRef = db.collection('invites').doc(inviteId);
     const inviteDoc = await inviteRef.get();
-    if (!inviteDoc.exists || inviteDoc.data().recipientUid !== context.auth.uid) throw new functions.https.HttpsError('permission-denied', 'Convite inválido.');
+    if (!inviteDoc.exists || inviteDoc.data().recipientUid !== request.auth.uid) throw new HttpsError('permission-denied', 'Convite inválido.');
     await inviteRef.update({ status: 'declined' }); 
     return { success: true };
 });
 
-exports.deleteCharacterAndSession = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Você precisa estar logado.');
-    const { characterId, sessionId } = data;
-    if (!characterId || !sessionId) throw new functions.https.HttpsError('invalid-argument', 'IDs do personagem e da sessão são obrigatórios.');
-    const uid = context.auth.uid;
+exports.deleteCharacterAndSession = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Você precisa estar logado.');
+    const { characterId, sessionId } = request.data;
+    if (!characterId || !sessionId) throw new HttpsError('invalid-argument', 'IDs do personagem e da sessão são obrigatórios.');
+    const uid = request.auth.uid;
     const characterRef = db.collection('characters').doc(characterId);
     const sessionRef = db.collection('sessions').doc(sessionId);
     try {
         const charDoc = await characterRef.get();
-        if (!charDoc.exists || charDoc.data().uid !== uid) throw new functions.https.HttpsError('permission-denied', 'Você não tem permissão para excluir este personagem.');
+        if (!charDoc.exists || charDoc.data().uid !== uid) throw new HttpsError('permission-denied', 'Você não tem permissão para excluir este personagem.');
         await characterRef.delete();
         await deleteCollection(db, `sessions/${sessionId}/messages`, 100);
         await deleteCollection(db, `sessions/${sessionId}/characters`, 100);
@@ -284,8 +309,7 @@ exports.deleteCharacterAndSession = regionalFunctions.https.onCall(async (data, 
         return { success: true, message: 'Personagem e sessão excluídos com sucesso.' };
     } catch (error) {
         console.error("Erro ao excluir personagem e sessão:", error);
-        if (error instanceof functions.https.HttpsError) throw error;
-        throw new functions.https.HttpsError('internal', 'Ocorreu um erro inesperado no servidor.');
+        throw new HttpsError('internal', 'Ocorreu um erro inesperado no servidor.', error);
     }
 });
 
