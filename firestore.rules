@@ -52,7 +52,8 @@ service cloud.firestore {
       // --- Sub-coleção: messages ---
       match /messages/{messageId} {
         allow read: if isSessionMember(sessionId);
-        allow create: if isSessionMember(sessionId) && ((request.auth.uid == request.resource.data.uid) || (request.resource.data.from == 'mestre'));
+        allow create: if isSessionMember(sessionId) && (request.auth.uid == request.resource.data.uid);
+
         allow update, delete: if false;
       }
       

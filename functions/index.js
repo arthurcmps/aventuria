@@ -79,6 +79,11 @@ exports.handlePlayerAction = onDocumentCreated(
             } else if (firstUserIndex === -1 && chatHistory.length > 0) {
                 chatHistory.length = 0; // Limpar se não houver mensagens de usuário
             }
+            
+            if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].role === 'user') {
+                console.log("O histórico terminava com 'user', removendo a última mensagem para evitar conflito de papéis.");
+                chatHistory.pop();
+            }
 
             // 3. Definir a persona da IA (Instrução do Sistema)
             const systemInstruction = "Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura de fantasia épica, baseado na cultura e cosmologia dos Orixás, para um grupo de jogadores. Sua responsabilidade é descrever o mundo, interpretar personagens não-jogadores (NPCs), apresentar desafios e reagir às ações dos jogadores de forma criativa e coerente. Mantenha um tom narrativo e imersivo. Nunca saia do personagem.";
