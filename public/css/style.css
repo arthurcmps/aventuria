@@ -615,3 +615,80 @@ body {
         /* A transição 'transition' não é mais necessária aqui */
     }
 }
+
+/* ----------------------------------
+ * Estilos da Narração (Chat)
+ * ---------------------------------- */
+ #narration {
+    /* MODIFICADO: Transforma a área de narração em um container flex */
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Espaçamento entre as mensagens */
+}
+
+/* Estilo base para todas as mensagens */
+.message {
+    padding: 12px 18px;
+    border-radius: 18px;
+    max-width: 80%;
+    line-height: 1.5;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.message .from {
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+/* Mensagens do Mestre (IA) */
+.mestre-msg {
+    background-color: var(--primary-bg-color);
+    align-self: flex-start; /* Alinha à esquerda */
+    border: 1px solid var(--border-color);
+    border-top-left-radius: 4px;
+    font-family: var(--font-display); /* Fonte temática para o mestre */
+    font-size: 1.1em;
+}
+
+.mestre-msg .from {
+    color: var(--font-color);
+}
+
+/* Mensagens dos Jogadores */
+.player-msg {
+    background-color: var(--tertiary-bg-color);
+    align-self: flex-end; /* Alinha à direita */
+    text-align: right;
+    border-top-right-radius: 4px;
+}
+
+.player-msg .from {
+    color: var(--accent-color);
+}
+
+/* DESTAQUE: Mensagens do seu personagem */
+.my-msg {
+    background-color: var(--accent-color);
+    color: var(--primary-bg-color);
+}
+
+.my-msg .from {
+    color: var(--primary-bg-color) !important;
+    opacity: 1;
+}
+
+/* Mensagens de Sistema (Ex: "É o turno de...") */
+.system-message {
+    align-self: center;
+    text-align: center;
+    font-style: italic;
+    font-size: 0.9em;
+    padding: 5px 15px;
+    max-width: fit-content;
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--border-color);
+    box-shadow: none;
+}

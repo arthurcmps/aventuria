@@ -409,12 +409,32 @@ document.addEventListener('DOMContentLoaded', () => {
             snapshot.docs.forEach(doc => {
                 const msg = doc.data();
                 const messageElement = document.createElement('div');
-                messageElement.classList.add('message', msg.from === 'mestre' ? 'mestre-msg' : 'player-msg');
+                
+                // Adiciona a classe base e a classe de sistema se necessário
+                messageElement.classList.add('message');
                 if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
+
+                // Define a classe de alinhamento e estilo (mestre vs jogador)
+                if (msg.from === 'mestre') {
+                    messageElement.classList.add('mestre-msg');
+                } else {
+                    messageElement.classList.add('player-msg');
+                    // VERIFICAÇÃO ADICIONAL: Se a mensagem é do usuário atual
+                    if (currentUser && msg.uid === currentUser.uid) {
+                        messageElement.classList.add('my-msg');
+                    }
+                }
 
                 const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
                 const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
-                messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
+                
+                // Em mensagens de sistema, não mostramos o "from"
+                if (msg.isTurnoUpdate) {
+                    messageElement.innerHTML = `<p>${text}</p>`;
+                } else {
+                    messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
+                }
+                
                 narration.appendChild(messageElement);
             });
             narration.scrollTop = narration.scrollHeight;
