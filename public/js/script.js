@@ -378,14 +378,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // --- LÓGICA CORRIGIDA E MAIS ROBUSTA ---
             // Procura por mensagens que foram enviadas pelo jogador.
-            const playerMessagesQuery = query(collection(db, 'sessions', sessionId, 'messages'), where("from", "==", "player"));
-            const playerMessagesSnapshot = await getDocs(playerMessagesQuery);
+            const allMessagesQuery = query(collection(db, 'sessions', sessionId, 'messages'), limit(1));
+            const allMessagesSnapshot = await getDocs(allMessagesQuery);
 
-            // Se não houver mensagens do jogador, é uma nova aventura.
-            if (playerMessagesSnapshot.empty) { 
+            // Se o snapshot estiver vazio, significa que NENHUMA mensagem foi enviada. É uma nova aventura.
+            if (allMessagesSnapshot.empty) { 
                 dialogBox.style.display = 'flex';
                 inputArea.style.display = 'none';
             } else {
+                // Se houver qualquer mensagem, a aventura está em andamento.
                 dialogBox.style.display = 'none';
                 inputArea.style.display = 'flex';
                 listenForMessages(sessionId);

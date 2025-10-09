@@ -201,15 +201,6 @@ exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
         batch.set(sessionRef.collection('characters').doc(AI_UID), aiCharacter);
         await batch.commit();
 
-        await sessionRef.collection('messages').add({
-            from: 'player',
-            text: '__START_ADVENTURE__',
-            characterName: playerCharacter.name,
-            uid: uid,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        return { success: true, sessionId: sessionRef.id };
     } catch (error) {
         console.error("Erro em createAndJoinSession:", error);
         throw new HttpsError('internal', 'Não foi possível criar a sessão.', error);
