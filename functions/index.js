@@ -123,7 +123,7 @@ ${playerCharacter.name}: ${newMessage.text}
             const systemInstruction = `Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura épica baseada na cosmologia dos Orixás. Sua responsabilidade é seguir as regras e o contexto fornecidos, descrever o mundo, interpretar NPCs, apresentar os desafios definidos e reagir às ações dos jogadores. Mantenha um tom narrativo e imersivo. Nunca saia do personagem. Siga estritamente o fluxo de pedir testes e narrar consequências conforme instruído na 'SUA TAREFA'.`;
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-            const model = genAI.getGenerativeModel({ model: "gemini-pro", systemInstruction: systemInstruction });
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: systemInstruction });
             const chat = model.startChat({ history: chatHistory });
             const result = await chat.sendMessage(promptForCurrentTurn);
             let aiResponse = result.response.text();
