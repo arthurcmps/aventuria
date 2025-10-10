@@ -51,6 +51,17 @@ exports.handlePlayerAction = onDocumentCreated(
 
             const sessionDoc = await sessionRef.get();
             const sessionData = sessionDoc.data();
+            const updates = {
+                turnoAtualUid: AI_UID // Sempre passamos o turno para a IA
+            };
+
+            // Se for a primeira ação, adicionamos a flag ao objeto de atualização
+            if (sessionData.adventureStarted === false) {
+                updates.adventureStarted = true;
+            }
+
+            // Realizamos UMA ÚNICA operação de escrita com todas as atualizações
+            await sessionRef.update(updates);
             
             const charactersSnapshot = await sessionRef.collection('characters').get();
             const allCharacters = charactersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
