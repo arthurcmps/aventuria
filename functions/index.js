@@ -47,20 +47,17 @@ exports.handlePlayerAction = onDocumentCreated(
         }
 
         try {
-            await sessionRef.update({ turnoAtualUid: AI_UID });
-
             const sessionDoc = await sessionRef.get();
             const sessionData = sessionDoc.data();
+            
             const updates = {
-                turnoAtualUid: AI_UID // Sempre passamos o turno para a IA
+                turnoAtualUid: AI_UID 
             };
-
-            // Se for a primeira ação, adicionamos a flag ao objeto de atualização
+        
             if (sessionData.adventureStarted === false) {
                 updates.adventureStarted = true;
             }
-
-            // Realizamos UMA ÚNICA operação de escrita com todas as atualizações
+        
             await sessionRef.update(updates);
             
             const charactersSnapshot = await sessionRef.collection('characters').get();
@@ -209,7 +206,7 @@ exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
             turnoAtualUid: uid,
             ordemDeTurnos: [uid, AI_UID],
             estadoDaHistoria: "ato1",
-            adventureStarted: false
+            adventureStarted: false // <- CORRETO: A sessão começa como "não iniciada"
         });
 
         const playerCharacter = { name: characterName, attributes, orixa, uid, sessionId: sessionRef.id };
@@ -221,14 +218,7 @@ exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
         batch.set(sessionRef.collection('characters').doc(AI_UID), aiCharacter);
         await batch.commit();
 
-        // ADICIONE ESTE BLOCO DE VOLTA
-        await sessionRef.collection('messages').add({
-            from: 'player',
-            text: '__START_ADVENTURE__',
-            characterName: playerCharacter.name,
-            uid: uid,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        // O bloco que criava a mensagem "__START_ADVENTURE__" foi removido daqui.
 
         return { success: true, sessionId: sessionRef.id };
     } catch (error) {
