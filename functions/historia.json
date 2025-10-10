@@ -1,30 +1,170 @@
 {
-  "titulo": "O Silêncio do Rio",
-  "introducao": "Uma campanha sobre como o progresso não pode existir esquecendo-se do passado e desrespeitando a natureza, por menor que ela pareça.",
+  "titulo_campanha": "O Silêncio do Rio",
+  "tema_central": "O progresso não pode existir esquecendo-se do passado e desrespeitando a natureza, por menor que ela pareça.",
+  "regras_gerais": {
+    "formula_teste": "d20 + Modificador de Atributo vs. CD",
+    "tabela_modificadores": {
+      "1": -2,
+      "2-3": -1,
+      "4-5": 0,
+      "6-7": 1,
+      "8-9": 2,
+      "10-11": 3,
+      "12-13": 4,
+      "14-15": 5,
+      "16-17": 6
+    },
+    "tabela_cd": {
+      "Facil": 10,
+      "Medio": 15,
+      "Dificil": 20,
+      "Heroico": 25
+    },
+    "vantagem": "Em situações favoráveis, rolar dois d20 e usar o maior resultado.",
+    "desvantagem": "Em situações desfavoráveis (como quebrar uma Quizila), rolar dois d20 e usar o menor resultado."
+  },
   "atos": {
     "ato1": {
       "titulo": "Ato 1: O Sussurro da Seca",
-      "narrativa_inicio": "A jornada se inicia na aldeia de Meji, que sofre com uma seca espiritual. A líder Yarin incumbe os jogadores de viajar até o Oráculo do Baobá Sagrado para descobrir a causa do desequilíbrio. Antes de partirem, são confrontados por Obaro, um ancião pragmático que defende a prosperidade que as 'novas práticas' trouxeram à aldeia e vê a missão como um retorno a um passado de dificuldades.",
-      "plot_twist": "Em uma encruzilhada, uma figura enigmática (Exu disfarçado) oferece uma escolha de caminhos que não apenas testa o caráter do grupo, mas define as pistas que encontrarão no futuro.",
-      "side_quests": [
+      "cenas": [
         {
-          "id": "sq1",
-          "titulo": "O Ferreiro Desacreditado",
-          "descricao": "O grupo encontra Kael, um devoto de Ogum, cuja forja esfriou. Ele revela que sua família ajudou a construir uma grande barragem no rio, uma geração atrás, e desde então sente uma fraqueza espiritual que o impede de criar.",
-          "recompensa": "Um Filho de Ogum pode reconsagrar a forja, ganhando Axé e a primeira pista sobre a 'ferida' no rio."
+          "id": "cena1_aldeia",
+          "titulo": "A Aldeia de Meji",
+          "narrativa": "A história começa na aldeia de Meji, que sofre com uma seca espiritual. As colheitas minguam e as oferendas parecem não surtir efeito. A líder Yarin convoca os jogadores para uma missão sagrada: viajar até o Oráculo do Baobá Sagrado para descobrir a causa do desequilíbrio.",
+          "desafios": [
+            {
+              "id": "desafio_obaro",
+              "descricao": "Obaro, um ancião pragmático, confronta o grupo, argumentando que a missão é um retrocesso e que a aldeia deveria focar no progresso. Os jogadores precisam lidar com sua oposição.",
+              "habilidades_sugeridas": [
+                {
+                  "atributo": "Carisma",
+                  "acao": "Tentar persuadi-lo com diplomacia, argumentando que o equilíbrio entre o antigo e o novo é necessário."
+                },
+                {
+                  "atributo": "Força de Vontade",
+                  "acao": "Manter a convicção e a postura, mostrando que a fé do grupo não será abalada por seu ceticismo."
+                }
+              ],
+              "cd": 15,
+              "sucesso": "Obaro, embora não totalmente convencido, reconhece a determinação do grupo. Ele cede passagem e não criará mais obstáculos públicos, resmungando sobre a teimosia dos jovens.",
+              "falha": "As palavras dos jogadores irritam Obaro, que usa sua influência para espalhar dúvidas. Alguns aldeões se recusam a fornecer suprimentos extras para a jornada, e o grupo parte com menos recursos."
+            }
+          ]
+        },
+        {
+          "id": "cena2_trilha",
+          "titulo": "A Trilha Empoeirada",
+          "narrativa": "A jornada pela savana ressequida apresenta desafios e encontros que são ecos do problema central.",
+          "desafios": [
+            {
+              "id": "desafio_jornada",
+              "descricao": "A viagem sob o sol escaldante testa a resistência dos heróis.",
+              "atributo": "Vigor",
+              "cd": 10,
+              "sucesso": "O grupo gerencia bem seus recursos e o cansaço, prosseguindo sem maiores problemas.",
+              "falha": "O calor cobra seu preço. Cada personagem que falhar no teste sofre um nível de exaustão, recebendo Desvantagem em seu próximo teste de Ara (Corpo) até que possa descansar."
+            }
+          ],
+          "encontros_opcionais": [
+            {
+              "id": "sq1_ferreiro",
+              "titulo": "O Ferreiro Desacreditado",
+              "narrativa": "O grupo encontra Kael, um devoto de Ogum, cuja forja esfriou. Ele revela que sua família ajudou a construir a barragem no rio, uma geração atrás, e desde então ele sente uma fraqueza espiritual.",
+              "desafios": [
+                {
+                  "id": "desafio_reconsagrar",
+                  "descricao": "A forja está espiritualmente fria. Um Filho de Ogum (ou outro personagem com forte conexão espiritual) pode tentar reconsagrá-la com o Axé de Ogum.",
+                  "atributo": "Conexão com o Orixá",
+                  "cd": 15,
+                  "sucesso": "O fogo da forja ruge com nova vida. Kael, em gratidão, oferece ao grupo um item de metal abençoado (ex: uma arma com +1 de dano) e menciona ter ouvido 'lamentos que vêm da água' perto da barragem, a primeira pista sobre a 'ferida' no rio.",
+                  "falha": "O Axé se dissipa sem efeito. Kael fica ainda mais desanimado e não pode oferecer ajuda ou informações."
+                }
+              ]
+            },
+            {
+              "id": "sq2_encruzilhada",
+              "titulo": "A Encruzilhada da Dúvida",
+              "narrativa": "O grupo se depara com uma figura enigmática em uma encruzilhada (Exu disfarçado). Ele oferece uma escolha de caminhos para o Baobá, sem permitir um teste de dados, apenas a decisão do grupo.",
+              "escolhas": [
+                {
+                  "opcao": "O Caminho do Atalho",
+                  "consequencia": "Mais curto e aparentemente seguro. O grupo chegará mais rápido ao Oráculo, mas perderá a chance de encontrar uma pista importante sobre a origem da tristeza de Oxum."
+                },
+                {
+                  "opcao": "O Caminho da Provação",
+                  "consequencia": "Mais longo e perigoso. A jornada revelará um antigo totem abandonado com inscrições sobre a 'lágrima de ouro' de Oxum, concedendo Vantagem ao grupo no próximo teste para entender a dor da Orixá."
+                }
+              ]
+            }
+          ]
         }
       ]
     },
     "ato2": {
       "titulo": "Ato 2: A Revelação e a Falsa Pista",
-      "narrativa_inicio": "O Oráculo revela que a seca é o 'silêncio' de Oxum, que está triste por uma ferida no Grande Rio. Seguindo para o rio, os jogadores encontram suas águas turvas e sem vida, e um santuário de Oxum vandalizado. A descoberta do Oxé de Xangô no local os coloca diante de um dilema: eles irão agir com fúria e acusar os devotos de Xangô, arriscando um conflito, ou investigarão com cautela?",
-      "plot_twist": "O Oxé de Xangô é uma evidência forjada, deixada no local para testar a sabedoria e o senso de justiça dos jogadores, criando um falso conflito."
+      "cenas": [
+        {
+          "id": "cena1_oraculo",
+          "titulo": "O Baobá Sagrado",
+          "narrativa": "O Oráculo revela que a seca não é uma maldição, mas o 'silêncio' de Oxum, a senhora dos rios, que está profundamente triste. Os jogadores devem seguir o curso do Grande Rio até seu Templo Dourado para descobrir o motivo da dor da Orixá."
+        },
+        {
+          "id": "cena2_santuario",
+          "titulo": "As Margens do Grande Rio",
+          "narrativa": "As águas do rio estão turvas e paradas. No caminho, o grupo encontra um antigo santuário de Oxum que foi vandalizado. Um Oxé (machado de Xangô) foi deixado cravado no altar, sugerindo que devotos do Orixá da Justiça cometeram o sacrilégio.",
+          "desafios": [
+            {
+              "id": "desafio_investigar_cena",
+              "descricao": "Analisar a cena do crime em busca de inconsistências.",
+              "atributo": "Percepção",
+              "cd": 15,
+              "sucesso": "O personagem nota que o Oxé está limpo demais, sem sangue ou marcas de luta. A lama ao redor do altar tem pegadas que não correspondem às sandálias dos guerreiros de Xangô. A cena parece montada.",
+              "falha": "A evidência parece conclusiva. O Oxé cravado no altar é uma imagem poderosa, e a conclusão mais óbvia é que os devotos de Xangô são os culpados."
+            }
+          ],
+          "dilema": "A descoberta testa o grupo. Eles agirão com base na emoção, confrontando agressivamente os devotos de Xangô? Ou agirão com cautela, investigando antes de acusar? Uma abordagem hostil pode gerar um conflito real."
+        }
+      ]
     },
     "ato3": {
-      "titulo": "Ato 3: O Coração da Ferida",
-      "narrativa_inicio": "Após lidarem com as consequências de sua abordagem aos devotos de Xangô, Exu reaparece e revela a verdade: a causa é um afluente do rio que foi represado e esquecido. Na barragem, o espírito do riacho se manifesta como uma força de dor. Ele não ataca, mas projeta na mente dos jogadores ilusões da vida vibrante que existia antes, agora substituída por imagens de solidão e esquecimento. A solução não é lutar, mas curar a ferida.",
-      "plot_twist": "O verdadeiro 'vilão' não é uma criatura ou pessoa, mas o esquecimento coletivo do povo. A barragem, que um dia foi vista como progresso, tornou-se a causa do desequilíbrio espiritual que agora ameaça a todos."
+      "titulo": "Ato 3: Justiça, Verdade e Reconciliação",
+      "cenas": [
+        {
+          "id": "cena1_julgamento",
+          "titulo": "O Julgamento da Verdade",
+          "narrativa": "Ao confrontarem os devotos de Xangô, estes negam o crime. Exu reaparece, revelando que a pista era um teste e aponta a verdadeira causa: um afluente do rio, vital para a região, que foi represado e esquecido há uma geração. O 'vilão' é o esquecimento."
+        },
+        {
+          "id": "cena2_climax",
+          "titulo": "O Coração da Ferida",
+          "narrativa": "Na barragem antiga, o espírito do riacho esquecido se manifesta, não como um monstro, mas como uma força de dor, projetando ilusões de vida e, em seguida, de esquecimento e poeira.",
+          "solucao_multipla": {
+            "descricao": "A solução não é lutar, mas curar a ferida. Pelo menos duas das três ações a seguir devem ser bem-sucedidas para restaurar o equilíbrio.",
+            "partes": [
+              {
+                "personagem_sugerido": "Filho de Ogum",
+                "acao": "Usar sua força para quebrar a estrutura da barragem, liberando o fluxo da água.",
+                "teste": { "atributo": "Força", "cd": 20 }
+              },
+              {
+                "personagem_sugerido": "Filha de Oxum",
+                "acao": "Usar sua empatia e Axé para acalmar o espírito em agonia, cantando cantigas ancestrais de cura.",
+                "teste": { "atributo": "Carisma", "cd": 20 }
+              },
+              {
+                "personagem_sugerido": "Filho de Xangô",
+                "acao": "Fazer um juramento solene, em nome do povo, de que a injustiça será reparada e o riacho nunca mais será esquecido. Requer uma boa interpretação do jogador, sem teste de dados, para convencer o espírito de sua sinceridade.",
+                "teste": { "atributo": "Interpretação", "cd": 0 }
+              }
+            ]
+          }
+        },
+        {
+          "id": "cena_final",
+          "titulo": "O Retorno do Axé",
+          "narrativa": "Com a barragem rompida e o espírito apaziguado, as águas voltam a fluir e o Axé da terra é restaurado. Os jogadores retornam a Meji não como matadores de monstros, mas como restauradores do equilíbrio, trazendo uma lição vital sobre o respeito ao passado e à natureza."
+        }
+      ]
     }
-  },
-  "conclusao": "Com a barragem rompida por um Filho de Ogum, o espírito acalmado pela diplomacia de uma Filha de Oxum, e a justiça garantida por um juramento de um Filho de Xangô, o Axé da terra é restaurado. Os jogadores são aclamados como heróis por restaurarem o equilíbrio e ensinarem uma lição sobre respeito ao passado e à natureza."
+  }
 }
