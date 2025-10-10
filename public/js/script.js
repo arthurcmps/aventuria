@@ -409,12 +409,16 @@ document.addEventListener('DOMContentLoaded', () => {
             dialogBox.style.display = 'none';
             inputArea.style.display = 'flex';
             
-            await sendChatMessage("Mestre, pode começar a aventura.");
-
+            // --- ORDEM INVERTIDA PARA CORRIGIR O BUG ---
+    
+            // 1. Começamos a ouvir por novas mensagens PRIMEIRO.
+            //    Agora o app está pronto para receber a resposta da IA.
             listenForMessages(currentSessionId);
             
-            btnStartAdventure.disabled = false;
-            btnStartAdventure.textContent = 'Começar Aventura';
+            // 2. AGORA sim, enviamos a mensagem que aciona a IA.
+            await sendChatMessage("Mestre, pode começar a aventura.");
+    
+            // Não precisamos mais reativar o botão, pois a aventura já começou.
         });
     }
 
