@@ -692,3 +692,20 @@ body {
     color: var(--border-color);
     box-shadow: none;
 }
+
+.btn-roll-contextual {
+    display: block;
+    margin: 15px auto 5px auto; /* Centraliza e adiciona espaço */
+    padding: 8px 20px;
+    font-size: 1em;
+    font-family: var(--font-display);
+    border: 1px solid var(--accent-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.btn-roll-contextual:disabled {
+    background-color: var(--tertiary-bg-color);
+    border-color: var(--border-color);
+    cursor: not-allowed;
+    opacity: 0.6;
+}

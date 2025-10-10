@@ -296,13 +296,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     function listenForMessages(sessionId) {
         const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
+
+        const clickedRolls = new Set();
+    
         messagesUnsubscribe = onSnapshot(q, (snapshot) => {
             narration.innerHTML = '';
             snapshot.docs.forEach(doc => {
                 const msg = doc.data();
+                const messageId = doc.id; // Pega o ID da mensagem
                 const messageElement = document.createElement('div');
+                
                 messageElement.classList.add('message');
                 if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
+                
                 if (msg.from === 'mestre') {
                     messageElement.classList.add('mestre-msg');
                 } else {
@@ -311,14 +317,43 @@ document.addEventListener('DOMContentLoaded', () => {
                         messageElement.classList.add('my-msg');
                     }
                 }
+    
                 const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
                 const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
+                
                 if (msg.isTurnoUpdate) {
                     messageElement.innerHTML = `<p>${text}</p>`;
                 } else {
                     messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
                 }
+                
                 narration.appendChild(messageElement);
+
+                if (msg.from === 'mestre') {
+                    // Procura por um pedido de teste no texto da IA. Ex: "teste de Força (CD 15)"
+                    const rollRequestRegex = /teste de (.*?) \(cd (\d+)\)/i;
+                    const match = msg.text.match(rollRequestRegex);
+    
+                    if (match && !clickedRolls.has(messageId)) {
+                        const attributeName = match[1]; // Ex: "Força"
+                        
+                        const rollButton = document.createElement('button');
+                        rollButton.textContent = `Rolar d20 para ${attributeName}`;
+                        rollButton.classList.add('btn', 'btn-roll-contextual');
+    
+                        rollButton.addEventListener('click', async () => {
+
+                            rollButton.disabled = true;
+                            clickedRolls.add(messageId);
+    
+                            const roll = Math.floor(Math.random() * 20) + 1;
+                            await sendChatMessage(`rolou 1d20 para ${attributeName} e tirou **${roll}**`);
+                        });
+    
+                        messageElement.appendChild(rollButton);
+                    }
+                }
+
             });
             narration.scrollTop = narration.scrollHeight;
         });
