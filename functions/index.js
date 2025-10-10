@@ -6,8 +6,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const historia = require("./historia.json");
 
-// Inicialização
-try { admin.initializeApp(); } catch (e) { console.log("admin.initializeApp() falhou, provavelmente já foi inicializado."); }
+try { admin.initializeApp(); } catch (e) { console.log("admin.initializeApp() falhou, provavalmente já foi inicializado."); }
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 const db = admin.firestore();
@@ -15,8 +14,9 @@ const db = admin.firestore();
 const AI_UID = 'master-ai';
 const REGION = 'southamerica-east1';
 
-// --- LÓGICA DO JOGO (V2) ---
-// VERSÃO FINAL CORRIGIDA - SUBSTITUA A FUNÇÃO INTEIRA
+// =========================================================================
+// FUNÇÃO PRINCIPAL DA IA (VERSÃO FINAL CORRIGIDA)
+// =========================================================================
 exports.handlePlayerAction = onDocumentCreated(
     {
         document: 'sessions/{sessionId}/messages/{messageId}',
@@ -78,28 +78,18 @@ exports.handlePlayerAction = onDocumentCreated(
 
             if (!cenaAtual) { throw new Error(`Cena com ID '${cenaId}' não encontrada.`); }
 
-            // =================================================================
-            // INÍCIO DA CORREÇÃO: Lógica de formatação dos desafios
-            // =================================================================
             let desafiosDaCena = "Nenhum desafio específico definido para esta cena.";
             if (cenaAtual.desafios && cenaAtual.desafios.length > 0) {
                 desafiosDaCena = cenaAtual.desafios.map(d => {
                     let acoesFormatadas = "";
-                    // Verifica se existe o array de habilidades sugeridas
                     if (d.habilidades_sugeridas && d.habilidades_sugeridas.length > 0) {
                         acoesFormatadas = "Opções de Ação:\n" + d.habilidades_sugeridas.map(h => `- Para '${h.acao}', o atributo é ${h.atributo}.`).join('\n');
-                    } 
-                    // Senão, verifica se existe um atributo direto
-                    else if (d.atributo) {
+                    } else if (d.atributo) {
                         acoesFormatadas = `O atributo principal para este desafio é: ${d.atributo}.`;
                     }
-                    
                     return `Descrição do Desafio: ${d.descricao}\n${acoesFormatadas}\nA CD para este desafio é: ${d.cd}.\nEm caso de sucesso: ${d.sucesso}\nEm caso de falha: ${d.falha}`;
                 }).join('\n\n');
             }
-            // =================================================================
-            // FIM DA CORREÇÃO
-            // =================================================================
 
             const promptForCurrentTurn = `
 ### REGRAS GERAIS DO JOGO ###
@@ -126,19 +116,14 @@ ${playerCharacter.name}: ${newMessage.text}
 2. Verifique se a ação corresponde a um dos 'DESAFIOS DISPONÍVEIS NA CENA'.
 3. Se corresponder, narre a situação e peça ao jogador para fazer o teste de atributo apropriado, informando a CD. Use o formato exato: "Por favor, faça um teste de [Nome do Atributo] (CD [Número])".
 4. Se a ação do jogador for uma resposta a um pedido de teste (ex: "rolou 1d20 e tirou 15"), compare o resultado com a CD e narre a consequência de 'sucesso' ou 'falha' descrita no desafio.
-5. Se a ação não corresponder a nenhum desafio, narre uma resposta coerente com a cena e os personagens. Termine dando espaço para o próximo jogador agir.
+5. Se a ação não corresponder a nenhum desafio, ou se a cena não tiver desafios, narre uma resposta coerente com a cena e os personagens.
+6. Após um desafio principal ser resolvido, verifique no 'historia.json' se há uma condição de transição para uma próxima cena. Se a condição for cumprida, sua narração deve descrever o início da nova jornada e, ao final do seu texto, inclua o comando especial: [AVANÇAR_CENA:id_da_proxima_cena].
 `;
             
-            const systemInstruction = `Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura épica baseada na cosmologia dos Orixás. Sua responsabilidade é seguir as regras e o contexto fornecidos, descrever o mundo, interpretar NPCs, apresentar os desafios definidos e reagir às ações dos jogadores. Mantenha um tom narrativo e imersivo. Nunca saia do personagem. Siga estritamente o fluxo de pedir testes e narrar consequências conforme instruído na 'SUA TAREFA'.
-
-Quando uma condição de transição de cena for cumprida, sua narração deve descrever o início da nova jornada e, ao final do seu texto, você DEVE incluir um comando especial para o sistema no seguinte formato exato: [AVANÇAR_CENA:id_da_proxima_cena].`;
+            const systemInstruction = `Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura épica baseada na cosmologia dos Orixás. Sua responsabilidade é seguir as regras e o contexto fornecidos, descrever o mundo, interpretar NPCs, apresentar os desafios definidos e reagir às ações dos jogadores. Mantenha um tom narrativo e imersivo. Nunca saia do personagem. Siga estritamente o fluxo de pedir testes e narrar consequências conforme instruído na 'SUA TAREFA'.`;
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-            const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash", 
-                systemInstruction: systemInstruction,
-            });
-
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: systemInstruction });
             const chat = model.startChat({ history: chatHistory });
             const result = await chat.sendMessage(promptForCurrentTurn);
             let aiResponse = result.response.text();
@@ -149,9 +134,8 @@ Quando uma condição de transição de cena for cumprida, sua narração deve d
 
             const transicaoRegex = /\[AVANÇAR_CENA:(.*?)\]/;
             const transicaoMatch = aiResponse.match(transicaoRegex);
-
             if (transicaoMatch) {
-                const proximaCenaId = transicaoMatch[1];
+                const proximaCenaId = transicaoMatch[1].trim();
                 await sessionRef.update({ cenaAtualId: proximaCenaId });
                 aiResponse = aiResponse.replace(transicaoRegex, '').trim();
             }
@@ -164,7 +148,6 @@ Quando uma condição de transição de cena for cumprida, sua narração deve d
             const lastPlayerIndex = playerUIDs.indexOf(lastPlayerUid);
             const nextPlayerIndex = (lastPlayerIndex + 1) % playerUIDs.length;
             const nextPlayerUid = playerUIDs[nextPlayerIndex];
-
             await sessionRef.update({ turnoAtualUid: nextPlayerUid });
 
             const nextPlayerCharacter = allCharacters.find(c => c.uid === nextPlayerUid);
@@ -178,12 +161,58 @@ Quando uma condição de transição de cena for cumprida, sua narração deve d
             console.error(`[handlePlayerAction] - ERRO CRÍTICO:`, error);
             await sessionRef.update({ turnoAtualUid: lastPlayerUid });
             await sessionRef.collection('messages').add({
-                from: 'mestre',
-                text: '(O Mestre parece confuso por um momento. Houve um erro no fluxo do universo. Por favor, tente sua ação novamente.)',
+                from: 'mestre', text: '(O Mestre parece confuso por um momento. Houve um erro no fluxo do universo. Por favor, tente sua ação novamente.)',
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
         }
     });
+
+// =========================================================================
+// DEMAIS FUNÇÕES (VERSÕES FINAIS CORRIGIDAS)
+// =========================================================================
+exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
+    const { characterName, attributes, orixa } = request.data;
+    if (!characterName || !attributes || !orixa) throw new HttpsError('invalid-argument', 'Dados do personagem incompletos.');
+
+    const uid = request.auth.uid;
+    try {
+        const sessionRef = await db.collection("sessions").add({
+            owner: uid,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            memberUIDs: [uid, AI_UID],
+            turnoAtualUid: uid,
+            ordemDeTurnos: [uid, AI_UID],
+            estadoDaHistoria: "ato1",
+            adventureStarted: false,
+            cenaAtualId: "cena1_aldeia"
+        });
+
+        const playerCharacter = { name: characterName, attributes, orixa, uid, sessionId: sessionRef.id };
+        const aiCharacter = { name: "Mestre", attributes: {}, uid: AI_UID, sessionId: sessionRef.id };
+
+        const batch = db.batch();
+        batch.set(sessionRef.collection('characters').doc(uid), playerCharacter);
+        batch.set(db.collection('characters').doc(), { ...playerCharacter, characterIdInSession: uid });
+        batch.set(sessionRef.collection('characters').doc(AI_UID), aiCharacter);
+        await batch.commit();
+
+        return { success: true, sessionId: sessionRef.id };
+    } catch (error) {
+        console.error("Erro em createAndJoinSession:", error);
+        throw new HttpsError('internal', 'Não foi possível criar a sessão.', error);
+    }
+});
+
+exports.onUserCreate = functions.region(REGION).auth.user().onCreate(async (user) => {
+    if (user.displayName || !user.email) return;
+    const newDisplayName = user.email.split('@')[0];
+    try {
+        await admin.auth().updateUser(user.uid, { displayName: newDisplayName });
+    } catch (error) {
+        console.error(`Falha ao atualizar o displayName para o usuário ${user.uid}:`, error);
+    }
+});
 
 exports.joinSession = onCall({ region: REGION }, async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
@@ -219,10 +248,8 @@ exports.passarTurno = onCall({ region: REGION }, async (request) => {
     if (sessionData.turnoAtualUid !== uid) throw new HttpsError('permission-denied', 'Não é seu turno.');
     
     await sessionRef.collection('messages').add({
-        from: 'player',
-        text: '*Passa o turno para o Mestre*',
-        characterName: 'Sistema',
-        uid: uid,
+        from: 'player', text: '*Passa o turno para o Mestre*',
+        characterName: 'Sistema', uid: uid,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
     

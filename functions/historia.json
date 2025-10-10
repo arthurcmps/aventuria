@@ -49,7 +49,11 @@
               "sucesso": "Obaro, embora não totalmente convencido, reconhece a determinação do grupo. Ele cede passagem e não criará mais obstáculos públicos, resmungando sobre a teimosia dos jovens.",
               "falha": "As palavras dos jogadores irritam Obaro, que usa sua influência para espalhar dúvidas. Alguns aldeões se recusam a fornecer suprimentos extras para a jornada, e o grupo parte com menos recursos."
             }
-          ]
+          ],
+          "transicao": {
+            "condicao": "Após os jogadores lidarem com Obaro e confirmarem que estão prontos para partir em sua jornada.",
+            "proxima_cena_id": "cena2_trilha"
+          }
         },
         {
           "id": "cena2_trilha",
@@ -96,7 +100,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "transicao": {
+            "condicao": "Após superarem os desafios da trilha e chegarem ao seu destino, o Baobá Sagrado.",
+            "proxima_cena_id": "cena1_oraculo"
+          }
         }
       ]
     },
@@ -106,7 +114,11 @@
         {
           "id": "cena1_oraculo",
           "titulo": "O Baobá Sagrado",
-          "narrativa": "O Oráculo revela que a seca não é uma maldição, mas o 'silêncio' de Oxum, a senhora dos rios, que está profundamente triste. Os jogadores devem seguir o curso do Grande Rio até seu Templo Dourado para descobrir o motivo da dor da Orixá."
+          "narrativa": "O Oráculo revela que a seca não é uma maldição, mas o 'silêncio' de Oxum, a senhora dos rios, que está profundamente triste. Os jogadores devem seguir o curso do Grande Rio até seu Templo Dourado para descobrir o motivo da dor da Orixá.",
+          "transicao": {
+            "condicao": "Após receberem a revelação do Oráculo e decidirem seguir o curso do Grande Rio.",
+            "proxima_cena_id": "cena2_santuario"
+          }
         },
         {
           "id": "cena2_santuario",
@@ -122,7 +134,11 @@
               "falha": "A evidência parece conclusiva. O Oxé cravado no altar é uma imagem poderosa, e a conclusão mais óbvia é que os devotos de Xangô são os culpados."
             }
           ],
-          "dilema": "A descoberta testa o grupo. Eles agirão com base na emoção, confrontando agressivamente os devotos de Xangô? Ou agirão com cautela, investigando antes de acusar? Uma abordagem hostil pode gerar um conflito real."
+          "dilema": "A descoberta testa o grupo. Eles agirão com base na emoção, confrontando agressivamente os devotos de Xangô? Ou agirão com cautela, investigando antes de acusar? Uma abordagem hostil pode gerar um conflito real.",
+          "transicao": {
+            "condicao": "Após investigarem o santuário e decidirem como abordar os devotos de Xangô.",
+            "proxima_cena_id": "cena1_julgamento"
+          }
         }
       ]
     },
@@ -132,7 +148,11 @@
         {
           "id": "cena1_julgamento",
           "titulo": "O Julgamento da Verdade",
-          "narrativa": "Ao confrontarem os devotos de Xangô, estes negam o crime. Exu reaparece, revelando que a pista era um teste e aponta a verdadeira causa: um afluente do rio, vital para a região, que foi represado e esquecido há uma geração. O 'vilão' é o esquecimento."
+          "narrativa": "Ao confrontarem os devotos de Xangô, estes negam o crime. Exu reaparece, revelando que a pista era um teste e aponta a verdadeira causa: um afluente do rio, vital para a região, que foi represado e esquecido há uma geração. O 'vilão' é o esquecimento.",
+          "transicao": {
+            "condicao": "Após Exu revelar a verdade sobre a barragem esquecida e o grupo decidir ir até lá para resolver o problema.",
+            "proxima_cena_id": "cena2_climax"
+          }
         },
         {
           "id": "cena2_climax",
@@ -157,6 +177,10 @@
                 "teste": { "atributo": "Interpretação", "cd": 0 }
               }
             ]
+          },
+          "transicao": {
+            "condicao": "Após os jogadores conseguirem curar a ferida do riacho, quebrando a barragem e apaziguando o espírito.",
+            "proxima_cena_id": "cena_final"
           }
         },
         {
