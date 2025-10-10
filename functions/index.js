@@ -16,7 +16,6 @@ const AI_UID = 'master-ai';
 const REGION = 'southamerica-east1';
 
 // --- LÓGICA DO JOGO (V2) ---
-// SUBSTITUA A FUNÇÃO INTEIRA PELA VERSÃO ABAIXO
 exports.handlePlayerAction = onDocumentCreated(
     {
         document: 'sessions/{sessionId}/messages/{messageId}',
@@ -27,10 +26,12 @@ exports.handlePlayerAction = onDocumentCreated(
     },
     async (event) => {
         const snapshot = event.data;
-        if (!snapshot) { return; }
-
+        if (!snapshot) {
+            console.log("Nenhum dado associado ao evento. Saindo.");
+            return;
+        }
         const newMessage = snapshot.data();
-        const { sessionId } = event.params;
+        const { sessionId, messageId } = event.params;
 
         if (newMessage.from === 'mestre' || newMessage.isTurnoUpdate) {
             return;
@@ -39,28 +40,39 @@ exports.handlePlayerAction = onDocumentCreated(
         const sessionRef = db.collection('sessions').doc(sessionId);
         const lastPlayerUid = newMessage.uid;
 
+        if (newMessage.text === '__START_ADVENTURE__') {
+            await snapshot.ref.delete();
+            console.log("Mensagem inicial de aventura deletada. A IA não será acionada por este evento.");
+            return; 
+        }
+
         try {
             const sessionDoc = await sessionRef.get();
-            if (!sessionDoc.exists) { throw new Error("Sessão não encontrada."); }
             const sessionData = sessionDoc.data();
             
-            // --- Lógica de atualização da sessão (unificada e corrigida) ---
-            const updates = { turnoAtualUid: AI_UID };
+            const updates = {
+                turnoAtualUid: AI_UID 
+            };
+        
             if (sessionData.adventureStarted === false) {
                 updates.adventureStarted = true;
             }
+        
             await sessionRef.update(updates);
             
             const charactersSnapshot = await sessionRef.collection('characters').get();
             const allCharacters = charactersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             const playerCharacter = allCharacters.find(c => c.uid === lastPlayerUid);
-            if (!playerCharacter) { throw new HttpsError('not-found', `Personagem ${lastPlayerUid} não encontrado.`); }
+
+            if (!playerCharacter) {
+                throw new HttpsError('not-found', `Personagem do jogador com UID ${lastPlayerUid} não encontrado.`);
+            }
             
-            // --- Lógica de construção do histórico (sem alterações) ---
+            // 1. Construir histórico de chat estruturado
             const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt', 'desc').limit(30).get();
             const chatHistory = historySnapshot.docs
-                .filter(doc => !doc.data().isTurnoUpdate && doc.id !== snapshot.id)
-                .reverse()
+                .filter(doc => !doc.data().isTurnoUpdate && doc.id !== messageId)
+                .reverse() // Do mais antigo para o mais novo
                 .map(doc => {
                     const data = doc.data();
                     const role = data.from === 'mestre' ? 'model' : 'user';
@@ -69,72 +81,60 @@ exports.handlePlayerAction = onDocumentCreated(
                         : data.text;
                     return { role, parts: [{ text }] };
                 });
+
+            // 2. Garantir que o histórico comece com uma mensagem de 'user'
+            const firstUserIndex = chatHistory.findIndex(msg => msg.role === 'user');
+            if (firstUserIndex > 0) {
+                chatHistory.splice(0, firstUserIndex);
+            } else if (firstUserIndex === -1 && chatHistory.length > 0) {
+                chatHistory.length = 0; // Limpar se não houver mensagens de usuário
+            }
+            
             if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].role === 'user') {
+                console.log("O histórico terminava com 'user', removendo a última mensagem para evitar conflito de papéis.");
                 chatHistory.pop();
             }
 
-            // =================================================================
-            // INÍCIO DA GRANDE MUDANÇA: CONSTRUÇÃO DO PROMPT CONTEXTUAL
-            // =================================================================
-            
-            // 1. Encontrar a cena atual no historia.json
-            const atoId = sessionData.estadoDaHistoria || 'ato1';
-            const cenaId = sessionData.cenaAtualId || 'cena1_aldeia';
-            const atoAtual = historia.atos[atoId];
-            const cenaAtual = atoAtual.cenas.find(c => c.id === cenaId);
-
-            if (!cenaAtual) { throw new Error(`Cena com ID '${cenaId}' não encontrada.`); }
-
-            // 2. Formatar os desafios da cena para o prompt
-            let desafiosDaCena = "Nenhum desafio específico definido para esta cena.";
-            if (cenaAtual.desafios && cenaAtual.desafios.length > 0) {
-                desafiosDaCena = cenaAtual.desafios.map(d => {
-                    const habilidades = d.habilidades_sugeridas.map(h => `- Para '${h.acao}', o atributo é ${h.atributo}.`).join('\n');
-                    return `Descrição do Desafio: ${d.descricao}\nOpções de Ação:\n${habilidades}\nA CD para este desafio é: ${d.cd}.\nEm caso de sucesso: ${d.sucesso}\nEm caso de falha: ${d.falha}`;
-                }).join('\n\n');
-            }
-
-            // 3. Construir o novo prompt completo
-            const promptForCurrentTurn = `
-            ### REGRAS GERAIS DO JOGO ###
-            Fórmula de Teste: ${historia.regras_gerais.formula_teste}
-            CDs: Fácil(${historia.regras_gerais.tabela_cd.Facil}), Médio(${historia.regras_gerais.tabela_cd.Medio}), Difícil(${historia.regras_gerais.tabela_cd.Dificil}), Heroico(${historia.regras_gerais.tabela_cd.Heroico}).
-
-            ### CONTEXTO DA AVENTURA ATUAL ###
-            Ato: ${atoAtual.titulo}
-            Cena Atual: ${cenaAtual.titulo}
-            Descrição da Cena: ${cenaAtual.narrativa}
-
-            ### DESAFIOS DISPONÍVEIS NA CENA ###
-            ${desafiosDaCena}
-
-            ### PERSONAGEM DO JOGADOR ATUAL ###
-            Nome: ${playerCharacter.name}
-            Orixá: ${playerCharacter.orixa.name}
-
-            ### AÇÃO DO JOGADOR ###
-            ${playerCharacter.name}: ${newMessage.text}
-
-            ### SUA TAREFA COMO MESTRE ###
-            1. Analise a 'AÇÃO DO JOGADOR'.
-            2. Verifique se a ação corresponde a um dos 'DESAFIOS DISPONÍVEIS NA CENA'.
-            3. Se corresponder, narre a situação e peça ao jogador para fazer o teste de atributo apropriado, informando a CD. Use o formato exato: "Por favor, faça um teste de [Nome do Atributo] (CD [Número])".
-            4. Se a ação do jogador for uma resposta a um pedido de teste (ex: "rolou 1d20 e tirou 15"), compare o resultado com a CD e narre a consequência de 'sucesso' ou 'falha' descrita no desafio.
-            5. Se a ação não corresponder a nenhum desafio, narre uma resposta coerente com a cena e os personagens. Termine dando espaço para o próximo jogador agir.
-            `;
-            // =================================================================
-            // FIM DA GRANDE MUDANÇA
-            // =================================================================
-
-            const systemInstruction = `Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura épica baseada na cosmologia dos Orixás. Sua responsabilidade é seguir as regras e o contexto fornecidos, descrever o mundo, interpretar NPCs, apresentar os desafios definidos e reagir às ações dos jogadores. Mantenha um tom narrativo e imersivo. Nunca saia do personagem. Siga estritamente o fluxo de pedir testes e narrar consequências conforme instruído na 'SUA TAREFA'.`;
+            // 3. Definir a persona da IA (Instrução do Sistema)
+            const systemInstruction = `Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura de fantasia épica, baseado na cultura e cosmologia dos Orixás, para um grupo de jogadores. Sua responsabilidade é descrever o mundo, interpretar personagens não-jogadores (NPCs), apresentar desafios e reagir às ações dos jogadores de forma criativa e coerente. Mantenha um tom narrativo e imersivo. Nunca saia do personagem.
+                Quando a ação de um jogador exigir um teste de atributo com resultado incerto, seu fluxo de trabalho é o seguinte:
+                1. Descreva a situação e o desafio para o jogador.
+                2. Peça explicitamente a ele para fazer a rolagem. Use o formato: "Por favor, faça um teste de [Nome do Atributo] (CD [Número])".
+                3. Aguarde o jogador enviar o resultado da rolagem dele pelo chat. A mensagem virá no formato "rolou 1d20 e tirou [Número]".
+                4. Compare o resultado do dado com a CD que você estabeleceu.
+                5. Narre a consequência de 'sucesso' ou 'falha' com base no resultado.`;
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
             const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash", 
+                model: "gemini-2.0-flash",
                 systemInstruction: systemInstruction,
             });
 
-            const chat = model.startChat({ history: chatHistory });
+            // 4. Iniciar o chat com o histórico limpo
+            const chat = model.startChat({
+                history: chatHistory,
+            });
+            
+            // 5. Construir o prompt para a rodada atual
+            const estadoHistoria = sessionData.estadoDaHistoria || 'ato1';
+            const atoAtual = historia.atos[estadoHistoria];
+            const promptForCurrentTurn = `
+                ### CONTEXTO DA AVENTURA ###
+                Título do Ato: ${atoAtual.titulo}
+                Cenário: ${atoAtual.narrativa_inicio}
+
+                ### PERSONAGEM DO JOGADOR ATUAL ###
+                Nome: ${playerCharacter.name}
+                Orixá: ${playerCharacter.orixa.name} - ${playerCharacter.orixa.description}
+
+                ### AÇÃO DO JOGADOR ###
+                ${playerCharacter.name}: ${newMessage.text}
+
+                ### SUA TAREFA ###
+                Com base no histórico da conversa e no contexto acima, narre o resultado da ação do jogador. Descreva a cena, as consequências e, se apropriado, apresente um novo desafio ou uma interação com um NPC. Termine sua narração de forma a dar espaço para o próximo jogador agir.
+                `;
+
+            // 6. Enviar a mensagem e obter a resposta
             const result = await chat.sendMessage(promptForCurrentTurn);
             const aiResponse = result.response.text();
             
@@ -143,10 +143,12 @@ exports.handlePlayerAction = onDocumentCreated(
             }
 
             await sessionRef.collection('messages').add({
-                from: 'mestre', text: aiResponse, createdAt: admin.firestore.FieldValue.serverTimestamp()
+                from: 'mestre',
+                characterName: 'Mestre',
+                text: aiResponse,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // --- Lógica de Passagem de Turno (sem alterações) ---
             const playerUIDs = sessionData.ordemDeTurnos.filter(uid => uid !== AI_UID);
             const lastPlayerIndex = playerUIDs.indexOf(lastPlayerUid);
             const nextPlayerIndex = (lastPlayerIndex + 1) % playerUIDs.length;
@@ -157,12 +159,14 @@ exports.handlePlayerAction = onDocumentCreated(
             const nextPlayerCharacter = allCharacters.find(c => c.uid === nextPlayerUid);
             if (nextPlayerCharacter) {
                 await sessionRef.collection('messages').add({
-                    from: 'mestre', text: `É o turno de ${nextPlayerCharacter.name}.`,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(), isTurnoUpdate: true
+                    from: 'mestre',
+                    text: `É o turno de ${nextPlayerCharacter.name}.`,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    isTurnoUpdate: true
                 });
             }
         } catch (error) {
-            console.error(`[handlePlayerAction] - ERRO CRÍTICO:`, error);
+            console.error(`[handlePlayerAction - ${sessionId}] - ERRO CRÍTICO:`, error);
             await sessionRef.update({ turnoAtualUid: lastPlayerUid });
             await sessionRef.collection('messages').add({
                 from: 'mestre',
