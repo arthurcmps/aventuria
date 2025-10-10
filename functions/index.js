@@ -43,7 +43,7 @@ exports.handlePlayerAction = onDocumentCreated(
         if (newMessage.text === '__START_ADVENTURE__') {
             await snapshot.ref.delete();
             console.log("Mensagem inicial de aventura deletada. A IA não será acionada por este evento.");
-            return; // Interrompe a função aqui, impedindo a chamada para a IA.
+            return; 
         }
 
         try {
@@ -191,7 +191,8 @@ exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
             memberUIDs: [uid, AI_UID],
             turnoAtualUid: uid,
             ordemDeTurnos: [uid, AI_UID],
-            estadoDaHistoria: "ato1"
+            estadoDaHistoria: "ato1",
+            adventureStarted: false
         });
 
         const playerCharacter = { name: characterName, attributes, orixa, uid, sessionId: sessionRef.id };

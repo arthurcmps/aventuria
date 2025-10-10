@@ -1,11 +1,3 @@
-/*
- * public/js/script.js (v3.6 - Notificações Personalizadas)
- * - Adicionada a função `showNotification` para criar toasts de sucesso/erro.
- * - Substituídos os `alert()` na função de exclusão de personagem pela nova `showNotification`.
- * - Pequena melhoria visual no estado de "carregando" do botão de excluir.
- */
-
-// --- IMPORTS ---
 import { auth, db, functions } from './firebase.js';
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
@@ -82,95 +74,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     let attributes = {};
 
-    // --- DADOS DOS ORIXÁS (NOVO) ---
+    // --- DADOS DOS ORIXÁS ---
     const orixasData = {
-        exu: {
-            name: "Exu",
-            description: "O mensageiro, o guardião das encruzilhadas, aquele que abre e fecha os caminhos. Ele é a ponte entre os seres humanos e os Orixás. Seus filhos são comunicativos, inteligentes, astutos e imprevisíveis.",
-            habilidades: ["Senhor das Encruzilhadas: Habilidade de encontrar passagens, atalhos e soluções inesperadas.", "Ver a Verdade: Capacidade de perceber as verdadeiras intenções e mentiras.", "Elo de Comunicação: Facilidade sobrenatural para aprender idiomas e se comunicar."],
-            ewos: ["Não pode se recusar a entregar uma mensagem.", "Não pode passar por uma encruzilhada sem uma saudação.", "É proibido de se vestir de branco em certas tradições."]
-        },
-        ogum: {
-            name: "Ogum",
-            description: "O Ferreiro, O Guerreiro, O Desbravador. Rege o ferro, a tecnologia e as estradas. Seus filhos são impulsivos, diretos, protetores e pioneiros.",
-            habilidades: ["Maestria em Batalha: Bônus em combate com armas de metal.", "Forja Abençoada: Capacidade de criar ou consertar itens de metal com velocidade ou qualidade sobrenatural.", "Abrir Caminhos: Habilidade de superar obstáculos físicos ou burocráticos."],
-            ewos: ["Não pode ser injusto ou negar ajuda a quem pede proteção.", "Não pode deixar suas 'ferramentas' (armas) enferrujarem.", "Pode ser proibido de comer certos alimentos (ex: quiabo)."]
-        },
-        oxossi: {
-            name: "Oxóssi",
-            description: "O caçador, o rei das matas, Orixá da fartura e do conhecimento. Seus filhos são curiosos, ágeis, observadores e provedores para sua comunidade.",
-            habilidades: ["Mira Certeira: Bônus excepcionais ao usar armas de longo alcance.", "Mestre das Matas: Habilidade de se mover silenciosamente pela selva e rastrear.", "Bênção da Fartura: Sorte para encontrar comida e recursos."],
-            ewos: ["Não pode caçar por esporte ou matar animais de forma cruel.", "Não pode negar comida a quem tem fome.", "Deve evitar o mel de abelha."]
-        },
-        ossain: {
-            name: "Ossain",
-            description: "O senhor das folhas sagradas, da cura e dos segredos da floresta. Seus filhos são reservados, estudiosos, pacientes e extremamente ligados à natureza.",
-            habilidades: ["Conhecimento Herbal: Capacidade de identificar qualquer planta e suas propriedades.", "Mestre da Cura: Habilidade de criar poções e rituais que curam ferimentos e doenças.", "Invocar a Floresta: Capacidade de pedir auxílio aos espíritos da mata."],
-            ewos: ["Não pode colher uma folha sem antes pedir licença.", "Não pode revelar os segredos das folhas a quem não for digno.", "Deve evitar fofocas e conversas frívolas."]
-        },
-        omolu: {
-            name: "Omolu",
-            description: "Omolu (ou Obaluaiê) é o senhor da terra, que rege a saúde e a doença. Seus filhos são sérios, introspectivos, resilientes e empáticos com a dor alheia",
-            habilidades: ["Resistência à Dor: Capacidade de suportar ferimentos e doenças.", "Mão que Cura, Mão que Fere: Habilidade de estancar doenças ou lançar pragas.", "Diálogo com os Espíritos: Capacidade de conversar com os espíritos dos mortos."],
-            ewos: ["Não pode ter medo da doença ou da morte.", "Deve sempre respeitar os mais velhos.", "Deve evitar a claridade excessiva do sol do meio-dia."]
-        },
-        oxumare: {
-            name: "Oxumaré",
-            description: "O Orixá do arco-íris e da serpente, representando o movimento, a riqueza e a renovação. Seus filhos são perseverantes, enigmáticos, adaptáveis e artísticos.",
-            habilidades: ["Caminho do Arco-Íris: Habilidade de se teletransportar entre dois pontos visíveis.", "Pele de Serpente: Capacidade de se regenerar de ferimentos.", "Bênção da Riqueza Cíclica: Grande sorte em negócios, com a condição de que a riqueza deve circular."],
-            ewos: ["Não pode matar serpentes.", "Deve evitar comidas que se arrastam no chão, como caranguejos.", "Não pode se prender a um único lugar, devendo abraçar a mudança."]
-        },
-        ewa: {
-            name: "Ewá",
-            description: "A Orixá da beleza, da vidência e dos horizontes. Suas filhas são extremamente sensíveis, sonhadoras, tímidas e com grande intuição.",
-            habilidades: ["Visão do Inatingível: Capacidade de ver o futuro e o mundo espiritual com clareza.", "Manto de Neblina: Habilidade de criar uma névoa densa para se ocultar.", "Beleza Encantadora: Uma aura que acalma feras e inspira bondade."],
-            ewos: ["Não pode se casar ou ter relações sexuais.", "Não pode frequentar lugares sujos ou tumultuados.", "Deve evitar o contato com os mortos."]
-        },
-        logunede: {
-            name: "Logun Edé",
-            description: "O príncipe dos Orixás, filho de Oxóssi e Oxum. Une a astúcia do caçador com a beleza e o encanto do ouro. Seus filhos são belos, carismáticos, charmosos e adaptáveis.",
-            habilidades: ["Caçador das Águas: Proficiência em combate tanto na mata quanto nos rios.", "Encanto do Príncipe: Carisma sobrenatural em negociações.", "Sorte Dupla: Sorte tanto na busca por fartura quanto na busca por riquezas."],
-            ewos: ["Não pode comer carne e peixe na mesma refeição.", "Deve evitar mentiras e traições.", "Não tolera grosseria e desorganização."]
-        },
-        xango: {
-            name: "Xangô",
-            description: "O Orixá da Justiça, dos raios, do trovão e do fogo. Seus filhos têm uma postura real e orgulhosa, são líderes natos, justos e carismáticos",
-            habilidades: ["Julgamento Real: Habilidade de perceber mentiras e injustiças.", "Fúria do Trovão: Capacidade de invocar poder elemental de raios ou fogo.", "Voz de Comando: Bônus em testes de Intimidação e Liderança."],
-            ewos: ["Não pode mentir, quebrar um juramento ou cometer injustiça.", "Não pode agir de forma covarde.", "Deve evitar quiabo e carne de carneiro."]
-        },
-        oxum: {
-            name: "Oxum",
-            description: "A Dama dos Rios, do Ouro e do Amor. Rege a água doce, a riqueza, a beleza e a diplomacia. Suas filhas são vaidosas, diplomáticas, estrategistas e sedutoras.",
-            habilidades: ["Voz Encantadora: Bônus massivos em testes sociais.", "Visão do Futuro: Capacidade de usar búzios ou um espelho para ter vislumbres do futuro.", "Bênção da Riqueza: Sorte para encontrar recursos valiosos ou em negociações."],
-            ewos: ["Não pode ser suja ou desleixada com sua aparência.", "Não pode agir com avareza.", "Proibida de comer feijão."]
-        },
-        oya: {
-            name: "Oyá",
-            description: "A Orixá dos ventos, das tempestades e senhora dos espíritos dos mortos. Suas filhas são guerreiras valentes, audaciosas, passionais e de temperamento forte.",
-            habilidades: ["Fúria da Tempestade: Capacidade de invocar ventos fortes ou raios.", "Senhora dos Eguns: Habilidade de comandar ou afugentar espíritos de mortos.", "Passo Veloz: Pode se mover com a velocidade de um vendaval."],
-            ewos: ["Não pode temer tempestades ou a morte.", "Não pode usar roupas de lã ou comer carne de carneiro.", "Deve ser leal em seus relacionamentos."]
-        },
-        oba: {
-            name: "Obá",
-            description: "Orixá guerreira das águas revoltas. Representa a força feminina que luta. Suas filhas são guerreiras, sérias, focadas e de pouca vaidade.",
-            habilidades: ["Força da Pororoca: Manifesta força física descomunal em momentos de fúria.", "Dança do Redemoinho: Técnica de luta giratória que a torna difícil de ser atingida.", "Coração de Pedra: Alta resistência a testes sociais de sedução ou controle emocional."],
-            ewos: ["Não pode comer caranguejo ou quiabo.", "Não pode demonstrar vaidade excessiva.", "Evita mostrar suas fragilidades, especialmente as amorosas"]
-        },
-        nana: {
-            name: "Nanã",
-            description: "A Orixá mais antiga, senhora da lama, dos pântanos e da morte. A avó sábia. Suas filhas são calmas, pacientes, sábias e por vezes ranzinzas.",
-            habilidades: ["Toque do Pântano: Capacidade de transformar o chão em lama.", "Sabedoria Ancestral: Pode acessar memórias de seus antepassados.", "Passagem Serena: Habilidade de acalmar espíritos atormentados."],
-            ewos: ["Não pode usar objetos de metal, especialmente ferro.", "Não pode agir com pressa ou impaciência.", "Deve evitar ambientes barulhentos."]
-        },
-        oxala: {
-            name: "Oxalá",
-            description: "O Orixá maior, criador do mundo e da humanidade. Representa a paz, a sabedoria e a pureza. Seus filhos são calmos, sábios, respeitados e agem como pacificadores.",
-            habilidades: ["Manto da Paz: Capacidade de criar uma aura de tranquilidade que impede combates.", "Toque Purificador: Habilidade de limpar venenos, maldições e impurezas.", "Palavra de Sabedoria: Suas palavras são carregadas de axé e podem inspirar ou convencer."],
-            ewos: ["Deve se vestir de branco, especialmente nas sextas-feiras.", "Não pode frequentar lugares sujos, barulhentos ou violentos.", "Não pode consumir bebidas alcoólicas, dendê e sal em excesso."]
-        }
-
+        exu: { name: "Exu", description: "O mensageiro, o guardião das encruzilhadas, aquele que abre e fecha os caminhos. Ele é a ponte entre os seres humanos e os Orixás. Seus filhos são comunicativos, inteligentes, astutos e imprevisíveis.", habilidades: ["Senhor das Encruzilhadas: Habilidade de encontrar passagens, atalhos e soluções inesperadas.", "Ver a Verdade: Capacidade de perceber as verdadeiras intenções e mentiras.", "Elo de Comunicação: Facilidade sobrenatural para aprender idiomas e se comunicar."], ewos: ["Não pode se recusar a entregar uma mensagem.", "Não pode passar por uma encruzilhada sem uma saudação.", "É proibido de se vestir de branco em certas tradições."] },
+        ogum: { name: "Ogum", description: "O Ferreiro, O Guerreiro, O Desbravador. Rege o ferro, a tecnologia e as estradas. Seus filhos são impulsivos, diretos, protetores e pioneiros.", habilidades: ["Maestria em Batalha: Bônus em combate com armas de metal.", "Forja Abençoada: Capacidade de criar ou consertar itens de metal com velocidade ou qualidade sobrenatural.", "Abrir Caminhos: Habilidade de superar obstáculos físicos ou burocráticos."], ewos: ["Não pode ser injusto ou negar ajuda a quem pede proteção.", "Não pode deixar suas 'ferramentas' (armas) enferrujarem.", "Pode ser proibido de comer certos alimentos (ex: quiabo)."] },
+        oxossi: { name: "Oxóssi", description: "O caçador, o rei das matas, Orixá da fartura e do conhecimento. Seus filhos são curiosos, ágeis, observadores e provedores para sua comunidade.", habilidades: ["Mira Certeira: Bônus excepcionais ao usar armas de longo alcance.", "Mestre das Matas: Habilidade de se mover silenciosamente pela selva e rastrear.", "Bênção da Fartura: Sorte para encontrar comida e recursos."], ewos: ["Não pode caçar por esporte ou matar animais de forma cruel.", "Não pode negar comida a quem tem fome.", "Deve evitar o mel de abelha."] },
+        ossain: { name: "Ossain", description: "O senhor das folhas sagradas, da cura e dos segredos da floresta. Seus filhos são reservados, estudiosos, pacientes e extremamente ligados à natureza.", habilidades: ["Conhecimento Herbal: Capacidade de identificar qualquer planta e suas propriedades.", "Mestre da Cura: Habilidade de criar poções e rituais que curam ferimentos e doenças.", "Invocar a Floresta: Capacidade de pedir auxílio aos espíritos da mata."], ewos: ["Não pode colher uma folha sem antes pedir licença.", "Não pode revelar os segredos das folhas a quem não for digno.", "Deve evitar fofocas e conversas frívolas."] },
+        omolu: { name: "Omolu", description: "Omolu (ou Obaluaiê) é o senhor da terra, que rege a saúde e a doença. Seus filhos são sérios, introspectivos, resilientes e empáticos com a dor alheia", habilidades: ["Resistência à Dor: Capacidade de suportar ferimentos e doenças.", "Mão que Cura, Mão que Fere: Habilidade de estancar doenças ou lançar pragas.", "Diálogo com os Espíritos: Capacidade de conversar com os espíritos dos mortos."], ewos: ["Não pode ter medo da doença ou da morte.", "Deve sempre respeitar os mais velhos.", "Deve evitar a claridade excessiva do sol do meio-dia."] },
+        oxumare: { name: "Oxumaré", description: "O Orixá do arco-íris e da serpente, representando o movimento, a riqueza e a renovação. Seus filhos são perseverantes, enigmáticos, adaptáveis e artísticos.", habilidades: ["Caminho do Arco-Íris: Habilidade de se teletransportar entre dois pontos visíveis.", "Pele de Serpente: Capacidade de se regenerar de ferimentos.", "Bênção da Riqueza Cíclica: Grande sorte em negócios, com a condição de que a riqueza deve circular."], ewos: ["Não pode matar serpentes.", "Deve evitar comidas que se arrastam no chão, como caranguejos.", "Não pode se prender a um único lugar, devendo abraçar a mudança."] },
+        ewa: { name: "Ewá", description: "A Orixá da beleza, da vidência e dos horizontes. Suas filhas são extremamente sensíveis, sonhadoras, tímidas e com grande intuição.", habilidades: ["Visão do Inatingível: Capacidade de ver o futuro e o mundo espiritual com clareza.", "Manto de Neblina: Habilidade de criar uma névoa densa para se ocultar.", "Beleza Encantadora: Uma aura que acalma feras e inspira bondade."], ewos: ["Não pode se casar ou ter relações sexuais.", "Não pode frequentar lugares sujos ou tumultuados.", "Deve evitar o contato com os mortos."] },
+        logunede: { name: "Logun Edé", description: "O príncipe dos Orixás, filho de Oxóssi e Oxum. Une a astúcia do caçador com a beleza e o encanto do ouro. Seus filhos são belos, carismáticos, charmosos e adaptáveis.", habilidades: ["Caçador das Águas: Proficiência em combate tanto na mata quanto nos rios.", "Encanto do Príncipe: Carisma sobrenatural em negociações.", "Sorte Dupla: Sorte tanto na busca por fartura quanto na busca por riquezas."], ewos: ["Não pode comer carne e peixe na mesma refeição.", "Deve evitar mentiras e traições.", "Não tolera grosseria e desorganização."] },
+        xango: { name: "Xangô", description: "O Orixá da Justiça, dos raios, do trovão e do fogo. Seus filhos têm uma postura real e orgulhosa, são líderes natos, justos e carismáticos", habilidades: ["Julgamento Real: Habilidade de perceber mentiras e injustiças.", "Fúria do Trovão: Capacidade de invocar poder elemental de raios ou fogo.", "Voz de Comando: Bônus em testes de Intimidação e Liderança."], ewos: ["Não pode mentir, quebrar um juramento ou cometer injustiça.", "Não pode agir de forma covarde.", "Deve evitar quiabo e carne de carneiro."] },
+        oxum: { name: "Oxum", description: "A Dama dos Rios, do Ouro e do Amor. Rege a água doce, a riqueza, a beleza e a diplomacia. Suas filhas são vaidosas, diplomáticas, estrategistas e sedutoras.", habilidades: ["Voz Encantadora: Bônus massivos em testes sociais.", "Visão do Futuro: Capacidade de usar búzios ou um espelho para ter vislumbres do futuro.", "Bênção da Riqueza: Sorte para encontrar recursos valiosos ou em negociações."], ewos: ["Não pode ser suja ou desleixada com sua aparência.", "Não pode agir com avareza.", "Proibida de comer feijão."] },
+        oya: { name: "Oyá", description: "A Orixá dos ventos, das tempestades e senhora dos espíritos dos mortos. Suas filhas são guerreiras valentes, audaciosas, passionais e de temperamento forte.", habilidades: ["Fúria da Tempestade: Capacidade de invocar ventos fortes ou raios.", "Senhora dos Eguns: Habilidade de comandar ou afugentar espíritos de mortos.", "Passo Veloz: Pode se mover com a velocidade de um vendaval."], ewos: ["Não pode temer tempestades ou a morte.", "Não pode usar roupas de lã ou comer carne de carneiro.", "Deve ser leal em seus relacionamentos."] },
+        oba: { name: "Obá", description: "Orixá guerreira das águas revoltas. Representa a força feminina que luta. Suas filhas são guerreiras, sérias, focadas e de pouca vaidade.", habilidades: ["Força da Pororoca: Manifesta força física descomunal em momentos de fúria.", "Dança do Redemoinho: Técnica de luta giratória que a torna difícil de ser atingida.", "Coração de Pedra: Alta resistência a testes sociais de sedução ou controle emocional."], ewos: ["Não pode comer caranguejo ou quiabo.", "Não pode demonstrar vaidade excessiva.", "Evita mostrar suas fragilidades, especialmente as amorosas"] },
+        nana: { name: "Nanã", description: "A Orixá mais antiga, senhora da lama, dos pântanos e da morte. A avó sábia. Suas filhas são calmas, pacientes, sábias e por vezes ranzinzas.", habilidades: ["Toque do Pântano: Capacidade de transformar o chão em lama.", "Sabedoria Ancestral: Pode acessar memórias de seus antepassados.", "Passagem Serena: Habilidade de acalmar espíritos atormentados."], ewos: ["Não pode usar objetos de metal, especialmente ferro.", "Não pode agir com pressa ou impaciência.", "Deve evitar ambientes barulhentos."] },
+        oxala: { name: "Oxalá", description: "O Orixá maior, criador do mundo e da humanidade. Representa a paz, a sabedoria e a pureza. Seus filhos são calmos, sábios, respeitados e agem como pacificadores.", habilidades: ["Manto da Paz: Capacidade de criar uma aura de tranquilidade que impede combates.", "Toque Purificador: Habilidade de limpar venenos, maldições e impurezas.", "Palavra de Sabedoria: Suas palavras são carregadas de axé e podem inspirar ou convencer."], ewos: ["Deve se vestir de branco, especialmente nas sextas-feiras.", "Não pode frequentar lugares sujos, barulhentos ou violentos.", "Não pode consumir bebidas alcoólicas, dendê e sal em excesso."] }
     };
-
 
     // --- FUNÇÕES CLOUD CALLABLE ---
     const createAndJoinSession = httpsCallable(functions, 'createAndJoinSession');
@@ -187,27 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingOverlay.style.display = 'flex';
     pageContent.style.display = 'none';
 
-    /**
-     * Exibe uma notificação estilo "toast" no canto da tela.
-     * @param {string} message A mensagem a ser exibida.
-     * @param {'success' | 'error'} type O tipo de notificação ('success' ou 'error').
-     */
     const showNotification = (message, type = 'success') => {
         const container = document.getElementById('notification-container');
-        if (!container) {
-            console.error('Notification container not found!');
-            return;
-        }
-
+        if (!container) return;
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-
         container.appendChild(notification);
-
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
+        setTimeout(() => { notification.remove(); }, 5000);
     };
 
     const showView = (view) => {
@@ -250,14 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateTurnUI = async (sessionData) => {
         if (!sessionData || !currentUser || !currentSessionId) return;
-    
         const turnoAtualUid = sessionData.turnoAtualUid;
         const isMyTurn = turnoAtualUid === currentUser.uid;
-    
         inputText.disabled = !isMyTurn;
         btnSend.disabled = !isMyTurn;
         btnPassTurn.disabled = !isMyTurn;
-    
         if (isMyTurn) {
             turnStatus.textContent = "É o seu turno!";
             turnStatus.classList.add('my-turn');
@@ -320,73 +224,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // =========================================================================
+    // FUNÇÃO CORRIGIDA: LÓGICA DE CARREGAMENTO DE SESSÃO
+    // =========================================================================
     async function loadSession(sessionId) {
         cleanupSessionListeners();
         currentSessionId = sessionId;
 
         try {
+            const sessionDocRef = doc(db, "sessions", sessionId);
+            const sessionDoc = await getDoc(sessionDocRef);
+
+            if (!sessionDoc.exists()) {
+                throw new Error("Sessão não encontrada.");
+            }
+            const sessionData = sessionDoc.data();
+            
             const charQuery = query(collection(db, 'sessions', sessionId, 'characters'), where("uid", "==", currentUser.uid));
             const charSnapshot = await getDocs(charQuery);
             if (charSnapshot.empty) throw new Error("Personagem não encontrado nesta sessão.");
-
             currentCharacter = { id: charSnapshot.docs[0].id, ...charSnapshot.docs[0].data() };
 
             characterSheetName.textContent = currentCharacter.name;
-            
             characterSheetAttributes.innerHTML = '';
             characterSheetAttributes.className = 'attribute-accordion'; 
-
             for (const mainAttrKey in currentCharacter.attributes) {
                 const mainAttrData = currentCharacter.attributes[mainAttrKey];
-                
                 const subListHTML = Object.keys(mainAttrData.sub).map(subAttrKey => {
                     const subAttr = mainAttrData.sub[subAttrKey];
                     return `<li class="sub-attribute-item"><span class="sub-attr-name">${subAttr.name}</span> <span class="attr-value">${subAttr.value}</span></li>`;
                 }).join('');
-
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'attribute-item';
-                itemDiv.innerHTML = `
-                    <div class="attribute-header">
-                        <span class="attribute-title">${mainAttrData.name}</span>
-                    </div>
-                    <div class="attribute-details">
-                        <ul class="sub-attribute-list">${subListHTML}</ul>
-                    </div>
-                `;
+                itemDiv.innerHTML = `<div class="attribute-header"><span class="attribute-title">${mainAttrData.name}</span></div><div class="attribute-details"><ul class="sub-attribute-list">${subListHTML}</ul></div>`;
                 characterSheetAttributes.appendChild(itemDiv);
             }
-
             const oldOrixaSheet = document.getElementById('character-sheet-orixa');
             if (oldOrixaSheet) oldOrixaSheet.remove();
-
             if (currentCharacter.orixa) {
                 const orixa = currentCharacter.orixa;
                 const orixaSheetDiv = document.createElement('div');
                 orixaSheetDiv.id = 'character-sheet-orixa';
-                orixaSheetDiv.innerHTML = `
-                    <h4>${orixa.name}</h4>
-                    <h5>Habilidades</h5>
-                    <ul>${orixa.habilidades.map(h => `<li>${h}</li>`).join('')}</ul>
-                    <h5>Ewós</h5>
-                    <ul>${orixa.ewos.map(e => `<li>${e}</li>`).join('')}</ul>
-                `;
+                orixaSheetDiv.innerHTML = `<h4>${orixa.name}</h4><h5>Habilidades</h5><ul>${orixa.habilidades.map(h => `<li>${h}</li>`).join('')}</ul><h5>Ewós</h5><ul>${orixa.ewos.map(e => `<li>${e}</li>`).join('')}</ul>`;
                 characterSheet.appendChild(orixaSheetDiv);
             }
             
             showView(gameView);
             
-            // --- LÓGICA CORRIGIDA E MAIS ROBUSTA ---
-            // Procura por mensagens que foram enviadas pelo jogador.
-            const allMessagesQuery = query(collection(db, 'sessions', sessionId, 'messages'), limit(1));
-            const allMessagesSnapshot = await getDocs(allMessagesQuery);
-
-            // Se o snapshot estiver vazio, significa que NENHUMA mensagem foi enviada. É uma nova aventura.
-            if (allMessagesSnapshot.empty) { 
+            if (sessionData.adventureStarted === false) {
                 dialogBox.style.display = 'flex';
                 inputArea.style.display = 'none';
             } else {
-                // Se houver qualquer mensagem, a aventura está em andamento.
                 dialogBox.style.display = 'none';
                 inputArea.style.display = 'flex';
                 listenForMessages(sessionId);
@@ -403,6 +291,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // =========================================================================
+    // FUNÇÃO CORRIGIDA: LÓGICA DE ESTILIZAÇÃO DAS MENSAGENS
+    // =========================================================================
     function listenForMessages(sessionId) {
         const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
         messagesUnsubscribe = onSnapshot(q, (snapshot) => {
@@ -410,32 +301,23 @@ document.addEventListener('DOMContentLoaded', () => {
             snapshot.docs.forEach(doc => {
                 const msg = doc.data();
                 const messageElement = document.createElement('div');
-                
-                // Adiciona a classe base e a classe de sistema se necessário
                 messageElement.classList.add('message');
                 if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
-
-                // Define a classe de alinhamento e estilo (mestre vs jogador)
                 if (msg.from === 'mestre') {
                     messageElement.classList.add('mestre-msg');
                 } else {
                     messageElement.classList.add('player-msg');
-                    // VERIFICAÇÃO ADICIONAL: Se a mensagem é do usuário atual
                     if (currentUser && msg.uid === currentUser.uid) {
                         messageElement.classList.add('my-msg');
                     }
                 }
-
                 const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
                 const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
-                
-                // Em mensagens de sistema, não mostramos o "from"
                 if (msg.isTurnoUpdate) {
                     messageElement.innerHTML = `<p>${text}</p>`;
                 } else {
                     messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
                 }
-                
                 narration.appendChild(messageElement);
             });
             narration.scrollTop = narration.scrollHeight;
@@ -444,15 +326,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function listenForPartyChanges(sessionId) {
         const partyQuery = collection(db, 'sessions', sessionId, 'characters');
-        
         if (partyUnsubscribe) partyUnsubscribe();
-
         partyUnsubscribe = onSnapshot(partyQuery, (snapshot) => {
             partyList.innerHTML = '';
             snapshot.docs.forEach(doc => {
                 const character = doc.data();
                 if (character.uid === AI_UID || character.uid === currentUser.uid) return;
-
                 let attributesHTML = '';
                 for (const mainAttrKey in character.attributes) {
                     const mainAttrData = character.attributes[mainAttrKey];
@@ -463,18 +342,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     attributesHTML += `</ul>`;
                 }
-
                 const memberCard = document.createElement('li');
                 memberCard.className = 'party-member-card';
-                memberCard.innerHTML = `
-                    <div class="party-member-header">
-                        <span class="party-member-name">${character.name}</span>
-                        <span class="party-member-orixa">${character.orixa?.name || 'Sem Orixá'}</span>
-                    </div>
-                    <div class="party-member-details">
-                        ${attributesHTML}
-                    </div>
-                `;
+                memberCard.innerHTML = `<div class="party-member-header"><span class="party-member-name">${character.name}</span><span class="party-member-orixa">${character.orixa?.name || 'Sem Orixá'}</span></div><div class="party-member-details">${attributesHTML}</div>`;
                 partyList.appendChild(memberCard);
             });
         });
@@ -506,24 +376,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
-    
         const profileLink = document.getElementById('profile-link');
-    
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
-            
             if (profileLink) profileLink.style.display = 'inline';
-    
             showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
-            
             if (profileLink) profileLink.style.display = 'none';
-    
             window.location.href = 'login.html';
         }
         loadingOverlay.style.display = 'none';
@@ -531,18 +395,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- LISTENERS DE EVENTOS ---
-
+    
+    // =========================================================================
+    // FUNÇÃO CORRIGIDA: LÓGICA DO BOTÃO DE INICIAR AVENTURA
+    // =========================================================================
     if (btnStartAdventure) {
         btnStartAdventure.addEventListener('click', async () => {
+            if (!currentSessionId) return;
+            
             btnStartAdventure.disabled = true;
             btnStartAdventure.textContent = 'Iniciando...';
     
             dialogBox.style.display = 'none';
             inputArea.style.display = 'flex';
             
-            await sendChatMessage("Começar a aventura.");
+            await sendChatMessage("Mestre, pode começar a aventura.");
 
             listenForMessages(currentSessionId);
+            
+            btnStartAdventure.disabled = false;
+            btnStartAdventure.textContent = 'Começar Aventura';
         });
     }
 
@@ -557,25 +429,20 @@ document.addEventListener('DOMContentLoaded', () => {
     characterList.addEventListener('click', (e) => {
         const deleteButton = e.target.closest('.btn-delete-character');
         const card = e.target.closest('.character-card');
-    
         if (deleteButton && card) {
             e.stopPropagation(); 
             const characterId = card.dataset.characterId;
             const sessionId = card.dataset.sessionId;
-    
             showModal(confirmDeleteModal);
-    
             const handleConfirm = async () => {
                 hideModal(confirmDeleteModal);
                 deleteButton.disabled = true;
                 const originalContent = deleteButton.innerHTML;
                 deleteButton.innerHTML = '...';
-    
                 try {
                     await deleteCharacterAndSession({ characterId, sessionId });
                     showNotification('Personagem e sessão excluídos com sucesso.', 'success');
                     card.remove();
-    
                     if (characterList.children.length === 0) {
                         noCharactersMessage.style.display = 'block';
                     }
@@ -586,16 +453,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     deleteButton.innerHTML = originalContent;
                 }
             };
-    
             const handleCancel = () => {
                 hideModal(confirmDeleteModal);
                 btnConfirmDelete.removeEventListener('click', handleConfirm);
                 btnCancelDelete.removeEventListener('click', handleCancel);
             };
-    
             btnConfirmDelete.addEventListener('click', handleConfirm, { once: true });
             btnCancelDelete.addEventListener('click', handleCancel, { once: true });
-    
         } else if (card && card.dataset.sessionId) {
             loadSession(card.dataset.sessionId);
         }
@@ -625,14 +489,12 @@ document.addEventListener('DOMContentLoaded', () => {
         hideModal(inviteModal);
         charNameInput.value = '';
         attributes = JSON.parse(JSON.stringify(attributeConfig));
-
         orixaSelect.innerHTML = '<option value="">-- Escolha seu Orixá --</option>';
         for (const key in orixasData) {
             orixaSelect.innerHTML += `<option value="${key}">${orixasData[key].name}</option>`;
         }
         orixaSelect.value = '';
         orixaDetailsContainer.style.display = 'none';
-
         updateCreationUI();
         creationLoadingIndicator.style.display = 'none';
         btnSaveCharacter.style.display = 'block';
@@ -660,11 +522,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectedOrixaKey) {
             return showNotification('Você precisa escolher um Orixá!', 'error');
         }
-
         creationLoadingIndicator.style.display = 'flex';
         btnSaveCharacter.style.display = 'none';
         charNameInput.disabled = true;
-
         try {
             const joiningSessionId = sessionStorage.getItem('joiningSessionId');
             const characterData = {
@@ -672,7 +532,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 attributes: attributes,
                 orixa: orixasData[selectedOrixaKey]
             };
-
             if (joiningSessionId) {
                 await joinSession({ ...characterData, sessionId: joiningSessionId });
                 sessionStorage.removeItem('joiningSessionId');
@@ -706,16 +565,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // =========================================================================
+    // FUNÇÃO CORRIGIDA: LÓGICA DO ACORDEÃO DE ATRIBUTOS
+    // =========================================================================
     attributeAccordion.addEventListener('click', (e) => {
         const header = e.target.closest('.attribute-header');
-        if (header) { const details = header.nextElementSibling; if (!details.classList.contains('open')) { document.querySelectorAll('.attribute-details.open').forEach(el => el.classList.remove('open')); details.classList.add('open'); } return; }
+        
+        if (header) {
+            const details = header.nextElementSibling;
+            const wasOpen = details.classList.contains('open');
+            attributeAccordion.querySelectorAll('.attribute-details.open').forEach(el => {
+                el.classList.remove('open');
+            });
+            if (!wasOpen) {
+                details.classList.add('open');
+            }
+            return; 
+        }
+
         const button = e.target.closest('.btn-attr');
         if (button) {
-            const mainKey = button.dataset.mainKey; const subKey = button.dataset.subKey; const op = button.dataset.op; const mainAttr = attributes[mainKey]; const subAttr = mainAttr.sub[subKey];
-            if (op === '+' && mainAttr.points > 0) { subAttr.value++; mainAttr.points--; } else if (op === '-' && subAttr.value > 1) { subAttr.value--; mainAttr.points++; }
+            const mainKey = button.dataset.mainKey;
+            const subKey = button.dataset.subKey;
+            const op = button.dataset.op;
+            const mainAttr = attributes[mainKey];
+            const subAttr = mainAttr.sub[subKey];
+            if (op === '+' && mainAttr.points > 0) {
+                subAttr.value++;
+                mainAttr.points--;
+            } else if (op === '-' && subAttr.value > 1) {
+                subAttr.value--;
+                mainAttr.points++;
+            }
             updateCreationUI();
             const activeHeader = attributeAccordion.querySelector(`.attribute-header[data-main-key="${mainKey}"]`);
-            if (activeHeader) activeHeader.nextElementSibling.classList.add('open');
+            if (activeHeader) {
+                activeHeader.nextElementSibling.classList.add('open');
+            }
         }
     });
 
