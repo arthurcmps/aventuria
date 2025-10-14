@@ -703,3 +703,31 @@ body {
     font-size: 1em;
     font-family: var(--font-main);
 }
+
+/* Torna o balão de mensagem um container de posicionamento para o ícone */
+.message {
+    position: relative;
+    padding-right: 35px; /* Adiciona espaço para o ícone não sobrepor o texto */
+}
+
+/* Estilo do ícone de áudio dentro do balão */
+.btn-speak-message {
+    position: absolute;
+    bottom: 8px;
+    right: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0; /* Começa invisível */
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+/* O ícone aparece quando o mouse passa sobre QUALQUER LUGAR do balão */
+.message:hover .btn-speak-message {
+    opacity: 0.6;
+}
+
+/* Aumenta a opacidade e o tamanho do ícone ao passar o mouse diretamente sobre ele */
+.btn-speak-message:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}

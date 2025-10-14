@@ -107,6 +107,34 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingOverlay.style.display = 'flex';
     pageContent.style.display = 'none';
 
+    // --- INÍCIO DO CÓDIGO DE ÁUDIO ---
+
+// Acessa a API de síntese de voz nativa do navegador
+const synth = window.speechSynthesis;
+
+// Função que lê um texto em voz alta
+const speakText = (textToSpeak) => {
+    // 1. Verifica se o navegador suporta a funcionalidade. Se não, não faz nada.
+    if (!synth) return;
+
+    // 2. PARA qualquer fala que já esteja acontecendo. Isso evita que duas mensagens sejam lidas ao mesmo tempo.
+    synth.cancel();
+
+    // 3. Limpa o texto de caracteres de formatação (como ** para negrito) para uma leitura mais fluida.
+    const cleanText = textToSpeak.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+
+    // 4. Cria o "objeto de fala" com o texto limpo.
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    // 5. Define o idioma para 'Português do Brasil' para garantir a pronúncia correta.
+    utterance.lang = 'pt-BR';
+
+    // 6. Manda o navegador falar!
+    synth.speak(utterance);
+};
+
+// --- FIM DO CÓDIGO DE ÁUDIO ---
+
     const showNotification = (message, type = 'success') => {
         const container = document.getElementById('notification-container');
         if (!container) return;
@@ -313,10 +341,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
                 const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    
+                // NOVO: Criamos o HTML do ícone de áudio que será inserido em cada balão.
+                const audioIconHTML = `<span class="btn-speak-message" title="Ouvir mensagem">🔊</span>`;
+    
                 if (msg.isTurnoUpdate) {
                     messageElement.innerHTML = `<p>${text}</p>`;
                 } else {
-                    messageElement.innerHTML = `<p class="from">${from}</p><p>${text}</p>`;
+                    // MODIFICADO: Adicionamos uma classe 'message-text' ao parágrafo do texto
+                    // e concatenamos o 'audioIconHTML' no final.
+                    messageElement.innerHTML = `<p class="from">${from}</p><p class="message-text">${text}</p>${audioIconHTML}`;
                 }
                 narration.appendChild(messageElement);
             });
@@ -670,6 +704,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (header) {
             const details = header.nextElementSibling;
             details.classList.toggle('open');
+        }
+    });
+
+    narration.addEventListener('click', (e) => {
+        // 1. Verificamos se o elemento que foi clicado é um dos nossos ícones de áudio
+        if (e.target.matches('.btn-speak-message')) {
+            // 2. Se for, encontramos o balão de mensagem (`.message`) mais próximo do ícone clicado.
+            const messageBubble = e.target.closest('.message');
+            
+            // 3. Dentro daquele balão específico, encontramos o parágrafo com o texto (`.message-text`).
+            const textElement = messageBubble.querySelector('.message-text');
+    
+            // 4. Se o texto for encontrado, chamamos nossa função para lê-lo em voz alta!
+            if (textElement) {
+                speakText(textElement.textContent);
+            }
         }
     });
 });
