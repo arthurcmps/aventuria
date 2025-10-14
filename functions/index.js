@@ -191,9 +191,9 @@ exports.onUserCreate = functions.region(REGION).auth.user().onCreate(async (user
 // --- FUNÇÕES DE SESSÃO E JOGO (V2) ---
 exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
-    const { characterName, attributes, orixa } = request.data;
-    if (!characterName || !attributes || !orixa) throw new HttpsError('invalid-argument', 'Dados do personagem incompletos.');
-
+    const { characterName, attributes, orixa, gender } = request.data; //
+    if (!characterName || !attributes || !orixa || !gender) throw new HttpsError('invalid-argument', 'Dados do personagem incompletos.'); //
+    
     const uid = request.auth.uid;
     try {
         const sessionRef = await db.collection("sessions").add({
@@ -206,7 +206,7 @@ exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
             adventureStarted: false
         });
 
-        const playerCharacter = { name: characterName, attributes, orixa, uid, sessionId: sessionRef.id };
+        const playerCharacter = { name: characterName, attributes, orixa, gender, uid, sessionId: sessionRef.id }; //
         const aiCharacter = { name: "Mestre", attributes: {}, uid: AI_UID, sessionId: sessionRef.id };
 
         const batch = db.batch();
@@ -233,8 +233,8 @@ exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
 
 exports.joinSession = onCall({ region: REGION }, async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Autenticação necessária.');
-    const { sessionId, characterName, attributes, orixa } = request.data;
-    if (!sessionId || !characterName || !attributes || !orixa) throw new HttpsError('invalid-argument', 'Dados incompletos.');
+    const { sessionId, characterName, attributes, orixa, gender } = request.data; //
+    if (!sessionId || !characterName || !attributes || !orixa || !gender) throw new HttpsError('invalid-argument', 'Dados incompletos.');
     const uid = request.auth.uid;
     const sessionRef = db.collection('sessions').doc(sessionId);
     try {
@@ -242,7 +242,7 @@ exports.joinSession = onCall({ region: REGION }, async (request) => {
             const sessionDoc = await transaction.get(sessionRef);
             if (!sessionDoc.exists) throw new HttpsError('not-found', 'Sessão não encontrada.');
             transaction.update(sessionRef, { memberUIDs: admin.firestore.FieldValue.arrayUnion(uid), ordemDeTurnos: admin.firestore.FieldValue.arrayUnion(uid) });
-            const newCharacter = { name: characterName, attributes, orixa, uid, sessionId };
+            const newCharacter = { name: characterName, attributes, orixa, gender, uid, sessionId }; //
             transaction.set(sessionRef.collection('characters').doc(uid), newCharacter);
             transaction.set(db.collection('characters').doc(), { ...newCharacter, characterIdInSession: uid });
         });
