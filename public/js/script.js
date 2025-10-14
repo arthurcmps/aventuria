@@ -492,6 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetAndOpenCharacterCreationModal() {
         hideModal(inviteModal);
         charNameInput.value = '';
+        document.getElementById('char-gender').value = '';
         attributes = JSON.parse(JSON.stringify(attributeConfig));
         orixaSelect.innerHTML = '<option value="">-- Escolha seu Orixá --</option>';
         for (const key in orixasData) {
@@ -526,6 +527,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectedOrixaKey) {
             return showNotification('Você precisa escolher um Orixá!', 'error');
         }
+
+        const selectedGender = document.getElementById('char-gender').value;
+        if (!selectedGender) {
+            return showNotification('Você precisa escolher um gênero!', 'error');
+        }
+
         creationLoadingIndicator.style.display = 'flex';
         btnSaveCharacter.style.display = 'none';
         charNameInput.disabled = true;
@@ -534,7 +541,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const characterData = {
                 characterName: charNameInput.value.trim(),
                 attributes: attributes,
-                orixa: orixasData[selectedOrixaKey]
+                orixa: orixasData[selectedOrixaKey],
+                gender: selectedGender
             };
             if (joiningSessionId) {
                 await joinSession({ ...characterData, sessionId: joiningSessionId });
