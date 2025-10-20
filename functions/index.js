@@ -70,6 +70,26 @@ exports.handlePlayerAction = onDocumentCreated(
             if (!playerCharacter) {
                 throw new HttpsError('not-found', `Personagem do jogador com UID ${lastPlayerUid} não encontrado.`);
             }
+
+           // --- INÍCIO DA NOVA LÓGICA: CONSCIÊNCIA DE GRUPO ---
+
+           // 1. Criar a string de "Consciência de Grupo"
+           const partyMembers = allCharacters
+               .filter(c => c.uid !== AI_UID) // Filtrar o Mestre
+               .map(c => {
+                   // Mapear os dados de cada personagem
+                   return `- Nome: ${c.name}, Gênero: ${c.gender}, Orixá: ${c.orixa.name}`;
+               })
+               .join('\n'); // Juntar com quebra de linha
+
+           // 2. Adicionar a instrução de gênero para o jogador ATUAL (que já tínhamos feito)
+           const genderInstruction = playerCharacter.gender === 'feminino'
+               ? "A personagem se identifica com o gênero feminino. Use pronomes e adjetivos femininos (ela/dela)."
+               : playerCharacter.gender === 'masculino'
+               ? "O personagem se identifica com o gênero masculino. Use pronomes e adjetivos masculinos (ele/dele)."
+               : "O personagem se identifica como não-binário. Use pronomes e adjetivos neutros (elu/delu).";
+
+           // --- FIM DA NOVA LÓGICA ---
             
             // 1. Construir histórico de chat estruturado
             const historySnapshot = await sessionRef.collection('messages').orderBy('createdAt', 'desc').limit(30).get();
@@ -116,20 +136,30 @@ exports.handlePlayerAction = onDocumentCreated(
             const estadoHistoria = sessionData.estadoDaHistoria || 'ato1';
             const atoAtual = historia.atos[estadoHistoria];
             const promptForCurrentTurn = `
-### CONTEXTO DA AVENTURA ###
-Título do Ato: ${atoAtual.titulo}
-Cenário: ${atoAtual.narrativa_inicio}
+ ### CONTEXTO DA AVENTURA ###
+ Título do Ato: ${atoAtual.titulo}
+ Cenário: ${atoAtual.narrativa_inicio}
 
-### PERSONAGEM DO JOGADOR ATUAL ###
-Nome: ${playerCharacter.name}
-Orixá: ${playerCharacter.orixa.name} - ${playerCharacter.orixa.description}
-
-### AÇÃO DO JOGADOR ###
-${playerCharacter.name}: ${newMessage.text}
-
-### SUA TAREFA ###
-Com base no histórico da conversa e no contexto acima, narre o resultado da ação do jogador. Descreva a cena, as consequências e, se apropriado, apresente um novo desafio ou uma interação com um NPC. Termine sua narração de forma a dar espaço para o próximo jogador agir.
-`;
+ ### MEMBROS DO GRUPO PRESENTES NA CENA ###
+ ${partyMembers}
+ 
+ ### PERSONAGEM DO JOGADOR ATUAL ###
+ (Este é o personagem que está realizando a ação)
+ Nome: ${playerCharacter.name}
+ Gênero: ${playerCharacter.gender}. (${genderInstruction})
+ Orixá: ${playerCharacter.orixa.name} - ${playerCharacter.orixa.description}
+ 
+ ### AÇÃO DO JOGADOR ###
+ ${playerCharacter.name}: ${newMessage.text}
+ 
+ ### SUA TAREFA ###
+ Com base no histórico da conversa e em TODO o contexto acima (incluindo os outros membros do grupo), narre o resultado da ação do jogador.
+ Sua narração DEVE ser mais rica:
+ 1. Descreva a cena e as consequências da ação.
+ 2. FAÇA OS OUTROS MEMBROS DO GRUPO REAGIREM (se apropriado).
+ 3. Se um NPC estiver presente, faça-o interagir com o grupo, não apenas com o jogador atual.
+ Termine sua narração de forma a dar espaço para o próximo jogador agir.
+ `;
 
             // 6. Enviar a mensagem e obter a resposta
             const result = await chat.sendMessage(promptForCurrentTurn);
