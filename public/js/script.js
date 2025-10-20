@@ -5,17 +5,19 @@ import {
     addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where, limit
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-    // --- REFERÊNCIAS DO DOM ---
-    document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
 
-   // --- TRAVA DE SEGURANÇA (GUARD CLAUSE) ---
-   // Verifica se estamos na página correta (index.html)
-   const mainGameView = document.getElementById('game-view');
-   if (!mainGameView) {
-       // Se não encontrar o elemento principal do jogo, para a execução deste script.
-       console.log("script.js: Elemento 'game-view' não encontrado. Parando execução. (Isso é normal se não estiver na index.html)");
-       return; // PARA A EXECUÇÃO DO SCRIPT IMEDIATAMENTE
-   }
+    // --- TRAVA DE SEGURANÇA (GUARD CLAUSE) ---
+    // Verifica se estamos na página correta (index.html)
+    const mainGameView = document.getElementById('game-view');
+    if (!mainGameView) {
+        // Se não encontrar o elemento principal do jogo, para a execução deste script.
+        console.log("script.js: Elemento 'game-view' não encontrado. Parando execução. (Isso é normal se não estiver na index.html)");
+        return; // PARA A EXECUÇÃO DO SCRIPT IMEDIATAMENTE
+    }
+    // --- FIM DA TRAVA ---
+
+    // --- REFERÊNCIAS DO DOM ---
     const pageContent = document.getElementById('page-content');
     const loadingOverlay = document.getElementById('loading-overlay');
     const btnMenu = document.getElementById('btn-menu');
@@ -24,7 +26,7 @@ import {
     const btnAuth = document.getElementById('btn-auth');
     const btnBackToSelection = document.getElementById('btn-back-to-selection');
     const btnCreateNewCharacter = document.getElementById('btn-create-new-character');
-    const gameView = document.getElementById('game-view');
+    const gameView = document.getElementById('game-view'); // Esta variável é usada pela Trava de Segurança
     const sessionSelectionOverlay = document.getElementById('session-selection-overlay');
     const notificationsSection = document.getElementById('notifications-section');
     const invitesList = document.getElementById('invites-list');
@@ -63,6 +65,7 @@ import {
     const dialogBox = document.getElementById('dialog-box');
     const btnStartAdventure = document.getElementById('btn-start-adventure');
     const inputArea = document.getElementById('input-area');
+
 
     // --- ESTADO DA APLICAÇÃO ---
     let currentUser = null;
@@ -116,31 +119,31 @@ import {
 
     // --- INÍCIO DO CÓDIGO DE ÁUDIO ---
 
-// Acessa a API de síntese de voz nativa do navegador
-const synth = window.speechSynthesis;
+    // Acessa a API de síntese de voz nativa do navegador
+    const synth = window.speechSynthesis;
 
-// Função que lê um texto em voz alta
-const speakText = (textToSpeak) => {
-    // 1. Verifica se o navegador suporta a funcionalidade. Se não, não faz nada.
-    if (!synth) return;
+    // Função que lê um texto em voz alta
+    const speakText = (textToSpeak) => {
+        // 1. Verifica se o navegador suporta a funcionalidade. Se não, não faz nada.
+        if (!synth) return;
 
-    // 2. PARA qualquer fala que já esteja acontecendo. Isso evita que duas mensagens sejam lidas ao mesmo tempo.
-    synth.cancel();
+        // 2. PARA qualquer fala que já esteja acontecendo. Isso evita que duas mensagens sejam lidas ao mesmo tempo.
+        synth.cancel();
 
-    // 3. Limpa o texto de caracteres de formatação (como ** para negrito) para uma leitura mais fluida.
-    const cleanText = textToSpeak.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+        // 3. Limpa o texto de caracteres de formatação (como ** para negrito) para uma leitura mais fluida.
+        const cleanText = textToSpeak.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
 
-    // 4. Cria o "objeto de fala" com o texto limpo.
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+        // 4. Cria o "objeto de fala" com o texto limpo.
+        const utterance = new SpeechSynthesisUtterance(cleanText);
 
-    // 5. Define o idioma para 'Português do Brasil' para garantir a pronúncia correta.
-    utterance.lang = 'pt-BR';
+        // 5. Define o idioma para 'Português do Brasil' para garantir a pronúncia correta.
+        utterance.lang = 'pt-BR';
 
-    // 6. Manda o navegador falar!
-    synth.speak(utterance);
-};
+        // 6. Manda o navegador falar!
+        synth.speak(utterance);
+    };
 
-// --- FIM DO CÓDIGO DE ÁUDIO ---
+    // --- FIM DO CÓDIGO DE ÁUDIO ---
 
     const showNotification = (message, type = 'success') => {
         const container = document.getElementById('notification-container');
@@ -372,7 +375,7 @@ const speakText = (textToSpeak) => {
             partyList.innerHTML = '';
             snapshot.docs.forEach(doc => {
                 const character = doc.data();
-                if (character.uid === AI_UID || character.uid === currentUser.uid) return;
+                if (character.uid === AI_UID || (currentUser && character.uid === currentUser.uid)) return; // Adicionado currentUser check
                 let attributesHTML = '';
                 for (const mainAttrKey in character.attributes) {
                     const mainAttrData = character.attributes[mainAttrKey];
@@ -415,26 +418,27 @@ const speakText = (textToSpeak) => {
         }
     }
 
+    // =========================================================================
+    // FUNÇÃO onAuthStateChanged - CORRIGIDA
+    // =========================================================================
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
-        // CORREÇÃO: Mova a definição de 'profileLink' para CIMA, fora do if/else
-        const profileLink = document.getElementById('profile-link'); 
-    
+        // CORREÇÃO: Definição do 'profileLink' movida para o topo da função
+        const profileLink = document.getElementById('profile-link');
+        
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
-            // Agora esta linha funciona, pois profileLink está definida
-            if (profileLink) profileLink.style.display = 'inline'; 
+            if (profileLink) profileLink.style.display = 'inline'; // Agora funciona
             showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
-            // E esta linha também funciona
-            if (profileLink) profileLink.style.display = 'none';
+            if (profileLink) profileLink.style.display = 'none'; // E aqui também
             window.location.href = 'login.html';
-            return; // <-- MANTENHA ESTE 'return'
+            return; // <-- CORREÇÃO: 'return' para parar a execução após o redirecionamento
         }
         loadingOverlay.style.display = 'none';
         pageContent.style.display = 'block';
