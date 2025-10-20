@@ -5,14 +5,13 @@ import {
     addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where, limit
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-document.addEventListener('DOMContentLoaded', () => {
-
     // --- REFERÊNCIAS DO DOM ---
-    const mainGameView = document.getElementById('game-view');
-    if (!mainGameView) {
-    console.log("script.js: Elemento 'game-view' não encontrado. Parando execução. (Isso é normal se não estiver na index.html)");
-    return; 
-    }
+    document.addEventListener('DOMContentLoaded', () => {
+   const mainGameView = document.getElementById('game-view');
+   if (!mainGameView) {
+       console.log("script.js: Elemento 'game-view' não encontrado. Parando execução. (Isso é normal se não estiver na index.html)");
+       return; 
+   }
     const pageContent = document.getElementById('page-content');
     const loadingOverlay = document.getElementById('loading-overlay');
     const btnMenu = document.getElementById('btn-menu');
@@ -414,20 +413,24 @@ const speakText = (textToSpeak) => {
 
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
+        // CORREÇÃO: Mova a definição de 'profileLink' para CIMA, fora do if/else
+        const profileLink = document.getElementById('profile-link'); 
+    
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
             btnAuth.textContent = 'Sair';
             noCharactersMessage.textContent = 'Você ainda não tem personagens.';
-            if (profileLink) profileLink.style.display = 'inline';
+            // Agora esta linha funciona, pois profileLink está definida
+            if (profileLink) profileLink.style.display = 'inline'; 
             showView(sessionSelectionOverlay);
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
-        const profileLink = document.getElementById('profile-link');
+            // E esta linha também funciona
             if (profileLink) profileLink.style.display = 'none';
             window.location.href = 'login.html';
-            return;
+            return; // <-- MANTENHA ESTE 'return'
         }
         loadingOverlay.style.display = 'none';
         pageContent.style.display = 'block';
