@@ -7,10 +7,14 @@ import {
 
     // --- REFERÊNCIAS DO DOM ---
     document.addEventListener('DOMContentLoaded', () => {
+
+   // --- TRAVA DE SEGURANÇA (GUARD CLAUSE) ---
+   // Verifica se estamos na página correta (index.html)
    const mainGameView = document.getElementById('game-view');
    if (!mainGameView) {
+       // Se não encontrar o elemento principal do jogo, para a execução deste script.
        console.log("script.js: Elemento 'game-view' não encontrado. Parando execução. (Isso é normal se não estiver na index.html)");
-       return; 
+       return; // PARA A EXECUÇÃO DO SCRIPT IMEDIATAMENTE
    }
     const pageContent = document.getElementById('page-content');
     const loadingOverlay = document.getElementById('loading-overlay');
