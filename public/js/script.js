@@ -8,6 +8,11 @@ import {
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- REFERÊNCIAS DO DOM ---
+    const mainGameView = document.getElementById('game-view');
+    if (!mainGameView) {
+    console.log("script.js: Elemento 'game-view' não encontrado. Parando execução. (Isso é normal se não estiver na index.html)");
+    return; 
+    }
     const pageContent = document.getElementById('page-content');
     const loadingOverlay = document.getElementById('loading-overlay');
     const btnMenu = document.getElementById('btn-menu');
@@ -55,7 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const dialogBox = document.getElementById('dialog-box');
     const btnStartAdventure = document.getElementById('btn-start-adventure');
     const inputArea = document.getElementById('input-area');
-
 
     // --- ESTADO DA APLICAÇÃO ---
     let currentUser = null;
@@ -410,7 +414,6 @@ const speakText = (textToSpeak) => {
 
     onAuthStateChanged(auth, async (user) => {
         cleanupSessionListeners();
-        const profileLink = document.getElementById('profile-link');
         if (user) {
             currentUser = user;
             username.textContent = user.displayName || user.email.split('@')[0];
@@ -421,8 +424,10 @@ const speakText = (textToSpeak) => {
             await Promise.all([loadUserCharacters(user.uid), loadPendingInvitesInternal()]);
         } else {
             currentUser = null;
+        const profileLink = document.getElementById('profile-link');
             if (profileLink) profileLink.style.display = 'none';
             window.location.href = 'login.html';
+            return;
         }
         loadingOverlay.style.display = 'none';
         pageContent.style.display = 'block';
