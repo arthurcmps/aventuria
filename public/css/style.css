@@ -546,7 +546,7 @@ body {
  * Responsividade
  * ---------------------------------- */
 @media (max-width: 768px) {
-    .container, .header, .main-content { padding: 10px; padding-bottom: 70px; }
+    .container, .header, .main-content { padding: 10px; padding-bottom: 20px; }
     .main-content { grid-template-columns: 1fr; padding-top: 60px; }
     #btn-menu { display: block; }
     #side-panel { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; z-index: 20; transition: left 0.3s ease; padding-top: 60px; border-radius: 0; border-right: 1px solid var(--border-color); }
