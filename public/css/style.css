@@ -546,7 +546,7 @@ body {
  * Responsividade
  * ---------------------------------- */
 @media (max-width: 768px) {
-    .container, .header, .main-content { padding: 10px; padding-bottom: 20px; }
+    .container, .header, .main-content { padding: 10px; padding-bottom: 70px; }
     .main-content { grid-template-columns: 1fr; padding-top: 60px; }
     #btn-menu { display: block; }
     #side-panel { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; z-index: 20; transition: left 0.3s ease; padding-top: 60px; border-radius: 0; border-right: 1px solid var(--border-color); }
@@ -558,29 +558,33 @@ body {
         font-size: 1.2em;
         line-height: 1.6;
     }
-    /* Ajusta o texto do mestre para a nova base */
+    #narration {
+        font-size: 1.2em !important;
+        line-height: 1.6 !important;
+    }
+
     .mestre-msg {
-        font-size: 1.1em; /* Isso agora será 1.1em de 1.2em, mantendo-se legível */
+        font-size: 1.1em !important;
     }
-    /* Diminui o título do personagem na ficha */
+
     #character-sheet-name {
-        font-size: 1.5em;
+        font-size: 1.5em !important;
     }
-    /* Diminui os títulos dos atributos (Ara, Orí, Emi) */
+
     .attribute-title {
-        font-size: 1.1rem;
+        font-size: 1.1rem !important;
     }
-    /* Diminui os títulos dos modais (Criação de Personagem, etc) */
+
     .modal-content h2 {
-        font-size: 1.8em;
+        font-size: 1.8em !important;
     }
-    /* Diminui o título principal da tela de seleção */
+
     #session-selection-overlay h2 {
-        font-size: 2.0em;
+        font-size: 2.0em !important;
     }
-    /* Diminui o nome do personagem nos cards de seleção */
+
     .character-card h4 {
-        font-size: 1.3em;
+        font-size: 1.3em !important;
     }
 }
 
