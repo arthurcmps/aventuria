@@ -554,6 +554,34 @@ body {
     #narration-panel { height: calc(100vh - 150px); }
     #session-selection-overlay { position: static; padding-top: 70px; padding-left: 10px; padding-right: 10px; }
     .overlay-content-box { padding: 20px; }
+    #narration {
+        font-size: 1.2em;
+        line-height: 1.6;
+    }
+    /* Ajusta o texto do mestre para a nova base */
+    .mestre-msg {
+        font-size: 1.1em; /* Isso agora será 1.1em de 1.2em, mantendo-se legível */
+    }
+    /* Diminui o título do personagem na ficha */
+    #character-sheet-name {
+        font-size: 1.5em;
+    }
+    /* Diminui os títulos dos atributos (Ara, Orí, Emi) */
+    .attribute-title {
+        font-size: 1.1rem;
+    }
+    /* Diminui os títulos dos modais (Criação de Personagem, etc) */
+    .modal-content h2 {
+        font-size: 1.8em;
+    }
+    /* Diminui o título principal da tela de seleção */
+    #session-selection-overlay h2 {
+        font-size: 2.0em;
+    }
+    /* Diminui o nome do personagem nos cards de seleção */
+    .character-card h4 {
+        font-size: 1.3em;
+    }
 }
 
 /* ----------------------------------
