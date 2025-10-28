@@ -7,15 +7,23 @@
   },
   "functions": [
     {
-      "source": "functions",
       "codebase": "default",
-      "runtime": "nodejs20",
       "ignore": [
         "node_modules",
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
         "*.local"
+      ],
+      "source": "functions",
+      "runtime": "nodejs20"
+    },
+    {
+      "source": "genkit",
+      "codebase": "genkit",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
   ],
