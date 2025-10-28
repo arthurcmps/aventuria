@@ -4,6 +4,7 @@
     "src"
   ],
   "compilerOptions": {
+    "resolveJsonModule": true,
     "module": "NodeNext",
     "noImplicitReturns": true,
     "outDir": "lib",
