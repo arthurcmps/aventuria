@@ -70,14 +70,15 @@
             <div id="game-view" class="main-content">
                 <div id="narration-panel">
                     <div id="narration"></div>
-                    <div id="dialog-box">
-                        <button id="btn-start-adventure" class="btn" style="display: block;">Começar Aventura</button>
+                    <div id="roll-prompt-bar" class="input-area" style="display: none; flex-direction: column; align-items: center; padding: 15px; border-top: 1px solid var(--border-color); gap: 10px;">
+                        <p id="roll-prompt-label" style="font-family: var(--font-display); font-size: 1.2em; color: var(--accent-color); text-align: center; margin: 0;">
+                            Mestre solicitou um teste...
+                        </p>
+                        <button id="btn-roll-challenge" class="btn">Rolar d20</button>
                     </div>
-                    <!-- ÁREA DE INPUT ATUALIZADA -->
+                    <div id="dialog-box">
+                        </div>
                     <div id="input-area">
-                        <div id="turn-status" class="turn-status-bar">Aguardando informações do turno...</div>
-                        <textarea id="input-text" placeholder="O que você faz?" rows="3" disabled></textarea>
-                        <div class="input-buttons">
                             <button id="btn-send" class="btn" disabled>Enviar</button>
                             <button id="btn-pass-turn" class="btn btn-secondary" disabled>Passar Turno</button>
                         </div>

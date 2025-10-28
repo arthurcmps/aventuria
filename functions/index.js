@@ -232,7 +232,7 @@ exports.createAndJoinSession = onCall({ region: REGION }, async (request) => {
             memberUIDs: [uid, AI_UID],
             turnoAtualUid: uid,
             ordemDeTurnos: [uid, AI_UID],
-            estadoDaHistoria: "ato1",
+            estadoDaHistoria: "ato1_cenas_cena1_aldeia",
             adventureStarted: false
         });
 

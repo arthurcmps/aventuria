@@ -4,6 +4,7 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 import {
     addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where, limit
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -65,6 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const dialogBox = document.getElementById('dialog-box');
     const btnStartAdventure = document.getElementById('btn-start-adventure');
     const inputArea = document.getElementById('input-area');
+    const rollPromptBar = document.getElementById('roll-prompt-bar');
+    const rollPromptLabel = document.getElementById('roll-prompt-label');
+    const btnRollChallenge = document.getElementById('btn-roll-challenge');
+    const gameMaster = httpsCallable(functions, 'gameMaster');
 
 
     // --- ESTADO DA APLICAÇÃO ---
@@ -195,17 +200,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateTurnUI = async (sessionData) => {
         if (!sessionData || !currentUser || !currentSessionId) return;
+    
+        // --- NOVA LÓGICA ---
+        // Verificar se o painel de rolagem está ativo. Se estiver, o turno é do jogador
+        // E ele DEVE rolar, não digitar.
+        if (rollPromptBar.style.display === 'flex') {
+            inputText.disabled = true;
+            btnSend.disabled = true;
+            btnPassTurn.disabled = true;
+            inputArea.style.display = 'none'; // Garantir que a área de texto está escondida
+            turnStatus.textContent = "Você precisa rolar os dados!";
+            turnStatus.classList.add('my-turn');
+            return; // Parar a execução aqui
+        }
+        // --- FIM DA NOVA LÓGICA ---
+    
         const turnoAtualUid = sessionData.turnoAtualUid;
         const isMyTurn = turnoAtualUid === currentUser.uid;
+    
         inputText.disabled = !isMyTurn;
         btnSend.disabled = !isMyTurn;
         btnPassTurn.disabled = !isMyTurn;
+        
+        // Garantir que o painel de input correto é mostrado
+        inputArea.style.display = 'flex';
+        rollPromptBar.style.display = 'none';
+    
         if (isMyTurn) {
             turnStatus.textContent = "É o seu turno!";
             turnStatus.classList.add('my-turn');
         } else {
             turnStatus.classList.remove('my-turn');
-            const playerName = (turnoAtualUid === AI_UID) ? "O Mestre" : "outro jogador";
+            // Obter o nome do jogador atual
+            const playerCharDoc = await getDoc(doc(db, 'sessions', currentSessionId, 'characters', turnoAtualUid));
+            let playerName = "outro jogador";
+            if(playerCharDoc.exists()) {
+                playerName = playerCharDoc.data().name;
+            } else if (turnoAtualUid === AI_UID) {
+                playerName = "O Mestre";
+            }
             turnStatus.textContent = `Aguardando o turno de ${playerName}...`;
         }
     };
@@ -336,9 +369,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy("createdAt"));
         messagesUnsubscribe = onSnapshot(q, (snapshot) => {
             narration.innerHTML = '';
+            let lastMessageWasRollRequest = false; // Flag para controlar a UI
+    
             snapshot.docs.forEach(doc => {
                 const msg = doc.data();
                 const messageElement = document.createElement('div');
+                // ... (resto da sua lógica de estilização de mensagens)
                 messageElement.classList.add('message');
                 if (msg.isTurnoUpdate) messageElement.classList.add('system-message');
                 if (msg.from === 'mestre') {
@@ -351,19 +387,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const from = msg.from === 'mestre' ? "Mestre" : (msg.characterName || "Jogador");
                 const text = msg.text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    
-                // NOVO: Criamos o HTML do ícone de áudio que será inserido em cada balão.
                 const audioIconHTML = `<span class="btn-speak-message" title="Ouvir mensagem">🔊</span>`;
     
                 if (msg.isTurnoUpdate) {
                     messageElement.innerHTML = `<p>${text}</p>`;
                 } else {
-                    // MODIFICADO: Adicionamos uma classe 'message-text' ao parágrafo do texto
-                    // e concatenamos o 'audioIconHTML' no final.
                     messageElement.innerHTML = `<p class="from">${from}</p><p class="message-text">${text}</p>${audioIconHTML}`;
                 }
                 narration.appendChild(messageElement);
+    
+                // === NOVA LÓGICA PARA O PEDIDO DE ROLAGEM ===
+                if (msg.from === 'mestre' && msg.rollRequest) {
+                    lastMessageWasRollRequest = true; // A última mensagem foi um pedido
+    
+                    // Configurar e mostrar o painel de rolagem
+                    rollPromptLabel.textContent = `Mestre solicitou: ${msg.rollRequest.label} (${msg.rollRequest.attribute}) vs CD ${msg.rollRequest.cd}`;
+                    
+                    // Armazenar os dados do teste no botão
+                    btnRollChallenge.dataset.attribute = msg.rollRequest.attribute;
+                    btnRollChallenge.dataset.cd = msg.rollRequest.cd;
+                    
+                    // Mostrar o painel de rolagem
+                    rollPromptBar.style.display = 'flex';
+                    inputArea.style.display = 'none'; // Esconder o input de texto normal
+                }
             });
+    
+            // Se a última mensagem NÃO foi um pedido de rolagem, esconder o painel
+            if (!lastMessageWasRollRequest) {
+                rollPromptBar.style.display = 'none';
+                // A exibição do inputArea será controlada pela função updateTurnUI
+            }
+    
             narration.scrollTop = narration.scrollHeight;
         });
     }
@@ -396,14 +451,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function sendChatMessage(text) {
         if (!text.trim() || !currentSessionId || !currentCharacter) return;
-        inputText.disabled = true; btnSend.disabled = true;
+        
+        // Desabilitar UI
+        inputText.disabled = true; 
+        btnSend.disabled = true;
+        
+        // 1. Criar a mensagem do jogador e guardá-la localmente
+        // O Genkit vai ler esta mensagem no próximo turno, mas é bom guardá-la já
         try {
             await addDoc(collection(db, 'sessions', currentSessionId, 'messages'), {
-                from: 'player', text, characterName: currentCharacter.name, uid: currentUser.uid, createdAt: serverTimestamp()
+                from: 'player', 
+                text, 
+                characterName: currentCharacter.name, 
+                uid: currentUser.uid, 
+                createdAt: serverTimestamp()
             });
             inputText.value = '';
         } catch (error) {
-            console.error("Erro ao enviar mensagem:", error);
+            console.error("Erro ao guardar a mensagem do jogador:", error);
+            showNotification("Erro ao enviar a sua ação.", "error");
+            inputText.disabled = false; 
+            btnSend.disabled = false;
+            return;
+        }
+    
+        // 2. Preparar os dados para o Genkit
+        const genkitInput = {
+            sessionId: currentSessionId,
+            playerAction: text,
+            character: {
+                name: currentCharacter.name,
+                gender: currentCharacter.gender,
+                orixa: {
+                    name: currentCharacter.orixa.name,
+                    description: currentCharacter.orixa.description
+                }
+            }
+        };
+    
+        // 3. Chamar a função Genkit `gameMaster`
+        try {
+            // A função Genkit irá processar, chamar a IA e guardar a resposta da IA no Firestore.
+            // A função `listenForMessages` irá então detetar a nova mensagem da IA.
+            await gameMaster(genkitInput); 
+            
+            // A UI de input será reativada (ou não) pela função updateTurnUI
+            // ou pelo painel de rolagem, com base na resposta da IA.
+    
+        } catch (error) {
+            console.error("Erro ao chamar o Mestre (Genkit):", error);
+            showNotification("O Mestre parece confuso. Tente novamente.", "error");
+            // Reverter? Ou deixar o jogador tentar de novo?
+            // Vamos reativar a UI para o jogador tentar de novo.
+            inputText.disabled = false; 
+            btnSend.disabled = false;
         }
     }
 
@@ -738,4 +839,97 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+});
+
+btnRollChallenge.addEventListener('click', async () => {
+    if (!currentUser || !currentCharacter || !currentSessionId) return;
+
+    const attributeName = btnRollChallenge.dataset.attribute;
+    const cd = parseInt(btnRollChallenge.dataset.cd);
+    
+    // 1. Encontrar o sub-atributo e seu valor
+    let attributeScore = 0;
+    for (const mainAttrKey in currentCharacter.attributes) {
+        for (const subAttrKey in currentCharacter.attributes[mainAttrKey].sub) {
+            const subAttr = currentCharacter.attributes[mainAttrKey].sub[subAttrKey];
+            if (subAttr.name === attributeName) {
+                attributeScore = subAttr.value;
+                break;
+            }
+        }
+    }
+
+    // 2. Calcular o Modificador (com base na Tabela do Guia do PDF)
+    let modifier = -2; // Base para pontuação 1
+    if (attributeScore >= 16) modifier = 6;
+    else if (attributeScore >= 14) modifier = 5;
+    else if (attributeScore >= 12) modifier = 4;
+    else if (attributeScore >= 10) modifier = 3;
+    else if (attributeScore >= 8) modifier = 2; // 
+    else if (attributeScore >= 6) modifier = 1;
+    else if (attributeScore >= 4) modifier = 0;
+    else if (attributeScore >= 2) modifier = -1;
+
+    // 3. Rolar o d20 e calcular o resultado
+    const d20Roll = Math.floor(Math.random() * 20) + 1;
+    const total = d20Roll + modifier;
+    const success = total >= cd; // 
+
+    // 4. Desabilitar o botão e esconder o painel
+    btnRollChallenge.disabled = true;
+    rollPromptBar.style.display = 'none';
+
+    const rollData = {
+        attribute: attributeName,
+        cd: cd,
+        d20: d20Roll,
+        modifier: modifier,
+        total: total,
+        success: success
+    };
+
+    // 5. Enviar o resultado da rolagem para o Firestore
+    const resultText = `${currentCharacter.name} rolou ${total} (d20: ${d20Roll} + mod: ${modifier}) para ${attributeName} (CD ${cd}): ${success ? 'SUCESSO' : 'FALHA'}`;
+    
+    try {
+        await addDoc(collection(db, 'sessions', currentSessionId, 'messages'), {
+            from: 'player',
+            uid: currentUser.uid,
+            characterName: currentCharacter.name,
+            createdAt: serverTimestamp(),
+            text: resultText,
+            isRollResult: true, // Flag especial
+            roll: rollData
+        });
+    } catch (error) {
+        console.error("Erro ao enviar resultado da rolagem:", error);
+        showNotification("Não foi possível enviar a sua rolagem.", "error");
+        btnRollChallenge.disabled = false;
+        return;
+    }
+
+    // 6. Chamar o Genkit com o resultado da rolagem
+    const genkitInput = {
+        sessionId: currentSessionId,
+        rollResult: rollData, // Enviar o objeto de rolagem
+        character: {
+            name: currentCharacter.name,
+            gender: currentCharacter.gender,
+            orixa: {
+                name: currentCharacter.orixa.name,
+                description: currentCharacter.orixa.description
+            }
+        }
+    };
+
+    try {
+        await gameMaster(genkitInput);
+        // A resposta da IA será apanhada pelo listenForMessages,
+        // e o turno será passado pelo backend.
+    } catch (error) {
+        console.error("Erro ao chamar o Mestre (Genkit) com a rolagem:", error);
+        showNotification("O Mestre parece confuso. Tente novamente.", "error");
+    } finally {
+        btnRollChallenge.disabled = false; // Reativar para a próxima rolagem
+    }
 });

@@ -1,0 +1,114 @@
+{
+  "titulo": "O Silêncio do Rio",
+  "introducao": "Uma campanha sobre como o progresso não pode existir esquecendo-se do passado e desrespeitando a natureza.",
+  "atos": {
+    "ato1": {
+      "titulo": "Ato 1: O Sussurro da Seca",
+      "cenas": {
+        "cena1_aldeia": {
+          "titulo": "A Aldeia de Meji",
+          "narrativa_inicio": "A história começa na aldeia de Meji, que sofre com uma seca espiritual. As colheitas minguam. A líder, Yarin, convoca os jogadores para viajar até o Oráculo do Baobá Sagrado. Antes de partirem, são confrontados pelo ancião Obaro, que defende o 'progresso' e vê a missão como um retrocesso.",
+          "desafios_possiveis": [
+            {
+              "trigger": "Jogador tenta convencer Obaro ou a aldeia do contrário.",
+              "label": "Discurso Inspirador",
+              "attribute": "Capacidade de Inspirar",
+              "cd": 15
+            },
+            {
+              "trigger": "Jogador tenta intimidar Obaro.",
+              "label": "Intimidação",
+              "attribute": "Carisma",
+              "cd": 20
+            }
+          ]
+        },
+        "cena2_trilha": {
+          "titulo": "A Trilha Empoeirada",
+          "narrativa_inicio": "A jornada pela savana ressequida apresenta desafios e ecos do problema central.",
+          "side_quests": {
+            "sq1_ferreiro": {
+              "titulo": "O Ferreiro Desacreditado",
+              "descricao": "O grupo encontra Kael, devoto de Ogum, cuja forja esfriou. Ele revela que sua família ajudou a construir a grande barragem no rio e, desde então, sente fraqueza espiritual.",
+              "desafios_possiveis": [
+                {
+                  "trigger": "Filho de Ogum tenta reconsagrar a forja.",
+                  "label": "Reconsagrar Forja",
+                  "attribute": "Conexão com o Orixá",
+                  "cd": 15
+                },
+                {
+                  "trigger": "Jogador tenta investigar a forja em busca de pistas.",
+                  "label": "Investigar Forja",
+                  "attribute": "Percepção",
+                  "cd": 10
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "ato2": {
+      "titulo": "Ato 2: A Revelação e a Falsa Pista",
+      "cenas": {
+        "cena1_oraculo": {
+          "titulo": "O Baobá Sagrado",
+          "narrativa_inicio": "O Oráculo revela que a seca é o 'silêncio' de Oxum, que está triste. Os jogadores devem seguir para o Templo Dourado no Grande Rio."
+        },
+        "cena2_rio": {
+          "titulo": "As Margens do Grande Rio",
+          "narrativa_inicio": "As águas do rio estão turvas e sem vida. O grupo encontra um santuário de Oxum vandalizado. Um Oxé (machado) de Xangô é deixado no local como uma pista falsa (Plot Twist).",
+          "desafios_possiveis": [
+            {
+              "trigger": "Jogador investiga a cena do crime em busca de pistas.",
+              "label": "Procurar Pistas",
+              "attribute": "Percepção",
+              "cd": 15
+            },
+            {
+              "trigger": "Jogador tenta identificar a natureza da pista falsa (o Oxé).",
+              "label": "Analisar Pista",
+              "attribute": "Inteligência",
+              "cd": 20
+            }
+          ]
+        }
+      }
+    },
+    "ato3": {
+      "titulo": "Ato 3: O Coração da Ferida",
+      "cenas": {
+        "cena1_julgamento": {
+          "titulo": "O Julgamento da Verdade",
+          "narrativa_inicio": "Exu reaparece e revela que a pista era um teste. Ele aponta a verdadeira causa: um afluente do rio que foi represado e esquecido, causando dor ao espírito do riacho."
+        },
+        "cena2_barragem": {
+          "titulo": "O Coração da Ferida (Clímax)",
+          "narrativa_inicio": "Na barragem, o espírito do riacho se manifesta como uma força de dor, projetando ilusões de sua antiga vida e atual sofrimento. A solução não é lutar, mas curar.",
+          "desafios_possiveis": [
+            {
+              "trigger": "Filho de Ogum tenta quebrar a barragem.",
+              "label": "Quebrar Barragem",
+              "attribute": "Força",
+              "cd": 15
+            },
+            {
+              "trigger": "Filha de Oxum tenta acalmar o espírito.",
+              "label": "Acalmar Espírito",
+              "attribute": "Carisma",
+              "cd": 15
+            },
+            {
+              "trigger": "Filho de Xangô faz um juramento de justiça.",
+              "label": "Juramento Solene",
+              "attribute": "Conexão com o Orixá",
+              "cd": 10
+            }
+          ]
+        }
+      }
+    }
+  },
+  "conclusao": "Com a barragem rompida e o espírito apaziguado, o Axé da terra é restaurado. Os jogadores retornam como heróis por restaurarem o equilíbrio."
+}
