@@ -1,8 +1,8 @@
-// functions/src/gameMaster.ts (CORRIGIDO)
+// functions/src/gameMaster.ts (CORRIGIDO PARA MAX-LEN - V2)
 
-import { genkit, z } from "genkit";
-import { googleAI, gemini20Flash } from "@genkit-ai/googleai";
-import { onCallGenkit } from "firebase-functions/https";
+import {genkit, z} from "genkit";
+import {googleAI, gemini20Flash} from "@genkit-ai/googleai";
+import {onCallGenkit} from "firebase-functions/https";
 import * as admin from "firebase-admin";
 
 // CORREÇÃO 1: Importar o JSON usando a sintaxe ES6.
@@ -92,7 +92,7 @@ const gameMasterInputSchema = z.object({
 function getSceneData(estadoKey: string): Cena | null {
   try {
     const historiaData = historia as Historia;
-    const [atoKey, , cenaKey] = estadoKey.split('_');
+    const [atoKey, , cenaKey] = estadoKey.split("_"); // 'cenasKey' removido
     const ato = historiaData.atos[atoKey];
     if (!ato) return null;
     const cena = ato.cenas[cenaKey];
@@ -111,7 +111,7 @@ export const gameMasterFlow = ai.defineFlow(
     outputSchema: z.string(),
   },
   async (input) => {
-    const { sessionId, playerAction, rollResult, character } = input;
+    const {sessionId, playerAction, rollResult, character} = input;
 
     // 1. Obter contexto do Firestore
     const sessionRef = db.collection("sessions").doc(sessionId);
@@ -217,16 +217,17 @@ export const gameMasterFlow = ai.defineFlow(
         "formatado exatamente assim:\n" +
         "[ROLL_REQUEST:{\"attribute\":\"NomeDoSubTopico\"," +
         "\"cd\":NumeroDaCD,\"label\":\"Descrição do Teste\"}]\n" +
-        "   (Use os CDs de \"Desafios Conhecidos\" como base. Se a ação não " +
-        "estiver listada, use a Tabela de CDs: Fácil 10, Médio 15, " +
-        "Difícil 20, Heroico 25)\n\n" +
+        // --- CORREÇÃO LINHA 181 (Aproximadamente) ---
+        "   (Use os CDs de \"Desafios Conhecidos\" como base. Se a ação não estiver listada, use a Tabela de CDs: Fácil 10, Médio 15,\n" +
+        "   Difícil 20, Heroico 25)\n\n" +
         "4. **COMO MUDAR DE CENA (IMPORTANTE):**\n" +
         "   Se a ação do jogador (ou o resultado de uma rolagem) mover a " +
         "história para a PRÓXIMA cena (ex: \"saem da aldeia para a " +
         "trilha\"), a sua resposta DEVE ser um JSON especial formatado assim:\n" +
         "[STATE_UPDATE:{\"newEstado\":\"chave_da_proxima_cena\"," +
         "\"narration\":\"Vocês deixam a aldeia para trás...\"}]\n" +
-        "   (Ex: \"newEstado\":\"ato1_cenas_cena2_trilha\")\n";
+        "   (Ex: \"newEstado\":" +
+        "\"ato1_cenas_cena2_trilha\")\n";
     } else {
       throw new Error(
         "Input inválido: nem playerAction nem rollResult foram fornecidos."
@@ -260,7 +261,7 @@ export const gameMasterFlow = ai.defineFlow(
       try {
         stateUpdate = JSON.parse(stateMatch[1]);
         responseText = stateUpdate.narration;
-        await sessionRef.update({ estadoDaHistoria: stateUpdate.newEstado });
+        await sessionRef.update({estadoDaHistoria: stateUpdate.newEstado});
       } catch (e) {
         console.error("Erro ao fazer parse do JSON do STATE_UPDATE:", e);
       }
@@ -296,6 +297,7 @@ export const gameMasterFlow = ai.defineFlow(
     // 9. Passar o Turno (APENAS se não for um pedido de rolagem)
     if (!rollRequest && sessionData.ordemDeTurnos) {
       const currentPlayerUid = sessionData.turnoAtualUid;
+      // --- CORREÇÃO LINHA 225 (Aproximadamente) ---
       const playerUIDs = (sessionData.ordemDeTurnos as string[]).filter(
         (uid: string) => uid !== AI_UID
       );
@@ -303,7 +305,7 @@ export const gameMasterFlow = ai.defineFlow(
       const nextPlayerIndex = (lastPlayerIndex + 1) % playerUIDs.length;
       const nextPlayerUid = playerUIDs[nextPlayerIndex];
 
-      await sessionRef.update({ turnoAtualUid: nextPlayerUid });
+      await sessionRef.update({turnoAtualUid: nextPlayerUid});
 
       const nextCharDoc = await sessionRef.collection("characters")
         .doc(nextPlayerUid)

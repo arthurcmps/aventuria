@@ -4,7 +4,6 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 import {
     addDoc, collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, where, limit
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 
 document.addEventListener('DOMContentLoaded', () => {
 
