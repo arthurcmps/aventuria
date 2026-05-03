@@ -763,3 +763,20 @@ body {
     opacity: 1;
     transform: scale(1.1);
 }
+
+/* ----------------------------------
+ * Animação dos Dados
+ * ---------------------------------- */
+@keyframes rollDice {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(-20deg) scale(1.1); }
+    50% { transform: rotate(20deg) scale(1.1); }
+    75% { transform: rotate(-10deg) scale(1.1); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+.rolling-dice {
+    animation: rollDice 0.5s ease-in-out;
+    pointer-events: none; /* Impede que o jogador clique várias vezes seguidas enquanto o dado rola */
+    background-color: var(--accent-hover-color); /* Dá um brilho no botão durante a animação */
+}

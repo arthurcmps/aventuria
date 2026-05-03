@@ -708,9 +708,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     diceRoller.addEventListener('click', async e => {
         if (e.target.matches('[data-d]') && currentSessionId && currentCharacter) {
-            const die = e.target.dataset.d;
-            const roll = Math.floor(Math.random() * parseInt(die)) + 1;
-            await sendChatMessage(`rolou 1d${die} e tirou **${roll}**`);
+            const button = e.target;
+            const die = button.dataset.d;
+
+            // 1. Inicia a animação adicionando a classe ao botão clicado
+            button.classList.add('rolling-dice');
+
+            // 2. Trava a execução por meio segundo (500ms) para a animação visual acontecer
+            setTimeout(async () => {
+                // 3. Finaliza a animação
+                button.classList.remove('rolling-dice');
+
+                // 4. Calcula o resultado da rolagem e envia para o chat
+                const roll = Math.floor(Math.random() * parseInt(die)) + 1;
+                await sendChatMessage(`rolou 1d${die} e tirou **${roll}**`);
+            }, 500); 
         }
     });
     
