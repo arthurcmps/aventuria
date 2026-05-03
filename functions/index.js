@@ -123,7 +123,7 @@ exports.handlePlayerAction = onDocumentCreated(
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
             const model = genAI.getGenerativeModel({
-                model: "gemini-2.0-flash",
+                model: "gemini-2.5-flash",
                 systemInstruction: systemInstruction,
             });
 
