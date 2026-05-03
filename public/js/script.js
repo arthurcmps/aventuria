@@ -159,12 +159,19 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionSelectionOverlay.style.display = 'none';
         gameView.style.display = 'none';
         gameView.classList.remove('in-game');
+        
+        // Esconde a barra de dados por padrão
+        document.getElementById('dice-bar').style.display = 'none'; 
+
         if (view === gameView) {
             gameView.style.display = 'grid';
             gameView.classList.add('in-game');
+            // Mostra a barra de dados apenas quando entrar no jogo
+            document.getElementById('dice-bar').style.display = 'block'; 
         } else {
             view.style.display = 'flex';
         }
+        
         btnBackToSelection.style.display = view === gameView ? 'inline-block' : 'none';
         btnCreateNewCharacter.style.display = view !== gameView && currentUser ? 'inline-block' : 'none';
     };

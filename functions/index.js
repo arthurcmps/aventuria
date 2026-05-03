@@ -119,7 +119,18 @@ exports.handlePlayerAction = onDocumentCreated(
             }
 
             // 3. Definir a persona da IA (Instrução do Sistema)
-            const systemInstruction = "Você é o Mestre de um jogo de RPG de mesa, narrando uma aventura de fantasia épica, baseado na cultura e cosmologia dos Orixás, para um grupo de jogadores. Sua responsabilidade é descrever o mundo, interpretar personagens não-jogadores (NPCs), apresentar desafios e reagir às ações dos jogadores de forma criativa e coerente. Mantenha um tom narrativo e imersivo. Nunca saia do personagem.";
+            const systemInstruction = `Você é o Mestre do RPG 'Aventuria', um cenário de Afro-fantasia épica. 
+
+                REGRAS DO SISTEMA "O CHAMADO DO AXÉ":
+                - O jogo usa a mecânica de d20 + Modificador do Atributo contra uma Classe de Dificuldade (CD).
+                - Tabela de CD: Fácil (10), Médio (15), Difícil (20), Heroico (25).
+                - NUNCA decida o resultado de uma ação incerta, difícil ou que envolva conflito sem pedir um teste.
+                - Se o jogador tentar algo arriscado, PARE a narração e diga exatamente: "Role um d20 para testar seu [Nome do Atributo]. A CD é [Valor]". Aguarde o jogador enviar a rolagem.
+                - Vantagem: O jogador rola 2d20 e usa o maior. Desvantagem: Rola 2d20 e usa o menor. Peça isso quando as condições exigirem.
+                - Avaliação de Dano: Em combate, se o ataque superar a Defesa (CD), descreva o impacto.
+                - Quizilas (Ewós): Monitore as ações do jogador. Se ele violar uma Quizila sagrada do seu Orixá, anuncie a quebra do tabu, reduza seu Axé e aplique Desvantagem em testes futuros até que ele se purifique.
+
+                REGRA DE OURO: Você narra o ambiente e as reações, mas NUNCA joga pelo jogador.`;
 
             const genAI = new GoogleGenerativeAI(geminiApiKey.value());
             const model = genAI.getGenerativeModel({
@@ -135,31 +146,67 @@ exports.handlePlayerAction = onDocumentCreated(
             // 5. Construir o prompt para a rodada atual
             const estadoHistoria = sessionData.estadoDaHistoria || 'ato1';
             const atoAtual = historia.atos[estadoHistoria];
-            const promptForCurrentTurn = `
- ### CONTEXTO DA AVENTURA ###
- Título do Ato: ${atoAtual.titulo}
- Cenário: ${atoAtual.narrativa_inicio}
 
- ### MEMBROS DO GRUPO PRESENTES NA CENA ###
- ${partyMembers}
- 
- ### PERSONAGEM DO JOGADOR ATUAL ###
- (Este é o personagem que está realizando a ação)
- Nome: ${playerCharacter.name}
- Gênero: ${playerCharacter.gender}. (${genderInstruction})
- Orixá: ${playerCharacter.orixa.name} - ${playerCharacter.orixa.description}
- 
- ### AÇÃO DO JOGADOR ###
- ${playerCharacter.name}: ${newMessage.text}
- 
- ### SUA TAREFA ###
- Com base no histórico da conversa e em TODO o contexto acima (incluindo os outros membros do grupo), narre o resultado da ação do jogador.
- Sua narração DEVE ser mais rica:
- 1. Descreva a cena e as consequências da ação.
- 2. FAÇA OS OUTROS MEMBROS DO GRUPO REAGIREM (se apropriado).
- 3. Se um NPC estiver presente, faça-o interagir com o grupo, não apenas com o jogador atual.
- Termine sua narração de forma a dar espaço para o próximo jogador agir.
- `;
+            // Função auxiliar para calcular o modificador segundo a tabela do sistema
+            const calcularModificador = (valor) => {
+                if (valor <= 1) return -2;
+                if (valor <= 3) return -1;
+                if (valor <= 5) return 0;
+                if (valor <= 7) return 1;
+                if (valor <= 9) return 2;
+                if (valor <= 11) return 3;
+                if (valor <= 13) return 4;
+                if (valor <= 15) return 5;
+                return 6;
+            };
+
+            // Extraindo atributos base
+            const saude = playerCharacter.attributes.ara.sub.saude.value;
+            const agilidade = playerCharacter.attributes.ara.sub.agilidade.value;
+            const energiaVital = playerCharacter.attributes.emi.sub.energia.value;
+
+            // Calculando atributos derivados
+            const PV = 10 + (saude * 2);
+            const PA = 10 + (energiaVital * 2);
+            const Defesa = 10 + calcularModificador(agilidade);
+
+            // Montando a ficha formatada com modificadores para a IA
+            let fichaFormatada = `Pontos de Vida (PV): ${PV} | Pontos de Axé (PA): ${PA} | Defesa: ${Defesa}\n`;
+            for (const cat in playerCharacter.attributes) {
+                const categoria = playerCharacter.attributes[cat];
+                fichaFormatada += `[${categoria.name}]: `;
+                for (const sub in categoria.sub) {
+                    const attr = categoria.sub[sub];
+                    const mod = calcularModificador(attr.value);
+                    const sinal = mod >= 0 ? '+' : '';
+                    fichaFormatada += `${attr.name} ${attr.value} (Mod: ${sinal}${mod}), `;
+                }
+                fichaFormatada += '\n';
+            }
+
+            const promptForCurrentTurn = `
+                ### CONTEXTO DA AVENTURA ###
+                Título do Ato: ${atoAtual.titulo}
+                Cenário atual: ${atoAtual.narrativa_inicio}
+
+                ### MEMBROS DO GRUPO PRESENTES NA CENA ###
+                ${partyMembers}
+
+                ### FICHA DO JOGADOR ATUAL ###
+                Nome: ${playerCharacter.name} (${playerCharacter.gender}) - ${genderInstruction}
+                Orixá: ${playerCharacter.orixa.name}
+                Quizilas (Ewós): ${playerCharacter.orixa.ewos.join('; ')}
+                Atributos:
+                ${fichaFormatada}
+
+                ### AÇÃO DO JOGADOR ###
+                ${playerCharacter.name}: ${newMessage.text}
+
+                ### SUA TAREFA ###
+                1. Se a ação for um teste de dado (ex: "rolou 1d20 e tirou 15"): Some o Modificador adequado da ficha ao valor do dado, compare com a CD da tarefa e narre o sucesso ou falha com base nisso.
+                2. Se a ação for comum ou narrativa, apenas descreva o resultado e as reações dos NPCs e do cenário.
+                3. Se a ação for arriscada ou iniciar um conflito, EXIJA O TESTE e PARE DE FALAR. Ex: "Role 1d20 + seu modificador de Agilidade (CD 15) para esquivar".
+                `;
 
             // 6. Enviar a mensagem e obter a resposta
             const result = await chat.sendMessage(promptForCurrentTurn);
